@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+coverage.json
+htmlcov/
+
+# Environments and packaging
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.yaml
+configuration.yaml
+private/
+dev/local/
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+.obsidian/
+docs/.obsidian/
+docs/vHomeLab/

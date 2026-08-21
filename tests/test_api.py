@@ -1,0 +1,398 @@
+"""Contract and parser tests for external HTTP adapters."""
+
+from datetime import UTC
+
+import pytest
+from aiohttp import ClientSession
+from aiohttp.client_exceptions import ClientConnectionError
+
+from custom_components.homelab_updates.api import (
+    SemaphoreClient,
+    StatusClient,
+    normalize_url,
+    parse_hosts,
+    parse_task,
+)
+from custom_components.homelab_updates.domain import Command, TaskPhase
+from custom_components.homelab_updates.exceptions import (
+    AuthenticationError,
+    CannotConnectError,
+    InvalidProjectError,
+    InvalidStatusDataError,
+    InvalidUrlError,
+    SemaphoreTaskError,
+)
+
+from .conftest import API_TOKEN, SEMAPHORE_URL, STATUS_URL
+
+
+def _payload(**overrides: object) -> dict[str, object]:
+    host: dict[str, object] = {
+        "checked_at": "2026-01-15T12:00:00Z",
+        "distribution": "Example Linux",
+        "distribution_version": "1.0",
+        "host": "node-01",
+        "hostname": "example-node",
+        "kernel": "1.0.0-generic",
+        "reboot_required": False,
+        "security_updates": 2,
+        "status": "critical",
+        "updates": 5,
+    }
+    host.update(overrides)
+    return {"node-01": host}
+
+
+@pytest.mark.parametrize(
+    ("value", "base", "expected"),
+    [
+        (" https://service.example.invalid/ ", True, "https://service.example.invalid"),
+        (
+            "http://service.example.invalid/api/",
+            True,
+            "http://service.example.invalid/api",
+        ),
+        (
+            "https://service.example.invalid/status",
+            False,
+            "https://service.example.invalid/status",
+        ),
+    ],
+)
+def test_normalize_url(value: str, base: bool, expected: str) -> None:
+    """Safe HTTP URLs are normalized predictably."""
+    assert normalize_url(value, base=base) == expected
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "",
+        "ftp://service.example.invalid",
+        "https://user:secret@service.example.invalid",
+        "https://service.example.invalid/#fragment",
+        "https://service.example.invalid/?query=not-allowed-for-base",
+        "https://service.example.invalid/status?query=not-allowed",
+        "https://[invalid",
+    ],
+)
+def test_normalize_url_rejects_unsafe_base(value: str) -> None:
+    """Unsafe base URLs never reach an HTTP request."""
+    with pytest.raises(InvalidUrlError):
+        normalize_url(value, base=True)
+
+
+def test_parse_hosts_valid() -> None:
+    """A valid response becomes a typed immutable snapshot."""
+    host = parse_hosts(_payload())["node-01"]
+    assert host.display_name == "example-node"
+    assert host.distribution_display == "Example Linux 1.0"
+    assert host.updates == 5
+    assert host.security_updates == 2
+    assert host.checked_at.tzinfo is UTC
+
+
+def test_parse_hosts_empty() -> None:
+    """An empty but valid snapshot is supported."""
+    assert parse_hosts({}) == {}
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        [],
+        {"": {}},
+        {"node-01": []},
+        _payload(host="different-node"),
+        _payload(updates=True),
+        _payload(updates=-1),
+        _payload(security_updates="not-a-number"),
+        _payload(reboot_required="perhaps"),
+        _payload(checked_at="2026-01-15T12:00:00"),
+        _payload(checked_at="invalid"),
+        _payload(hostname=42),
+        _payload(checked_at=None),
+        _payload(updates=1.5),
+    ],
+)
+def test_parse_hosts_rejects_invalid_data(payload: object) -> None:
+    """Invalid host fields fail the complete atomic snapshot."""
+    with pytest.raises(InvalidStatusDataError):
+        parse_hosts(payload)
+
+
+@pytest.mark.parametrize(
+    ("updates", "reboot_required", "expected_updates", "expected_reboot"),
+    [
+        ("5", "true", 5, True),
+        (5.0, 1, 5, True),
+        (0, "off", 0, False),
+    ],
+)
+def test_parse_hosts_compatible_scalars(
+    updates: object,
+    reboot_required: object,
+    expected_updates: int,
+    expected_reboot: bool,
+) -> None:
+    """Documented integer and boolean compatible values are normalized."""
+    host = parse_hosts(_payload(updates=updates, reboot_required=reboot_required))[
+        "node-01"
+    ]
+    assert host.updates == expected_updates
+    assert host.reboot_required is expected_reboot
+
+
+def test_parse_hosts_optional_fields() -> None:
+    """Absent optional descriptive fields remain None."""
+    host = parse_hosts(
+        _payload(
+            hostname=None,
+            distribution=None,
+            distribution_version=None,
+            kernel=None,
+            status=None,
+        )
+    )["node-01"]
+    assert host.display_name == "node-01"
+    assert host.distribution_display is None
+
+
+@pytest.mark.parametrize(
+    ("status", "phase"),
+    [
+        ("waiting", TaskPhase.WAITING),
+        ("queued", TaskPhase.WAITING),
+        ("running", TaskPhase.RUNNING),
+        ("success", TaskPhase.SUCCESS),
+        ("failed", TaskPhase.FAILED),
+        ("future-state", TaskPhase.UNKNOWN),
+    ],
+)
+def test_parse_task_states(status: str, phase: TaskPhase) -> None:
+    """Known and future task states normalize without crashes."""
+    assert parse_task({"id": 123, "status": status}).phase is phase
+
+
+@pytest.mark.parametrize(
+    "payload", [[], {}, {"id": True}, {"id": 0}, {"id": 1, "status": 4}]
+)
+def test_parse_task_rejects_invalid_payload(payload: object) -> None:
+    """Malformed task responses are safe errors."""
+    with pytest.raises(SemaphoreTaskError):
+        parse_task(payload)
+
+
+def test_parse_task_alternate_id_and_default_state() -> None:
+    """Semaphore response aliases and absent start state are supported."""
+    task = parse_task({"task_id": 7})
+    assert task.task_id == 7
+    assert task.phase is TaskPhase.WAITING
+
+
+async def test_status_client_fetches_once(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+) -> None:
+    """The status adapter performs one request and returns normalized hosts."""
+    aioclient_mock.get(STATUS_URL, json=_payload())  # type: ignore[attr-defined]
+    client = StatusClient(aiohttp_client_session, STATUS_URL)
+
+    hosts = await client.async_get_hosts()
+
+    assert hosts["node-01"].updates == 5
+    assert aioclient_mock.call_count == 1  # type: ignore[attr-defined]
+
+
+async def test_status_client_invalid_json(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+) -> None:
+    """A non-JSON response is classified as invalid status data."""
+    aioclient_mock.get(STATUS_URL, text="not json")  # type: ignore[attr-defined]
+    with pytest.raises(InvalidStatusDataError):
+        await StatusClient(aiohttp_client_session, STATUS_URL).async_validate()
+
+
+async def test_status_client_http_error(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+) -> None:
+    """A failed endpoint is a retryable connection error."""
+    aioclient_mock.get(STATUS_URL, status=503)  # type: ignore[attr-defined]
+    with pytest.raises(CannotConnectError):
+        await StatusClient(aiohttp_client_session, STATUS_URL).async_get_hosts()
+
+
+async def test_status_client_transport_error(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+) -> None:
+    """Transport exceptions are translated without endpoint details."""
+    aioclient_mock.get(STATUS_URL, exc=ClientConnectionError())  # type: ignore[attr-defined]
+    with pytest.raises(CannotConnectError):
+        await StatusClient(aiohttp_client_session, STATUS_URL).async_get_hosts()
+
+
+async def test_status_client_rejects_large_response(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+) -> None:
+    """Oversized status documents are rejected before parsing."""
+    aioclient_mock.get(STATUS_URL, content=b"x" * (2 * 1024 * 1024 + 1))  # type: ignore[attr-defined]
+    with pytest.raises(InvalidStatusDataError):
+        await StatusClient(aiohttp_client_session, STATUS_URL).async_get_hosts()
+
+
+def _semaphore_client(session: ClientSession) -> SemaphoreClient:
+    return SemaphoreClient(
+        session,
+        SEMAPHORE_URL,
+        API_TOKEN,
+        1,
+        {
+            Command.CHECK_ALL: 11,
+            Command.UPDATE_HOST: 12,
+            Command.REBOOT_HOST: 13,
+            Command.REFRESH_STATUS: 14,
+        },
+    )
+
+
+async def test_semaphore_validate_and_auth_header(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+) -> None:
+    """Project validation sends a Bearer token without a query secret."""
+    url = f"{SEMAPHORE_URL}/api/project/1"
+    aioclient_mock.get(url, json={"id": 1})  # type: ignore[attr-defined]
+
+    await _semaphore_client(aiohttp_client_session).async_validate()
+
+    assert aioclient_mock.call_count == 1  # type: ignore[attr-defined]
+    assert (  # type: ignore[attr-defined]
+        aioclient_mock.mock_calls[0][3]["Authorization"] == f"Bearer {API_TOKEN}"
+    )
+
+
+@pytest.mark.parametrize(
+    ("command", "host_id", "template_id"),
+    [
+        (Command.CHECK_ALL, None, 11),
+        (Command.UPDATE_HOST, "node-01", 12),
+        (Command.REBOOT_HOST, "node-01", 13),
+        (Command.REFRESH_STATUS, None, 14),
+    ],
+)
+async def test_start_command_payload(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+    command: Command,
+    host_id: str | None,
+    template_id: int,
+) -> None:
+    """Commands choose the configured template and only host actions use limit."""
+    url = f"{SEMAPHORE_URL}/api/project/1/tasks"
+    aioclient_mock.post(url, json={"id": 123})  # type: ignore[attr-defined]
+
+    task = await _semaphore_client(aiohttp_client_session).async_start_command(
+        command, host_id
+    )
+
+    sent = aioclient_mock.mock_calls[0][2]  # type: ignore[attr-defined]
+    assert sent["template_id"] == template_id
+    assert sent.get("limit") == host_id
+    assert task.task_id == 123
+
+
+async def test_start_host_command_requires_host(
+    aiohttp_client_session: ClientSession,
+) -> None:
+    """A host command without a target is rejected before network I/O."""
+    with pytest.raises(SemaphoreTaskError):
+        await _semaphore_client(aiohttp_client_session).async_start_command(
+            Command.UPDATE_HOST
+        )
+
+
+async def test_unconfigured_command_is_rejected(
+    aiohttp_client_session: ClientSession,
+) -> None:
+    """Missing command capability fails before a backend request."""
+    client = SemaphoreClient(
+        aiohttp_client_session,
+        SEMAPHORE_URL,
+        API_TOKEN,
+        1,
+        {},
+    )
+    with pytest.raises(SemaphoreTaskError):
+        await client.async_start_command(Command.CHECK_ALL)
+
+
+async def test_auxiliary_semaphore_endpoints(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+) -> None:
+    """Templates, generic tasks, task state, and output use project-scoped paths."""
+    client = _semaphore_client(aiohttp_client_session)
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{SEMAPHORE_URL}/api/project/1/templates", json=[{"id": 11}]
+    )
+    assert await client.async_get_templates() == [{"id": 11}]
+
+    task_url = f"{SEMAPHORE_URL}/api/project/1/tasks"
+    aioclient_mock.post(task_url, json={"id": 501})  # type: ignore[attr-defined]
+    assert (await client.async_start_task(99, "node-01")).task_id == 501
+    assert aioclient_mock.mock_calls[-1][2] == {  # type: ignore[attr-defined]
+        "template_id": 99,
+        "limit": "node-01",
+    }
+
+    aioclient_mock.post(task_url, json={"id": 502})  # type: ignore[attr-defined]
+    await client.async_start_task(100)
+    assert aioclient_mock.mock_calls[-1][2] == {"template_id": 100}  # type: ignore[attr-defined]
+
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{task_url}/501", json={"id": 501, "status": "running"}
+    )
+    assert (await client.async_get_task(501)).phase is TaskPhase.RUNNING
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{task_url}/501/output", json=[{"output": "synthetic"}]
+    )
+    assert await client.async_get_task_output(501) == [{"output": "synthetic"}]
+
+
+async def test_semaphore_transport_error(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+) -> None:
+    """Backend transport exceptions are stable connection errors."""
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{SEMAPHORE_URL}/api/project/1", exc=ClientConnectionError()
+    )
+    with pytest.raises(CannotConnectError):
+        await _semaphore_client(aiohttp_client_session).async_validate()
+
+
+@pytest.mark.parametrize(
+    ("status", "error"),
+    [
+        (401, AuthenticationError),
+        (403, AuthenticationError),
+        (404, InvalidProjectError),
+        (500, CannotConnectError),
+    ],
+)
+async def test_semaphore_validation_errors(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+    status: int,
+    error: type[Exception],
+) -> None:
+    """HTTP failures map to stable safe exception categories."""
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{SEMAPHORE_URL}/api/project/1", status=status
+    )
+    with pytest.raises(error):
+        await _semaphore_client(aiohttp_client_session).async_validate()

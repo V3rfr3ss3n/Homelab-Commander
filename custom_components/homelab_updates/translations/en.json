@@ -1,0 +1,135 @@
+{
+  "abort": {
+    "already_configured": "This automation backend project is already configured.",
+    "reauth_successful": "Reauthentication was successful.",
+    "reconfigure_successful": "The integration was reconfigured successfully."
+  },
+  "config": {
+    "error": {
+      "cannot_connect": "Failed to connect to a configured service.",
+      "invalid_auth": "The API token is invalid.",
+      "invalid_project": "The configured project does not exist.",
+      "invalid_status_data": "The status endpoint returned invalid data.",
+      "invalid_url": "A configured URL is invalid.",
+      "unknown": "An unexpected error occurred."
+    },
+    "step": {
+      "reauth_confirm": {
+        "data": {
+          "api_token": "API token"
+        },
+        "description": "Enter a new API token for the automation backend.",
+        "title": "Reauthenticate Homelab Updates"
+      },
+      "reconfigure": {
+        "data": {
+          "check_template_id": "Check template ID",
+          "export_template_id": "Status export template ID",
+          "poll_interval": "Poll interval in seconds",
+          "project_id": "Project ID",
+          "reboot_template_id": "Reboot template ID",
+          "semaphore_url": "Automation backend URL",
+          "status_url": "Status URL",
+          "update_template_id": "Update template ID",
+          "verify_ssl": "Verify TLS certificates"
+        },
+        "description": "Update service endpoints, templates, and polling behavior.",
+        "title": "Reconfigure Homelab Updates"
+      },
+      "user": {
+        "data": {
+          "api_token": "API token",
+          "check_template_id": "Check template ID",
+          "export_template_id": "Status export template ID",
+          "poll_interval": "Poll interval in seconds",
+          "project_id": "Project ID",
+          "reboot_template_id": "Reboot template ID",
+          "semaphore_url": "Automation backend URL",
+          "status_url": "Status URL",
+          "update_template_id": "Update template ID",
+          "verify_ssl": "Verify TLS certificates"
+        },
+        "description": "Connect Home Assistant to a status endpoint and an automation backend.",
+        "title": "Set up Homelab Updates"
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "reboot_required": {
+        "name": "Reboot required"
+      }
+    },
+    "button": {
+      "check_all": {
+        "name": "Check all hosts"
+      },
+      "reboot": {
+        "name": "Reboot"
+      },
+      "refresh_status": {
+        "name": "Refresh status"
+      }
+    },
+    "sensor": {
+      "available_updates": {
+        "name": "Available updates"
+      },
+      "distribution": {
+        "name": "Distribution"
+      },
+      "kernel": {
+        "name": "Kernel"
+      },
+      "last_check": {
+        "name": "Last check"
+      },
+      "security_updates": {
+        "name": "Security updates"
+      }
+    },
+    "update": {
+      "system_updates": {
+        "name": "System updates"
+      }
+    }
+  },
+  "exceptions": {
+    "invalid_repair_issue": {
+      "message": "The reboot confirmation request is invalid. Refresh the host status and try again."
+    },
+    "invalid_auth": {
+      "message": "The automation backend rejected the API token. Reauthentication has been started."
+    },
+    "status_update_failed": {
+      "message": "The host status could not be updated."
+    },
+    "task_already_running": {
+      "message": "This maintenance operation is already running."
+    },
+    "task_start_failed": {
+      "message": "The maintenance operation could not be started."
+    }
+  },
+  "issues": {
+    "reboot_required": {
+      "fix_flow": {
+        "abort": {
+          "entry_unavailable": "The integration is currently unavailable.",
+          "no_longer_required": "The host no longer reports that a reboot is required."
+        },
+        "error": {
+          "cannot_reboot": "The reboot could not be started."
+        },
+        "step": {
+          "confirm": {
+            "description": "Updates for **{host}** require a reboot. Services on this host may be interrupted. Select **Submit** to reboot it now, or close this dialog to postpone the reboot.",
+            "title": "Reboot {host}?"
+          }
+        }
+      },
+      "title": "Reboot required for {host}"
+    }
+  },
+  "title": "Homelab Updates"
+}

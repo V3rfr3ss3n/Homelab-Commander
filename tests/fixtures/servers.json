@@ -1,0 +1,14 @@
+{
+  "node-01": {
+    "checked_at": "2026-01-15T12:00:00Z",
+    "distribution": "Example Linux",
+    "distribution_version": "1.0",
+    "host": "node-01",
+    "hostname": "example-node",
+    "kernel": "1.0.0-generic",
+    "reboot_required": false,
+    "security_updates": 2,
+    "status": "critical",
+    "updates": 5
+  }
+}

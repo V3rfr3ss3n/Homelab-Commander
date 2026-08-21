@@ -1,0 +1,135 @@
+{
+  "abort": {
+    "already_configured": "Dieses Automatisierungsprojekt ist bereits konfiguriert.",
+    "reauth_successful": "Die erneute Authentifizierung war erfolgreich.",
+    "reconfigure_successful": "Die Integration wurde erfolgreich neu konfiguriert."
+  },
+  "config": {
+    "error": {
+      "cannot_connect": "Verbindung zu einem konfigurierten Dienst fehlgeschlagen.",
+      "invalid_auth": "Das API-Token ist ungültig.",
+      "invalid_project": "Das konfigurierte Projekt existiert nicht.",
+      "invalid_status_data": "Der Statusendpunkt hat ungültige Daten geliefert.",
+      "invalid_url": "Eine konfigurierte URL ist ungültig.",
+      "unknown": "Ein unerwarteter Fehler ist aufgetreten."
+    },
+    "step": {
+      "reauth_confirm": {
+        "data": {
+          "api_token": "API-Token"
+        },
+        "description": "Gib ein neues API-Token für das Automatisierungsbackend ein.",
+        "title": "Homelab Updates erneut authentifizieren"
+      },
+      "reconfigure": {
+        "data": {
+          "check_template_id": "ID des Check-Templates",
+          "export_template_id": "ID des Statusexport-Templates",
+          "poll_interval": "Abfrageintervall in Sekunden",
+          "project_id": "Projekt-ID",
+          "reboot_template_id": "ID des Reboot-Templates",
+          "semaphore_url": "URL des Automatisierungsbackends",
+          "status_url": "Status-URL",
+          "update_template_id": "ID des Update-Templates",
+          "verify_ssl": "TLS-Zertifikate überprüfen"
+        },
+        "description": "Ändere Endpunkte, Templates und Abfrageverhalten.",
+        "title": "Homelab Updates neu konfigurieren"
+      },
+      "user": {
+        "data": {
+          "api_token": "API-Token",
+          "check_template_id": "ID des Check-Templates",
+          "export_template_id": "ID des Statusexport-Templates",
+          "poll_interval": "Abfrageintervall in Sekunden",
+          "project_id": "Projekt-ID",
+          "reboot_template_id": "ID des Reboot-Templates",
+          "semaphore_url": "URL des Automatisierungsbackends",
+          "status_url": "Status-URL",
+          "update_template_id": "ID des Update-Templates",
+          "verify_ssl": "TLS-Zertifikate überprüfen"
+        },
+        "description": "Verbinde Home Assistant mit einem Statusendpunkt und einem Automatisierungsbackend.",
+        "title": "Homelab Updates einrichten"
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "reboot_required": {
+        "name": "Neustart erforderlich"
+      }
+    },
+    "button": {
+      "check_all": {
+        "name": "Alle Hosts prüfen"
+      },
+      "reboot": {
+        "name": "Neu starten"
+      },
+      "refresh_status": {
+        "name": "Status aktualisieren"
+      }
+    },
+    "sensor": {
+      "available_updates": {
+        "name": "Verfügbare Updates"
+      },
+      "distribution": {
+        "name": "Distribution"
+      },
+      "kernel": {
+        "name": "Kernel"
+      },
+      "last_check": {
+        "name": "Letzte Prüfung"
+      },
+      "security_updates": {
+        "name": "Sicherheitsupdates"
+      }
+    },
+    "update": {
+      "system_updates": {
+        "name": "Systemupdates"
+      }
+    }
+  },
+  "exceptions": {
+    "invalid_repair_issue": {
+      "message": "Die Neustartabfrage ist ungültig. Aktualisiere den Hoststatus und versuche es erneut."
+    },
+    "invalid_auth": {
+      "message": "Das Automatisierungsbackend hat das API-Token abgelehnt. Die erneute Authentifizierung wurde gestartet."
+    },
+    "status_update_failed": {
+      "message": "Der Hoststatus konnte nicht aktualisiert werden."
+    },
+    "task_already_running": {
+      "message": "Diese Wartungsaktion läuft bereits."
+    },
+    "task_start_failed": {
+      "message": "Die Wartungsaktion konnte nicht gestartet werden."
+    }
+  },
+  "issues": {
+    "reboot_required": {
+      "fix_flow": {
+        "abort": {
+          "entry_unavailable": "Die Integration ist momentan nicht verfügbar.",
+          "no_longer_required": "Der Host meldet keinen erforderlichen Neustart mehr."
+        },
+        "error": {
+          "cannot_reboot": "Der Neustart konnte nicht gestartet werden."
+        },
+        "step": {
+          "confirm": {
+            "description": "Die Updates für **{host}** erfordern einen Neustart. Dienste auf diesem Host können dabei unterbrochen werden. Wähle **Senden**, um den Host jetzt neu zu starten, oder schließe diesen Dialog, um den Neustart aufzuschieben.",
+            "title": "{host} neu starten?"
+          }
+        }
+      },
+      "title": "Neustart für {host} erforderlich"
+    }
+  },
+  "title": "Homelab Updates"
+}

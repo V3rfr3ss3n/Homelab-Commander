@@ -1,0 +1,12 @@
+{
+  "codeowners": ["@V3rfr3ss3n"],
+  "config_flow": true,
+  "documentation": "https://homelab-updates.example.invalid",
+  "domain": "homelab_updates",
+  "integration_type": "hub",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://homelab-updates.example.invalid/issues",
+  "name": "Homelab Updates",
+  "requirements": [],
+  "version": "0.1.0"
+}
