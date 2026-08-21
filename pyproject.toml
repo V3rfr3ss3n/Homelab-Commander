@@ -1,6 +1,6 @@
 [project]
 name = "home-assistant-homelab-updates"
-version = "0.1.0"
+version = "0.2.0.dev0"
 description = "A Home Assistant custom integration for homelab update operations"
 readme = "README.md"
 requires-python = ">=3.14.2"
@@ -11,11 +11,26 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3.14",
 ]
-dependencies = []
+dependencies = [
+  "ansible-core==2.21.2",
+  "fastapi==0.141.1",
+  "uvicorn==0.51.0",
+]
+
+[project.scripts]
+homelab-updates-backend = "homelab_backend.__main__:main"
+
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["backend/homelab_backend"]
 
 [dependency-groups]
 dev = [
   "homeassistant==2026.8.2",
+  "httpx2==2.9.1",
   "mypy==1.18.2",
   "pip-audit==2.9.0",
   "pytest-cov==7.1.0",
@@ -26,11 +41,12 @@ dev = [
 [tool.pytest.ini_options]
 addopts = "--strict-config --strict-markers"
 asyncio_mode = "auto"
-testpaths = ["tests"]
+pythonpath = ["."]
+testpaths = ["backend/tests", "tests"]
 
 [tool.coverage.run]
 branch = true
-source = ["custom_components/homelab_updates"]
+source = ["backend/homelab_backend", "custom_components/homelab_updates"]
 
 [tool.coverage.report]
 exclude_also = [
@@ -44,6 +60,7 @@ skip_covered = true
 
 [tool.ruff]
 line-length = 88
+preview = true
 target-version = "py314"
 
 [tool.ruff.lint]
@@ -73,13 +90,25 @@ select = [
 known-first-party = ["custom_components.homelab_updates"]
 
 [tool.ruff.lint.per-file-ignores]
+# FastAPI/HA hooks stay async; awaited comprehensions require lists; app HTML is minified.
+"backend/homelab_backend/app.py" = ["C409", "E501", "RUF029"]
+"backend/tests/test_automation.py" = ["RUF029"]
+"custom_components/homelab_updates/__init__.py" = ["RUF029"]
+"custom_components/homelab_updates/adapters/native.py" = ["C409"]
+"custom_components/homelab_updates/binary_sensor.py" = ["RUF029"]
+"custom_components/homelab_updates/button.py" = ["RUF029"]
+"custom_components/homelab_updates/diagnostics.py" = ["RUF029"]
+"custom_components/homelab_updates/repairs.py" = ["RUF029"]
+"custom_components/homelab_updates/sensor.py" = ["RUF029"]
+"custom_components/homelab_updates/update.py" = ["RUF029"]
 "scripts/*.py" = ["T201"]
+"tests/conftest.py" = ["RUF029"]
 
 [tool.mypy]
 python_version = "3.14"
 strict = true
 warn_unreachable = true
-files = ["custom_components/homelab_updates"]
+files = ["backend/homelab_backend", "custom_components/homelab_updates"]
 
 [tool.uv]
 default-groups = ["dev"]

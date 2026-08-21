@@ -1,0 +1,12 @@
+configuration:
+  api_token:
+    name: API token
+    description: Use at least 32 random characters. The Home Assistant integration needs the same token.
+  log_level:
+    name: Log level
+    description: Backend logging verbosity. Sensitive request data is never logged.
+  allow_shell_tasks:
+    name: Allow shell tasks
+    description: Enables explicitly configured shell commands. Keep disabled unless shell semantics are required.
+network:
+  8099/tcp: Native backend API

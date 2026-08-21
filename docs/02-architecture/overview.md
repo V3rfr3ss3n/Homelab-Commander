@@ -1,7 +1,7 @@
 ---
 title: Architektur
 status: accepted
-updated: 2026-08-20
+updated: 2026-08-21
 tags: [architecture, design]
 ---
 
@@ -12,14 +12,18 @@ tags: [architecture, design]
 ```mermaid
 flowchart LR
     U[Home Assistant user] --> HA[Homelab Updates]
-    HA --> SP[Status Provider]
-    HA --> AB[Automation Backend]
-    AB --> AN[Ansible]
+    HA --> NB[Native Backend API]
+    HA -. optional .-> SE[Semaphore Provider]
+    UI[Add-on Ingress UI] --> NB
+    NB --> DB[(SQLite)]
+    NB --> AN[Ansible Runner]
     AN --> H[Managed Linux hosts]
 ```
 
-Home Assistant besitzt weder Inventar noch Hostzugangsdaten. Es liest
-normalisierten Status und sendet absichtliche Commands an einen Adapter.
+Home Assistant besitzt weder Inventar noch Hostzugangsdaten. Das native Backend
+ist dieselbe Anwendung im Add-on und Standalone-Container. Es liefert
+normalisierten Status und nimmt absichtliche Commands an. Semaphore bleibt ein
+alternativer Legacy-Provider.
 
 ## Schichten
 
@@ -28,7 +32,7 @@ flowchart TD
     E[Entity platforms and config flows]
     A[Application services and protocols]
     D[Typed domain models and state machines]
-    P[Status and Semaphore adapters]
+    P[Native and Semaphore adapters]
     I[Home Assistant and HTTP infrastructure]
     E --> A
     A --> D
@@ -57,9 +61,23 @@ oder aiohttp-Typen.
 
 ### Adapters
 
-`HttpStatusProvider` kennt das Statusformat. `SemaphoreAutomationBackend` kennt
-Semaphore-Endpunkte, Authentifizierung und Responseformate. Spätere Backends
-implementieren dasselbe Protocol oder deklarieren Capabilities.
+`NativeBackendClient` kennt die versionierte native REST-API.
+`HttpStatusProvider` und `SemaphoreBackend` kapseln das Legacy-Modell mit
+getrenntem Status-Export. Alle implementieren dieselben Provider-Protocols oder
+deklarieren optionale Capabilities.
+
+### Native Backend
+
+Der Backend-Kern trennt API, Application Services, Domainmodelle, Persistenz und
+Execution Adapter. SQLite speichert Hosts, Jobs und Custom Tasks. Ein begrenzter
+Worker nimmt Jobs aus der persistenten Queue; mutierende Aktionen werden pro
+Host serialisiert. SSH- und Ansible-Details gelangen nicht in API-Domainmodelle.
+
+### Add-on
+
+Das Add-on verpackt exakt denselben Backend-Kern. Es ergänzt Startskript,
+Optionsübersetzung und eine Ingress-Weboberfläche, erhält aber weder
+Docker-Socket noch Host-Netzwerk. Persistente Daten liegen unter `/data`.
 
 ## Vorgesehene Laufzeitobjekte
 
@@ -96,7 +114,7 @@ werden an der Grenze in sichere projektspezifische Exceptions übersetzt.
 
 ## Erweiterungspunkte
 
-- neue `StatusProvider`-Implementierung
+- neue `HostProvider`-Implementierung
 - neues `AutomationBackend`
 - optionale Backend-Capabilities
 - neue, thematisch begrenzte Entity-Plattform oder Application Services
@@ -106,5 +124,5 @@ Nicht vorgesehen ist ein universelles Plugin-System innerhalb der Integration.
 Python-Protokolle und saubere Adaptergrenzen sind zunächst einfacher testbar und
 ausreichend flexibel.
 
-Siehe [[adr/0001-ports-and-adapters]], [[adr/0002-public-by-default]] und
-[[adr/0004-safe-reboot-flow]].
+Siehe [[adr/0001-ports-and-adapters]], [[adr/0002-public-by-default]],
+[[adr/0004-safe-reboot-flow]] und [[adr/0005-native-backend-boundary]].

@@ -1,7 +1,7 @@
 ---
 title: Referenzen
 status: active
-updated: 2026-08-20
+updated: 2026-08-21
 tags: [documentation, references, home-assistant, hacs]
 ---
 
@@ -33,6 +33,12 @@ Home-Assistant-APIs und Qualitätsregeln sich weiterentwickeln.
   – Pytest und Linting im Home-Assistant-Ökosystem
 - [Hassfest for custom components](https://developers.home-assistant.io/blog/2020/04/16/hassfest/)
   – Validierung eigener Integrationen
+- [Home Assistant app configuration](https://developers.home-assistant.io/docs/apps/configuration/)
+  – aktuelles `config.yaml`, Ingress, `/data` und BuildKit-Konventionen
+- [Home Assistant app communication](https://developers.home-assistant.io/docs/apps/communication/)
+  – internes Netz und API-Erreichbarkeit
+- [Publishing apps](https://developers.home-assistant.io/docs/apps/publishing/)
+  – generische Multi-Arch-Images und Veröffentlichungsworkflow
 
 ## HACS
 
@@ -51,3 +57,9 @@ Die Semaphore-API-Dokumentation wird vor Implementierung des Adapters gegen die
 unterstützte Versionsmatrix geprüft. Request-/Responseverträge werden danach als
 synthetische Contract-Fixtures im Repository festgehalten. Keine Referenz darf
 eine URL oder Antwort aus einer realen Installation enthalten.
+
+- [FastAPI](https://fastapi.tiangolo.com/) – typisierte ASGI-API und OpenAPI
+- [Uvicorn](https://www.uvicorn.org/) – ASGI-Prozess
+- [Ansible Core](https://docs.ansible.com/ansible-core/devel/index.html) – Module,
+  Inventory und agentenlose Ausführung
+- [cryptography](https://cryptography.io/en/latest/) – ED25519-Schlüsselmaterial

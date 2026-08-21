@@ -14,6 +14,16 @@
       "unknown": "Ein unerwarteter Fehler ist aufgetreten."
     },
     "step": {
+      "native": {
+        "data": {
+          "api_token": "API-Token",
+          "backend_url": "URL des nativen Backends",
+          "poll_interval": "Abfrageintervall in Sekunden",
+          "verify_ssl": "TLS-Zertifikate überprüfen"
+        },
+        "description": "Verbinde Home Assistant mit dem nativen Homelab-Updates-Backend.",
+        "title": "Natives Backend"
+      },
       "reauth_confirm": {
         "data": {
           "api_token": "API-Token"
@@ -24,6 +34,7 @@
       "reconfigure": {
         "data": {
           "check_template_id": "ID des Check-Templates",
+          "backend_url": "URL des nativen Backends",
           "export_template_id": "ID des Statusexport-Templates",
           "poll_interval": "Abfrageintervall in Sekunden",
           "project_id": "Projekt-ID",
@@ -36,7 +47,7 @@
         "description": "Ändere Endpunkte, Templates und Abfrageverhalten.",
         "title": "Homelab Updates neu konfigurieren"
       },
-      "user": {
+      "semaphore": {
         "data": {
           "api_token": "API-Token",
           "check_template_id": "ID des Check-Templates",
@@ -44,18 +55,28 @@
           "poll_interval": "Abfrageintervall in Sekunden",
           "project_id": "Projekt-ID",
           "reboot_template_id": "ID des Reboot-Templates",
-          "semaphore_url": "URL des Automatisierungsbackends",
+          "semaphore_url": "Semaphore-URL",
           "status_url": "Status-URL",
           "update_template_id": "ID des Update-Templates",
           "verify_ssl": "TLS-Zertifikate überprüfen"
         },
-        "description": "Verbinde Home Assistant mit einem Statusendpunkt und einem Automatisierungsbackend.",
+        "description": "Verbinde Home Assistant mit dem optionalen Semaphore-Legacy-Provider und Statusexport.",
+        "title": "Semaphore-Legacy-Provider"
+      },
+      "user": {
+        "data": {
+          "backend_type": "Backend-Typ"
+        },
+        "description": "Wähle das Backend, das deine Homelab-Hosts verwaltet.",
         "title": "Homelab Updates einrichten"
       }
     }
   },
   "entity": {
     "binary_sensor": {
+      "backend_health": {
+        "name": "Backend-Zustand"
+      },
       "reboot_required": {
         "name": "Neustart erforderlich"
       }
@@ -83,6 +104,18 @@
       },
       "last_check": {
         "name": "Letzte Prüfung"
+      },
+      "last_job": {
+        "name": "Letzter Job"
+      },
+      "last_job_error": {
+        "name": "Letzter Jobfehler"
+      },
+      "queued_jobs": {
+        "name": "Wartende Jobs"
+      },
+      "running_jobs": {
+        "name": "Laufende Jobs"
       },
       "security_updates": {
         "name": "Sicherheitsupdates"

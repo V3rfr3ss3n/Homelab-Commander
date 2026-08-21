@@ -9,12 +9,12 @@ from datetime import timedelta
 from homeassistant.core import HomeAssistant
 
 from ..const import DEFAULT_TASK_POLL_INTERVAL, DEFAULT_TASK_TIMEOUT
-from ..domain import Command, SemaphoreTask, TaskPhase
+from ..domain import BackendTask, Command, TaskId, TaskPhase
 from ..exceptions import (
     AuthenticationError,
+    BackendTaskError,
     CannotConnectError,
     HomelabUpdatesError,
-    SemaphoreTaskError,
     TaskAlreadyRunningError,
 )
 from .protocols import AutomationBackend
@@ -47,7 +47,7 @@ class TaskManager:
         self._poll_interval = poll_interval
         self._task_timeout = task_timeout
         self._tasks: dict[str, asyncio.Task[None]] = {}
-        self._states: dict[str, SemaphoreTask] = {}
+        self._states: dict[str, BackendTask] = {}
         self._listeners: set[TaskListener] = set()
 
     def async_add_listener(self, listener: TaskListener) -> Callable[[], None]:
@@ -62,7 +62,7 @@ class TaskManager:
 
     def task_state(
         self, command: Command, host_id: str | None = None
-    ) -> SemaphoreTask | None:
+    ) -> BackendTask | None:
         """Return the most recently known state for a command."""
         return self._states.get(command.key(host_id))
 
@@ -73,27 +73,58 @@ class TaskManager:
 
     async def async_start(
         self, command: Command, host_id: str | None = None
-    ) -> SemaphoreTask:
+    ) -> BackendTask:
         """Start a command and track it in the background."""
         key = command.key(host_id)
         if self.is_running(command, host_id):
             raise TaskAlreadyRunningError("This command is already running")
 
         try:
-            started = await self._backend.async_start_command(command, host_id)
+            started = await self._async_dispatch(command, host_id)
         except AuthenticationError:
             self._auth_failure_callback()
             raise
 
         self._states[key] = started
         self._notify_listeners()
+        refresh_on_success = command in {
+            Command.CHECK_ALL,
+            Command.REFRESH_STATUS,
+            Command.UPDATE_HOST,
+        }
         tracker = self._hass.async_create_task(
-            self._async_track(key, command, host_id, started.task_id),
+            self._async_track(key, started.task_id, refresh_on_success),
             f"Track Homelab Updates task {started.task_id}",
         )
         self._tasks[key] = tracker
         tracker.add_done_callback(lambda _task: self._tasks.pop(key, None))
         return started
+
+    async def async_start_custom(self, task_id: str, host_id: str) -> BackendTask:
+        """Start one backend-defined task for exactly one host."""
+        key = self._custom_key(task_id, host_id)
+        running = self._tasks.get(key)
+        if running is not None and not running.done():
+            raise TaskAlreadyRunningError("This custom task is already running")
+        try:
+            started = await self._backend.async_run_task(task_id, host_id)
+        except AuthenticationError:
+            self._auth_failure_callback()
+            raise
+        self._states[key] = started
+        self._notify_listeners()
+        tracker = self._hass.async_create_task(
+            self._async_track(key, started.task_id, True),
+            f"Track Homelab Updates task {started.task_id}",
+        )
+        self._tasks[key] = tracker
+        tracker.add_done_callback(lambda _task: self._tasks.pop(key, None))
+        return started
+
+    def is_custom_running(self, task_id: str, host_id: str) -> bool:
+        """Return whether one custom task/host combination is active."""
+        task = self._tasks.get(self._custom_key(task_id, host_id))
+        return task is not None and not task.done()
 
     async def async_cancel(self) -> None:
         """Cancel all tracking tasks during config entry unload."""
@@ -109,9 +140,8 @@ class TaskManager:
     async def _async_track(
         self,
         key: str,
-        command: Command,
-        host_id: str | None,
-        task_id: int,
+        task_id: TaskId,
+        refresh_on_success: bool,
     ) -> None:
         """Poll one task until completion, cancellation, or timeout."""
         loop = asyncio.get_running_loop()
@@ -135,25 +165,21 @@ class TaskManager:
                 self._states[key] = task
                 self._notify_listeners()
                 if task.phase is TaskPhase.SUCCESS:
-                    if command in {
-                        Command.CHECK_ALL,
-                        Command.REFRESH_STATUS,
-                        Command.UPDATE_HOST,
-                    }:
+                    if refresh_on_success:
                         await self._refresh_callback()
                     return
                 if task.phase is TaskPhase.FAILED:
-                    raise SemaphoreTaskError(
+                    raise BackendTaskError(
                         f"Automation task {task_id} failed for {key}"
                     )
                 await asyncio.sleep(self._poll_interval)
 
             reason = " after backend connection errors" if had_connection_error else ""
-            raise SemaphoreTaskError(f"Automation task {task_id} timed out{reason}")
+            raise BackendTaskError(f"Automation task {task_id} timed out{reason}")
         except asyncio.CancelledError:
             raise
         except HomelabUpdatesError as err:
-            self._states[key] = SemaphoreTask(
+            self._states[key] = BackendTask(
                 task_id=task_id,
                 phase=TaskPhase.FAILED,
                 raw_status="failed",
@@ -167,3 +193,25 @@ class TaskManager:
         """Notify a stable snapshot of listeners."""
         for listener in tuple(self._listeners):
             listener()
+
+    async def _async_dispatch(
+        self, command: Command, host_id: str | None
+    ) -> BackendTask:
+        """Dispatch a command through provider-neutral backend capabilities."""
+        if command is Command.CHECK_ALL:
+            if host_id is not None:
+                raise BackendTaskError("This command does not accept a host")
+            return await self._backend.async_check_hosts()
+        if command is Command.REFRESH_STATUS:
+            if host_id is not None:
+                raise BackendTaskError("This command does not accept a host")
+            return await self._backend.async_refresh_hosts()
+        if host_id is None:
+            raise BackendTaskError("This command requires a host")
+        if command is Command.UPDATE_HOST:
+            return await self._backend.async_update_host(host_id)
+        return await self._backend.async_reboot_host(host_id)
+
+    @staticmethod
+    def _custom_key(task_id: str, host_id: str) -> str:
+        return f"custom:{task_id}:{host_id}"

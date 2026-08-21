@@ -18,7 +18,7 @@ class HostStatus:
     security_updates: int
     reboot_required: bool
     status: str | None
-    checked_at: datetime
+    checked_at: datetime | None
 
     @property
     def display_name(self) -> str:
@@ -44,13 +44,36 @@ class TaskPhase(StrEnum):
     UNKNOWN = "unknown"
 
 
-@dataclass(frozen=True, slots=True)
-class SemaphoreTask:
-    """Normalized automation task returned by a backend."""
+type TaskId = int | str
 
-    task_id: int
+
+@dataclass(frozen=True, slots=True)
+class BackendTask:
+    """Normalized automation task returned by any backend."""
+
+    task_id: TaskId
     phase: TaskPhase
     raw_status: str
+    action: str | None = None
+    host_id: str | None = None
+    created_at: datetime | None = None
+    finished_at: datetime | None = None
+    error_code: str | None = None
+    reboot_required: bool | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class CustomTaskDefinition:
+    """Provider-neutral task metadata safe to expose as an entity."""
+
+    task_id: str
+    name: str
+    description: str | None
+    enabled: bool
+
+
+# Compatibility name for integrations importing the pre-0.2 model directly.
+SemaphoreTask = BackendTask
 
 
 class Command(StrEnum):

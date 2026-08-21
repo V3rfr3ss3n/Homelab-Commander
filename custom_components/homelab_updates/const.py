@@ -7,7 +7,7 @@ from homeassistant.const import Platform
 
 DOMAIN: Final = "homelab_updates"
 NAME: Final = "Homelab Updates"
-VERSION: Final = "0.1.0"
+VERSION: Final = "0.2.0-dev.0"
 
 PLATFORMS: Final = (
     Platform.UPDATE,
@@ -17,6 +17,10 @@ PLATFORMS: Final = (
 )
 
 CONF_SEMAPHORE_URL: Final = "semaphore_url"
+CONF_BACKEND_TYPE: Final = "backend_type"
+CONF_BACKEND_URL: Final = "backend_url"
+BACKEND_NATIVE: Final = "native"
+BACKEND_SEMAPHORE: Final = "semaphore"
 CONF_STATUS_URL: Final = "status_url"
 CONF_PROJECT_ID: Final = "project_id"
 CONF_CHECK_TEMPLATE_ID: Final = "check_template_id"
@@ -39,6 +43,10 @@ DEFAULT_TASK_TIMEOUT: Final = timedelta(minutes=30)
 MAX_STATUS_RESPONSE_BYTES: Final = 2 * 1024 * 1024
 
 TASK_TERMINAL_SUCCESS: Final = frozenset({"success"})
-TASK_TERMINAL_FAILURE: Final = frozenset(
-    {"error", "failed", "stopped", "cancelled", "canceled"}
-)
+TASK_TERMINAL_FAILURE: Final = frozenset({
+    "error",
+    "failed",
+    "stopped",
+    "cancelled",
+    "canceled",
+})

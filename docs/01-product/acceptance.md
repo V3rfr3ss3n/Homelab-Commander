@@ -1,7 +1,7 @@
 ---
 title: Abnahme
 status: accepted
-updated: 2026-08-20
+updated: 2026-08-21
 tags: [product, acceptance, release]
 ---
 
@@ -60,3 +60,25 @@ tags: [product, acceptance, release]
 - erfolgreiche Taskantwort wird ohne Statusbestätigung als installierter Zustand
   dargestellt
 - übersprungene blockierende Checks ohne dokumentierte Ausnahmeentscheidung
+
+## Zusatzabnahme `0.2.0-dev`
+
+1. Native und Semaphore sind im Config Flow getrennt auswählbar.
+2. Ein `0.1`-Eintrag migriert ohne Verlust oder neue Entity-IDs zu Semaphore.
+3. App und Compose starten denselben Backend-Anwendungskern mit persistentem
+   `/data`; ein Neustart erhält Hosts, Jobs und SSH-Key.
+4. Host-CRUD verwendet unveränderliche UUIDs. Das API liefert niemals den Private
+   Key und erzwingt für dessen Datei Modus `0600`.
+5. Actions liefern `202` und einen Job; kein HTTP-Request wartet auf Ansible.
+6. Update/Reboot/Custom Tasks scheitern ohne exaktes Hostziel. Mutationen
+   desselben Hosts sind serialisiert.
+7. Update meldet Rebootbedarf, startet aber keinen Reboot.
+8. Shell-Tasks sind ohne Deployment-Opt-in nicht anlegbar; Command Tasks nutzen
+   ein Argumentarray.
+9. Home Assistant zeigt native Job-/Health-Entities und neue Custom Tasks
+   dynamisch, ohne Entity-Code für die Provider zu duplizieren.
+10. Ingress enthält Host-, Task-, Job- und Public-Key-Verwaltung, gibt das
+    API-Token nicht an den Browser und schützt Mutationen per CSRF.
+11. Container/App besitzen weder Docker-Socket noch Host-Netzwerk oder unnötige
+    Mounts/Capabilities.
+12. Das vollständige Quality Gate prüft Integration und Backend gemeinsam.

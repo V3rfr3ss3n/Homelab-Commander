@@ -8,9 +8,13 @@ from homeassistant.const import CONF_API_TOKEN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .adapters import SemaphoreClient, StatusClient
-from .application import TaskManager
+from .adapters import HttpStatusProvider, NativeBackendClient, SemaphoreBackend
+from .application import AutomationBackend, HostProvider, TaskManager
 from .const import (
+    BACKEND_NATIVE,
+    BACKEND_SEMAPHORE,
+    CONF_BACKEND_TYPE,
+    CONF_BACKEND_URL,
     CONF_CHECK_TEMPLATE_ID,
     CONF_EXPORT_TEMPLATE_ID,
     CONF_POLL_INTERVAL,
@@ -22,7 +26,11 @@ from .const import (
     CONF_VERIFY_SSL,
     PLATFORMS,
 )
-from .coordinator import HomelabUpdatesCoordinator
+from .coordinator import (
+    BackendJobsCoordinator,
+    CustomTasksCoordinator,
+    HomelabUpdatesCoordinator,
+)
 from .domain import Command
 from .reboot import async_remove_reboot_issues, async_sync_reboot_issues
 
@@ -31,11 +39,23 @@ from .reboot import async_remove_reboot_issues, async_sync_reboot_issues
 class HomelabUpdatesRuntimeData:
     """Typed non-persistent objects owned by one config entry."""
 
-    status_client: StatusClient
-    semaphore_client: SemaphoreClient
+    host_provider: HostProvider
+    automation_backend: AutomationBackend
     coordinator: HomelabUpdatesCoordinator
+    jobs_coordinator: BackendJobsCoordinator | None
+    custom_tasks_coordinator: CustomTasksCoordinator | None
     task_manager: TaskManager
     reboot_issue_ids: set[str]
+
+    @property
+    def status_client(self) -> HostProvider:
+        """Return the host provider under its pre-0.2 compatibility name."""
+        return self.host_provider
+
+    @property
+    def semaphore_client(self) -> AutomationBackend:
+        """Return the backend under its pre-0.2 compatibility name."""
+        return self.automation_backend
 
 
 type HomelabUpdatesConfigEntry = ConfigEntry[HomelabUpdatesRuntimeData]
@@ -47,44 +67,79 @@ async def async_setup_entry(
     """Set up Homelab Updates from a config entry."""
     session = async_get_clientsession(hass)
     verify_ssl = bool(entry.data[CONF_VERIFY_SSL])
-    status_client = StatusClient(
-        session,
-        str(entry.data[CONF_STATUS_URL]),
-        verify_ssl=verify_ssl,
-    )
-    semaphore_client = SemaphoreClient(
-        session,
-        str(entry.data[CONF_SEMAPHORE_URL]),
-        str(entry.data[CONF_API_TOKEN]),
-        int(entry.data[CONF_PROJECT_ID]),
-        {
-            Command.CHECK_ALL: int(entry.data[CONF_CHECK_TEMPLATE_ID]),
-            Command.UPDATE_HOST: int(entry.data[CONF_UPDATE_TEMPLATE_ID]),
-            Command.REBOOT_HOST: int(entry.data[CONF_REBOOT_TEMPLATE_ID]),
-            Command.REFRESH_STATUS: int(entry.data[CONF_EXPORT_TEMPLATE_ID]),
-        },
-        verify_ssl=verify_ssl,
-    )
+    backend_type = str(entry.data.get(CONF_BACKEND_TYPE, BACKEND_SEMAPHORE))
+    if backend_type == BACKEND_NATIVE:
+        native_backend = NativeBackendClient(
+            session,
+            str(entry.data[CONF_BACKEND_URL]),
+            str(entry.data[CONF_API_TOKEN]),
+            verify_ssl=verify_ssl,
+        )
+        host_provider: HostProvider = native_backend
+        automation_backend: AutomationBackend = native_backend
+    else:
+        host_provider = HttpStatusProvider(
+            session,
+            str(entry.data[CONF_STATUS_URL]),
+            verify_ssl=verify_ssl,
+        )
+        automation_backend = SemaphoreBackend(
+            session,
+            str(entry.data[CONF_SEMAPHORE_URL]),
+            str(entry.data[CONF_API_TOKEN]),
+            int(entry.data[CONF_PROJECT_ID]),
+            {
+                Command.CHECK_ALL: int(entry.data[CONF_CHECK_TEMPLATE_ID]),
+                Command.UPDATE_HOST: int(entry.data[CONF_UPDATE_TEMPLATE_ID]),
+                Command.REBOOT_HOST: int(entry.data[CONF_REBOOT_TEMPLATE_ID]),
+                Command.REFRESH_STATUS: int(entry.data[CONF_EXPORT_TEMPLATE_ID]),
+            },
+            verify_ssl=verify_ssl,
+        )
     coordinator = HomelabUpdatesCoordinator(
         hass,
-        status_client,
+        host_provider,
         timedelta(seconds=int(entry.data[CONF_POLL_INTERVAL])),
     )
     await coordinator.async_config_entry_first_refresh()
+    jobs_coordinator: BackendJobsCoordinator | None = None
+    custom_tasks_coordinator: CustomTasksCoordinator | None = None
+    if backend_type == BACKEND_NATIVE:
+        jobs_coordinator = BackendJobsCoordinator(
+            hass,
+            automation_backend,
+            timedelta(seconds=int(entry.data[CONF_POLL_INTERVAL])),
+        )
+        await jobs_coordinator.async_config_entry_first_refresh()
+        custom_tasks_coordinator = CustomTasksCoordinator(
+            hass,
+            automation_backend,
+            timedelta(seconds=int(entry.data[CONF_POLL_INTERVAL])),
+        )
+        await custom_tasks_coordinator.async_config_entry_first_refresh()
 
     def _start_reauth() -> None:
         entry.async_start_reauth(hass)
 
+    async def _refresh_runtime() -> None:
+        await coordinator.async_request_refresh()
+        if jobs_coordinator is not None:
+            await jobs_coordinator.async_request_refresh()
+        if custom_tasks_coordinator is not None:
+            await custom_tasks_coordinator.async_request_refresh()
+
     task_manager = TaskManager(
         hass,
-        semaphore_client,
-        coordinator.async_request_refresh,
+        automation_backend,
+        _refresh_runtime,
         _start_reauth,
     )
     entry.runtime_data = HomelabUpdatesRuntimeData(
-        status_client=status_client,
-        semaphore_client=semaphore_client,
+        host_provider=host_provider,
+        automation_backend=automation_backend,
         coordinator=coordinator,
+        jobs_coordinator=jobs_coordinator,
+        custom_tasks_coordinator=custom_tasks_coordinator,
         task_manager=task_manager,
         reboot_issue_ids=set(),
     )
@@ -105,6 +160,23 @@ async def async_unload_entry(
     if not await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         return False
     await entry.runtime_data.task_manager.async_cancel()
+    return True
+
+
+async def async_migrate_entry(
+    hass: HomeAssistant, entry: HomelabUpdatesConfigEntry
+) -> bool:
+    """Mark pre-provider entries as the compatible Semaphore backend."""
+    if entry.version > 2:
+        return False
+    if entry.version < 2:
+        data = {**entry.data, CONF_BACKEND_TYPE: BACKEND_SEMAPHORE}
+        hass.config_entries.async_update_entry(
+            entry,
+            data=data,
+            version=2,
+            minor_version=1,
+        )
     return True
 
 

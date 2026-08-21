@@ -1,0 +1,14 @@
+.coverage
+.git
+.github
+.mypy_cache
+.pytest_cache
+.ruff_cache
+.venv
+addon
+backend/tests
+custom_components
+docs
+tests
+**/__pycache__
+*.pyc

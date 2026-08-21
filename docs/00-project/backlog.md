@@ -23,10 +23,13 @@ und eine Privacy-Prüfung.
 
 ## Backends
 
-- [ ] Capability-Endpoint für ein zukünftiges Operations Backend definieren
-- [ ] zweiter Backend-Adapter als Architekturbeweis
+- [ ] kontrollierbares Job-Cancelling mit persistentem Zustand ergänzen
+- [ ] Custom-Task-Policy um Become, Timeout, Bestätigung und optionale
+  Host-/Gruppenfreigaben erweitern
 - [ ] Authentifizierungsvarianten jenseits von Bearer Token bewerten
 - [ ] Push-Status und Webhooks bewerten
+- [ ] native TLS-Terminierung bewerten; bis dahin HTTPS über einen Reverse Proxy
+- [ ] weitere Package Provider für DNF, Pacman und APK implementieren
 
 ## Homelab extensions
 
@@ -42,6 +45,7 @@ und eine Privacy-Prüfung.
 - [ ] Mutation Testing für Parser und Task-Zustandsautomat
 - [ ] Architekturtests für Import-/Abhängigkeitsgrenzen
 - [ ] automatisierte Dokument-Linkprüfung
+- [ ] browserbasierte End-to-End-Tests für die Ingress-Oberfläche
 
 ## Abgelehnt oder zurückgestellt
 

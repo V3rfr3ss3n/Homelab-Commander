@@ -1,0 +1,12 @@
+configuration:
+  api_token:
+    name: API-Token
+    description: Verwende mindestens 32 zufällige Zeichen. Die Home-Assistant-Integration benötigt dasselbe Token.
+  log_level:
+    name: Log-Level
+    description: Ausführlichkeit der Backend-Logs. Vertrauliche Requestdaten werden nie geloggt.
+  allow_shell_tasks:
+    name: Shell-Tasks erlauben
+    description: Aktiviert ausdrücklich konfigurierte Shell-Befehle. Nur einschalten, wenn Shell-Semantik erforderlich ist.
+network:
+  8099/tcp: Native Backend-API

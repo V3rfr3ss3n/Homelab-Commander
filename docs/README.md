@@ -1,7 +1,7 @@
 ---
 title: Wissensspeicher
 status: active
-updated: 2026-08-20
+updated: 2026-08-21
 tags: [project, index]
 ---
 
@@ -20,6 +20,9 @@ nicht hierher.
 - [[03-development/quality-gates|Quality Gates]] – Definition eines grünen Builds
 - [[04-operations/security-and-privacy|Security und Privacy]] – öffentliche
   Repository-Regeln und Bedrohungsmodell
+- [[04-operations/native-backend|Native Backend]] – Docker, Add-on, SSH und Betrieb
+- [[04-operations/migration-0.1-to-0.2|Migration 0.1 → 0.2]] – kompatibler Umstieg
+- [[02-architecture/native-api|Native API]] – versionierter REST-Vertrag
 - [[references|Referenzen]] – maßgebliche externe Dokumentation
 
 ## Bereiche

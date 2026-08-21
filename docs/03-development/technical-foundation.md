@@ -1,7 +1,7 @@
 ---
 title: Technische Grundlage
 status: accepted
-updated: 2026-08-20
+updated: 2026-08-21
 tags: [development, technical, dependencies]
 ---
 
@@ -14,6 +14,9 @@ tags: [development, technical, dependencies]
   veröffentlichte Mindestversion `2026.8.0`
 - Home Assistant Custom Integration unter
   `custom_components/homelab_updates/`
+- FastAPI `0.141.1`, Uvicorn `0.51.0` und SQLite im nativen Backend
+- ansible-core `2.21.2` als agentenloser Execution Adapter
+- cryptography `48.0.1` für den persistenten ED25519-Key
 - Home Assistants gemeinsame aiohttp-Session; keine eigene langlebige Session
 - `pytest-homeassistant-custom-component 0.13.356` aus `uv.lock` für isolierte
   Integrationstests
@@ -49,15 +52,27 @@ custom_components/homelab_updates/
     └── de.json
 ```
 
+```text
+backend/homelab_backend/
+├── app.py                   # REST- und Ingress-Komposition
+├── database.py              # SQLite und monotone Migrationen
+├── hosts.py                 # stabiles Hostinventar
+├── jobs.py                  # persistente Queue und Per-Host-Locks
+├── automation.py            # asynchroner Ansible-Adapter
+├── package_providers.py     # APT und künftige Paketmanager
+├── custom_tasks.py          # validierte Command-/Shell-Definitionen
+└── ssh_keys.py              # persistente Backend-Identität
+```
+
 Kleine Home-Assistant-Plattformmodule bleiben flach. Transportunabhängige Modelle,
 Application Services und Backendadapter besitzen eigene Unterpakete.
 
 ## Dependencies
 
-Produktion soll möglichst nur Home-Assistant-Core-Funktionen verwenden. Für jede
-zusätzliche Runtime Dependency werden Zweck, Lizenz, Maintainer-Aktivität,
-Transitivabhängigkeiten, bekannte Schwachstellen und Alternative geprüft. Parser-
-Komfort allein rechtfertigt keine Dependency.
+Die Integration selbst verwendet weiterhin nur Home-Assistant-Core-Funktionen.
+Backend-Dependencies sind exakt gepinnt und in [[quality-gates]] begründet. Für
+jede zusätzliche Runtime Dependency werden Zweck, Lizenz, Maintainer-Aktivität,
+Transitivabhängigkeiten, bekannte Schwachstellen und Alternative geprüft.
 
 ## Zeit und Netzwerk in Tests
 

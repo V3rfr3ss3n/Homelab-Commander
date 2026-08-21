@@ -7,12 +7,24 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.homelab_updates import _async_reload_entry, async_unload_entry
-from custom_components.homelab_updates.const import DOMAIN
+from custom_components.homelab_updates import (
+    _async_reload_entry,
+    async_migrate_entry,
+    async_unload_entry,
+)
+from custom_components.homelab_updates.const import (
+    BACKEND_NATIVE,
+    BACKEND_SEMAPHORE,
+    CONF_BACKEND_TYPE,
+    CONF_BACKEND_URL,
+    CONF_POLL_INTERVAL,
+    CONF_VERIFY_SSL,
+    DOMAIN,
+)
 from custom_components.homelab_updates.domain import HostStatus
 
-from .conftest import STATUS_URL
-from .test_api import _payload
+from .conftest import API_TOKEN, STATUS_URL
+from .test_api import HOST_ID, NATIVE_URL, _native_host_payload, _payload
 
 
 async def _setup_entry(
@@ -166,3 +178,75 @@ async def test_unload_failure_and_reload_delegate_to_home_assistant(
     ) as reload_mock:
         await _async_reload_entry(hass, mock_entry)
     reload_mock.assert_awaited_once_with(mock_entry.entry_id)
+
+
+async def test_version_one_entry_migrates_to_semaphore_provider(
+    hass: HomeAssistant, mock_entry: MockConfigEntry
+) -> None:
+    """Existing users keep their provider and all connection settings."""
+    mock_entry.add_to_hass(hass)
+    original = dict(mock_entry.data)
+
+    assert await async_migrate_entry(hass, mock_entry)  # type: ignore[arg-type]
+
+    assert mock_entry.version == 2
+    assert mock_entry.minor_version == 1
+    assert mock_entry.data == {
+        **original,
+        CONF_BACKEND_TYPE: BACKEND_SEMAPHORE,
+    }
+
+
+async def test_native_setup_creates_job_and_health_entities(
+    hass: HomeAssistant, aioclient_mock: object
+) -> None:
+    """Native entries expose host entities plus provider-neutral job telemetry."""
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/hosts", json=[_native_host_payload()]
+    )
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/jobs", json=[]
+    )
+    task_id = "00000000-0000-4000-8000-000000000004"
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/custom-tasks",
+        json=[
+            {
+                "id": task_id,
+                "name": "Synthetic task",
+                "description": "No real command",
+                "enabled": True,
+            }
+        ],
+    )
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="backend.example.invalid",
+        version=2,
+        minor_version=1,
+        unique_id=f"native|{NATIVE_URL}",
+        data={
+            CONF_BACKEND_TYPE: BACKEND_NATIVE,
+            CONF_BACKEND_URL: NATIVE_URL,
+            "api_token": API_TOKEN,
+            CONF_POLL_INTERVAL: 300,
+            CONF_VERIFY_SSL: True,
+        },
+    )
+    entry.add_to_hass(hass)
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    unique_ids = {
+        entity.unique_id
+        for entity in er.async_get(hass).entities.values()
+        if entity.config_entry_id == entry.entry_id
+    }
+    assert len(unique_ids) == 16
+    assert f"{DOMAIN}_{HOST_ID}_last_job" in unique_ids
+    assert f"{DOMAIN}_{entry.entry_id}_backend_health" in unique_ids
+    assert f"{DOMAIN}_{entry.entry_id}_queued_jobs" in unique_ids
+    assert f"{DOMAIN}_{entry.entry_id}_running_jobs" in unique_ids
+    assert f"{DOMAIN}_{entry.entry_id}_last_job_error" in unique_ids
+    assert f"{DOMAIN}_{HOST_ID}_custom_task_{task_id}" in unique_ids

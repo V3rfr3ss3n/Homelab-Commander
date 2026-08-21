@@ -1,7 +1,7 @@
 ---
 title: Quality Gates
 status: accepted
-updated: 2026-08-20
+updated: 2026-08-21
 tags: [development, quality, ci, testing]
 ---
 
@@ -55,6 +55,26 @@ ergänzt öffentliche URL-/Codeowner-Prüfungen.
 - Ein Auditfund wird bewertet und dokumentiert. Ein Ignore braucht Ablaufdatum,
   Begründung und Referenz.
 - Release Actions werden auf unveränderliche Commit-SHAs gepinnt, soweit praktikabel.
+
+### Native Backend Runtime
+
+- `FastAPI` definiert die typisierte REST-Grenze und OpenAPI-Dokumentation.
+- `Uvicorn` ist der schlanke ASGI-Prozess für Add-on und Standalone-Container.
+- `ansible-core` stellt die agentenlose SSH-Ausführung und die geprüften
+  Built-in-Module bereit; die Anwendung startet ausschließlich Argumentlisten.
+- OpenSSH erzeugt und liest den persistenten ED25519-Schlüssel über feste
+  Argumentlisten; dadurch ist keine zusätzliche Kryptografie-Runtime nötig.
+
+`ansible-core` zieht transitiv `cryptography` ein. Der gemeinsame Entwicklungslock
+bleibt wegen Home Assistant vorübergehend auf `48.0.1`; der Produktionscontainer
+überschreibt diesen transitiven Stand reproduzierbar mit `50.0.0`.
+
+SQLite, Queue-Steuerung und Prozessausführung nutzen die Python-Standardbibliothek.
+Dadurch entsteht für Persistenz und Worker keine zusätzliche Runtime-Abhängigkeit.
+
+`httpx2` ist ausschließlich eine gepinnte Entwicklungsabhängigkeit. Starlettes
+aktueller `TestClient` nutzt sie für isolierte ASGI-Requests; sie wird nicht in das
+Backend-Container-Image oder die Home-Assistant-Integration aufgenommen.
 
 ## Ausnahmen
 

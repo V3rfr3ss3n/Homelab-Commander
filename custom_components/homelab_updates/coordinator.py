@@ -6,9 +6,9 @@ from datetime import timedelta
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .application import StatusProvider
+from .application import AutomationBackend, HostProvider
 from .const import DOMAIN
-from .domain import HostStatus
+from .domain import BackendTask, CustomTaskDefinition, HostStatus
 from .exceptions import HomelabUpdatesError
 
 _LOGGER = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ class HomelabUpdatesCoordinator(DataUpdateCoordinator[dict[str, HostStatus]]):
     def __init__(
         self,
         hass: HomeAssistant,
-        status_provider: StatusProvider,
+        status_provider: HostProvider,
         update_interval: timedelta,
     ) -> None:
         """Initialize the coordinator."""
@@ -36,6 +36,63 @@ class HomelabUpdatesCoordinator(DataUpdateCoordinator[dict[str, HostStatus]]):
         """Fetch and copy one complete status snapshot."""
         try:
             return dict(await self._status_provider.async_get_hosts())
+        except HomelabUpdatesError as err:
+            raise UpdateFailed(
+                translation_domain=DOMAIN,
+                translation_key="status_update_failed",
+            ) from err
+
+
+class BackendJobsCoordinator(DataUpdateCoordinator[tuple[BackendTask, ...]]):
+    """Poll provider-neutral job history for backend health and progress."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        backend: AutomationBackend,
+        update_interval: timedelta,
+    ) -> None:
+        super().__init__(
+            hass,
+            logger=_LOGGER,
+            name=f"{DOMAIN}_jobs",
+            update_interval=update_interval,
+        )
+        self._backend = backend
+
+    async def _async_update_data(self) -> tuple[BackendTask, ...]:
+        try:
+            return tuple(await self._backend.async_get_tasks())
+        except HomelabUpdatesError as err:
+            raise UpdateFailed(
+                translation_domain=DOMAIN,
+                translation_key="status_update_failed",
+            ) from err
+
+
+class CustomTasksCoordinator(DataUpdateCoordinator[dict[str, CustomTaskDefinition]]):
+    """Discover backend-managed custom task definitions."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        backend: AutomationBackend,
+        update_interval: timedelta,
+    ) -> None:
+        super().__init__(
+            hass,
+            logger=_LOGGER,
+            name=f"{DOMAIN}_custom_tasks",
+            update_interval=update_interval,
+        )
+        self._backend = backend
+
+    async def _async_update_data(self) -> dict[str, CustomTaskDefinition]:
+        try:
+            return {
+                task.task_id: task
+                for task in await self._backend.async_get_custom_tasks()
+            }
         except HomelabUpdatesError as err:
             raise UpdateFailed(
                 translation_domain=DOMAIN,

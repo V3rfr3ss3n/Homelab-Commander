@@ -1,7 +1,7 @@
 ---
 title: Security und Privacy
 status: accepted
-updated: 2026-08-20
+updated: 2026-08-21
 tags: [operations, security, privacy]
 ---
 
@@ -41,12 +41,35 @@ Entwicklungsnetzes.
 | manipuliertes Status-JSON | Größen-/Typvalidierung, unbekannte Felder ignorieren, sichere Fehler |
 | Supply-chain-Angriff | wenige Dependencies, Pins, Audit, gepflegte Updateautomation |
 | Veröffentlichung echter Daten | Pre-commit/CI Secret- und Privacy-Scan plus Review |
+| privater SSH-Key verlässt Backend | persistente Datei `0600`, API liefert nur Public Key |
+| Command Injection | strukturierte `argv`, kein Shell-Aufruf; Shell-Modus separat und standardmäßig aus |
+| parallele Hostmutation | persistente Queue plus Lock je kanonischer Host-UUID |
+| fremder UI-Request | Supervisor Ingress, Admin-Panel und CSRF-Token für Mutationen |
+| unbegrenzte Prozessausgabe | UTF-8-Normalisierung, NUL-Entfernung, Redaction und 64-KiB-Grenze |
 
 ## Logging
 
 Erlaubt sind abstrakte Aktion, technische synthetische Host-ID, HTTP-Statusklasse
 und Task-ID, sofern erforderlich. Verboten sind Token, Header, Config-Dumps,
 vollständige URLs mit Query/Benutzerinfo und ungeprüfte Response Bodies.
+
+Backend-Jobausgabe wird nicht in den Prozesslog geschrieben. Sie liegt begrenzt
+in SQLite und wird vor Speicherung um Zieladresse und SSH-Benutzer bereinigt.
+Paketnamen können betriebliche Informationen enthalten; deshalb ist der
+Job-Log-Endpunkt nur authentifiziert erreichbar und gehört nicht in Bugreports.
+
+## Vertrauensgrenzen des nativen Backends
+
+Das API-Token schützt Standalone- und optionale veröffentlichte App-Ports.
+Supervisor Ingress authentifiziert den UI-Zugriff; der Browser erhält dabei das
+API-Token nicht. Der Ingress-Modus darf nur innerhalb des Supervisor-Netzes
+aktiviert werden und wird vom Container-Entrypoint ausschließlich bei vorhandener
+`/data/options.json` gesetzt.
+
+Der Backend-Schlüssel ist eine privilegierte Maschinenidentität. Wird für den
+Remote-Account passwortloses `sudo` eingerichtet, ist der Schlüssel entsprechend
+wie Root-Zugriff zu behandeln. Hosts sollten einen eigenen Automationsbenutzer,
+Netzfilter und keine wiederverwendeten persönlichen Schlüssel erhalten.
 
 Ein Logeintrag soll genau einmal beim Eintritt in einen Ausfallzustand und einmal
 bei Erholung erscheinen. Wiederholtes Polling darf keinen Log-Spam erzeugen.

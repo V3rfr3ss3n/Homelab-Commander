@@ -1,7 +1,7 @@
 ---
 title: TODO
 status: active
-updated: 2026-08-20
+updated: 2026-08-21
 tags: [project, todo]
 ---
 
@@ -12,7 +12,7 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## In Arbeit
 
-- [ ] T-017 vollständige Abnahme, Privacy Audit und Release Candidate
+- _Kein Paket; `0.2.0-dev` wartet auf die externe Release-Abnahme._
 
 ## Als Nächstes
 
@@ -22,6 +22,8 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 - [ ] T-017b isolierte manuelle Installation aus dem Releaseartefakt durchführen
 - [ ] T-018 Home-Assistant-Patch mit gefixter `cryptography`-Version übernehmen
   und SE-2026-001 spätestens am 2026-09-15 entfernen
+- [ ] T-017 vollständige Abnahme, Privacy Audit und Release Candidate nach
+  Abschluss der `0.2`-Entwicklung
 
 ## Blocker und offene Festlegungen
 
@@ -43,3 +45,6 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 - [x] T-004 CI und Quality-Gate-Workflows angelegt
 - [x] T-005 bis T-016 Integration, Adapter, Flows, Coordinator, Entities,
   Diagnostics, Übersetzungen, Tests und Benutzerhandbuch implementiert
+- [x] T-019 Native Backend, App/Add-on, Standalone-Container,
+  Provider-Migration, Ingress-Verwaltung und vollständiges Quality Gate für
+  `0.2.0-dev` implementiert

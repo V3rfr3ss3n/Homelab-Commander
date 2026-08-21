@@ -1,7 +1,7 @@
 ---
 title: Produktanforderungen
 status: accepted
-updated: 2026-08-20
+updated: 2026-08-21
 tags: [product, requirements]
 ---
 
@@ -80,6 +80,36 @@ tags: [product, requirements]
   definierte Gate ist vor Merge und Release grün.
 - **REQ-DOC-001 MUST:** Installation, Konfiguration, Entities, Datenaktualisierung,
   Grenzen, Removal und Troubleshooting sind öffentlich dokumentiert.
+
+## Native Backend `0.2`
+
+- **REQ-BCK-001 MUST:** Das native Backend läuft mit identischem Anwendungscode
+  als Home-Assistant-Add-on und eigenständiger Container.
+- **REQ-BCK-002 MUST:** Hosts besitzen eine vom Anzeigenamen unabhängige UUID und
+  werden persistent in SQLite verwaltet.
+- **REQ-BCK-003 MUST:** Das Backend erzeugt einen persistenten ED25519-Schlüssel;
+  die API liefert ausschließlich den öffentlichen Schlüssel aus.
+- **REQ-BCK-004 MUST:** Statusprüfung, Update und Reboot werden als persistente,
+  asynchrone Jobs ausgeführt. Mutierende Jobs sind je Host serialisiert.
+- **REQ-BCK-005 MUST:** Update und Reboot besitzen immer genau ein explizites
+  Hostziel. Ein fehlendes oder unbekanntes Ziel schlägt vor Ausführung fehl.
+- **REQ-BCK-006 MUST:** Der APT-Provider erkennt Updates und Rebootbedarf auf
+  Debian/Ubuntu; weitere Paketmanager werden hinter einem Protocol ergänzt.
+- **REQ-BCK-007 MUST:** Benutzerdefinierte Tasks werden strukturiert gespeichert.
+  Shellausführung ist eine explizit sichtbare, validierte Entscheidung.
+- **REQ-API-001 MUST:** Die HTTP-API stellt Health, Info, Hosts, Aktionen, Jobs,
+  begrenzte Jobausgabe, Public Key und Custom Tasks versioniert bereit.
+- **REQ-API-002 MUST:** Standalone-Zugriffe benötigen ein API-Token. Secrets,
+  Authorization Header und vollständige fremde Prozessausgaben werden nicht
+  geloggt oder ungefiltert zurückgegeben.
+- **REQ-HA-001 MUST:** Der Config Flow bietet Native Backend und Semaphore an und
+  migriert bestehende `0.1`-Einträge ohne Verlust.
+- **REQ-HA-002 MUST:** Entities hängen ausschließlich von Application Protocols
+  und typisierten Domainmodellen ab, nicht von Provider-Payloads oder Pfaden.
+- **REQ-HA-003 MUST:** Jobstatus und Custom Tasks erscheinen dynamisch, ohne dass
+  ein Neustart oder eine statische Entity-Liste nötig ist.
+- **REQ-ADD-001 MUST:** Das Add-on verwendet Home Assistant Ingress, läuft ohne
+  Host-Netzwerk und ohne Docker-Socket und fordert keine unnötigen Privilegien.
 
 ## Status-Payload `0.1`
 

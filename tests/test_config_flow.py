@@ -12,6 +12,10 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.homelab_updates.config_flow import _normalize_data
 from custom_components.homelab_updates.const import (
+    BACKEND_NATIVE,
+    BACKEND_SEMAPHORE,
+    CONF_BACKEND_TYPE,
+    CONF_BACKEND_URL,
     CONF_POLL_INTERVAL,
     CONF_SEMAPHORE_URL,
     DOMAIN,
@@ -54,12 +58,47 @@ async def test_successful_config_flow(
         assert result["type"] is FlowResultType.FORM
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
-            user_input=dict(config_data),
+            user_input={CONF_BACKEND_TYPE: BACKEND_SEMAPHORE},
+        )
+        assert result["step_id"] == "semaphore"
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], user_input=dict(config_data)
         )
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["data"][CONF_API_TOKEN] == config_data[CONF_API_TOKEN]
     assert result["title"] == "semaphore.example.invalid"
+
+
+async def test_successful_native_config_flow(hass: HomeAssistant) -> None:
+    """Native configuration only asks for its URL, token, TLS and interval."""
+    native_data = {
+        CONF_BACKEND_URL: "https://backend.example.invalid/",
+        CONF_API_TOKEN: "synthetic-native-token",
+        CONF_POLL_INTERVAL: 300,
+        "verify_ssl": True,
+    }
+    with patch(
+        "custom_components.homelab_updates.config_flow.NativeBackendClient.async_validate",
+        AsyncMock(),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": config_entries.SOURCE_USER},
+            data={CONF_BACKEND_TYPE: BACKEND_NATIVE},
+        )
+        assert result["step_id"] == "native"
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], native_data
+        )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"] == {
+        **native_data,
+        CONF_BACKEND_TYPE: BACKEND_NATIVE,
+        CONF_BACKEND_URL: "https://backend.example.invalid",
+    }
+    assert result["title"] == "backend.example.invalid"
 
 
 @pytest.mark.parametrize(

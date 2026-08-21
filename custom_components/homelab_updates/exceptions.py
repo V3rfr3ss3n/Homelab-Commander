@@ -25,9 +25,13 @@ class InvalidUrlError(HomelabUpdatesError):
     """Raised when a URL is unsafe or malformed."""
 
 
-class SemaphoreTaskError(HomelabUpdatesError):
+class BackendTaskError(HomelabUpdatesError):
     """Raised when a backend task cannot be started or completed."""
 
 
-class TaskAlreadyRunningError(SemaphoreTaskError):
+class SemaphoreTaskError(BackendTaskError):
+    """Compatibility error raised by the legacy Semaphore adapter."""
+
+
+class TaskAlreadyRunningError(BackendTaskError):
     """Raised when the same operation is already active."""
