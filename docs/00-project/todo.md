@@ -66,5 +66,5 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
   Link ergänzt
 - [x] T-027 Task-Tracker-Abschluss veröffentlicht nach dem Entfernen den finalen
   Idle-Zustand, damit Panel und Action-Buttons nicht auf `running` stehen bleiben
-- [x] T-028 öffentliche Hassfest-Verträge und Gitleaks-v3-Workflow für PR-/Push-
-  Prüfungen korrigiert
+- [x] T-028 öffentliche Hassfest-Verträge einschließlich kanonischer Manifest-
+  Reihenfolge und Gitleaks-v3-Workflow für PR-/Push-Prüfungen korrigiert

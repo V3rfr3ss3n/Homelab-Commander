@@ -12,6 +12,19 @@ def test_home_assistant_public_metadata_and_translation_contract() -> None:
     """Public metadata and config-flow translations follow the HA schema."""
     integration = ROOT / "custom_components/homelab_updates"
     manifest = json.loads((integration / "manifest.json").read_text())
+    assert list(manifest) == [
+        "domain",
+        "name",
+        "codeowners",
+        "config_flow",
+        "dependencies",
+        "documentation",
+        "integration_type",
+        "iot_class",
+        "issue_tracker",
+        "requirements",
+        "version",
+    ]
     assert "http" in manifest["dependencies"]
     assert manifest["documentation"].endswith("/V3rfr3ss3n/Homelab-Commander")
     assert manifest["issue_tracker"].endswith("/V3rfr3ss3n/Homelab-Commander/issues")
