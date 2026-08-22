@@ -1,12 +1,12 @@
 {
   "codeowners": ["@V3rfr3ss3n"],
   "config_flow": true,
-  "documentation": "https://homelab-updates.example.invalid",
+  "documentation": "https://github.com/V3rfr3ss3n/Homelab-Commander",
   "domain": "homelab_updates",
-  "dependencies": ["frontend", "panel_custom", "websocket_api"],
+  "dependencies": ["frontend", "http", "panel_custom", "websocket_api"],
   "integration_type": "hub",
   "iot_class": "local_polling",
-  "issue_tracker": "https://homelab-updates.example.invalid/issues",
+  "issue_tracker": "https://github.com/V3rfr3ss3n/Homelab-Commander/issues",
   "name": "Homelab Updates",
   "requirements": [],
   "version": "0.2.0-dev.0"

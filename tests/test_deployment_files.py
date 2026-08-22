@@ -1,10 +1,42 @@
 """Static deployment security and consistency checks."""
 
+import json
 from pathlib import Path
 
 import yaml
 
 ROOT = Path(__file__).parents[1]
+
+
+def test_home_assistant_public_metadata_and_translation_contract() -> None:
+    """Public metadata and config-flow translations follow the HA schema."""
+    integration = ROOT / "custom_components/homelab_updates"
+    manifest = json.loads((integration / "manifest.json").read_text())
+    assert "http" in manifest["dependencies"]
+    assert manifest["documentation"].endswith("/V3rfr3ss3n/Homelab-Commander")
+    assert manifest["issue_tracker"].endswith("/V3rfr3ss3n/Homelab-Commander/issues")
+
+    expected_abort_reasons = {
+        "already_configured",
+        "reauth_successful",
+        "reconfigure_successful",
+    }
+    for language in ("de", "en"):
+        translations = json.loads(
+            (integration / f"translations/{language}.json").read_text()
+        )
+        assert "abort" not in translations
+        assert set(translations["config"]["abort"]) == expected_abort_reasons
+
+
+def test_secret_scan_uses_github_token_on_pull_requests_and_pushes() -> None:
+    """Gitleaks v3 receives only GitHub's ephemeral workflow token."""
+    workflow = (ROOT / ".github/workflows/secrets.yml").read_text()
+    assert "pull_request:" in workflow
+    assert "push:" in workflow
+    assert "gitleaks/gitleaks-action@v2" not in workflow
+    assert "# v3" in workflow
+    assert "GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}" in workflow
 
 
 def test_addon_uses_ingress_without_privileged_host_access() -> None:

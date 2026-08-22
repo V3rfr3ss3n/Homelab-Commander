@@ -1,10 +1,10 @@
 {
-  "abort": {
-    "already_configured": "Dieses Automatisierungsprojekt ist bereits konfiguriert.",
-    "reauth_successful": "Die erneute Authentifizierung war erfolgreich.",
-    "reconfigure_successful": "Die Integration wurde erfolgreich neu konfiguriert."
-  },
   "config": {
+    "abort": {
+      "already_configured": "Dieses Automatisierungsprojekt ist bereits konfiguriert.",
+      "reauth_successful": "Die erneute Authentifizierung war erfolgreich.",
+      "reconfigure_successful": "Die Integration wurde erfolgreich neu konfiguriert."
+    },
     "error": {
       "cannot_connect": "Verbindung zu einem konfigurierten Dienst fehlgeschlagen.",
       "invalid_auth": "Das API-Token ist ungültig.",

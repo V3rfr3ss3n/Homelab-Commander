@@ -54,7 +54,6 @@ Custom Tasks, Home-Assistant-App, Ingress-UI und Standalone-Container.
 
 ## Vor stabilem Release offen
 
-- endgültige öffentliche Repository-/Issue-/Dokumentations-URLs
 - Multi-Arch-Image bauen, signieren und in isolierter App-Installation prüfen
 - Hassfest/HACS im öffentlichen Repository bestätigen
 - Container- und App-Backup/Restore manuell mit rein synthetischer Umgebung

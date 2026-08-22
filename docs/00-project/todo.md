@@ -1,7 +1,7 @@
 ---
 title: TODO
 status: active
-updated: 2026-08-22
+updated: 2026-08-23
 tags: [project, todo]
 ---
 
@@ -18,8 +18,6 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## Als Nächstes
 
-- [ ] T-002a endgültige GitHub-Repository-URL eintragen
-- [ ] T-002b Git-Remote konfigurieren, sobald das öffentliche Repository existiert
 - [ ] T-017a Hassfest und HACS Action im öffentlichen GitHub-Repository bestätigen
 - [ ] T-017b isolierte manuelle Installation aus dem Releaseartefakt durchführen
 - [ ] T-018 Home-Assistant-Patch mit gefixter `cryptography`-Version übernehmen
@@ -29,9 +27,6 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## Blocker und offene Festlegungen
 
-- Die endgültige GitHub-Repository-URL ist unbekannt. Das nicht veröffentlichte
-  Entwicklungsmanifest verwendet deshalb reservierte
-  `example.invalid`-URLs; `make release-check` blockiert damit jeden Release.
 - Die Semaphore-Kompatibilitätsmatrix bleibt bis zu isolierten Tests mit
   synthetischen Response-Fixtures bewusst vorläufig.
 
@@ -43,6 +38,8 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 - [x] T-001 öffentliche Projekt- und Dokumentationsgrundlage erstellt
 - [x] Git-Repository auf Branch `main` initialisiert
 - [x] GitHub-Owner und Manifest-Codeowner `@V3rfr3ss3n` festgelegt
+- [x] T-002 öffentliche Repository-/Issue-/Security-URLs eingetragen und Git-
+  Remote auf `V3rfr3ss3n/Homelab-Commander` konfiguriert
 - [x] T-003 Python-3.14-/uv-Projekt mit Lockfile angelegt
 - [x] T-004 CI und Quality-Gate-Workflows angelegt
 - [x] T-005 bis T-016 Integration, Adapter, Flows, Coordinator, Entities,
@@ -69,3 +66,5 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
   Link ergänzt
 - [x] T-027 Task-Tracker-Abschluss veröffentlicht nach dem Entfernen den finalen
   Idle-Zustand, damit Panel und Action-Buttons nicht auf `running` stehen bleiben
+- [x] T-028 öffentliche Hassfest-Verträge und Gitleaks-v3-Workflow für PR-/Push-
+  Prüfungen korrigiert

@@ -1,10 +1,10 @@
 {
-  "abort": {
-    "already_configured": "This automation backend project is already configured.",
-    "reauth_successful": "Reauthentication was successful.",
-    "reconfigure_successful": "The integration was reconfigured successfully."
-  },
   "config": {
+    "abort": {
+      "already_configured": "This automation backend project is already configured.",
+      "reauth_successful": "Reauthentication was successful.",
+      "reconfigure_successful": "The integration was reconfigured successfully."
+    },
     "error": {
       "cannot_connect": "Failed to connect to a configured service.",
       "invalid_auth": "The API token is invalid.",

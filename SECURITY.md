@@ -3,8 +3,8 @@
 ## Reporting a vulnerability
 
 Do not open a public issue for suspected vulnerabilities or accidental secret
-exposure. Use GitHub's private security advisory feature once the repository is
-published. Until that channel exists, contact the repository owner privately.
+exposure. Use the repository's
+[private security advisory form](https://github.com/V3rfr3ss3n/Homelab-Commander/security/advisories/new).
 
 Include the affected version, impact, reproduction steps using sanitized data,
 and any suggested mitigation. Never include a working production token or an

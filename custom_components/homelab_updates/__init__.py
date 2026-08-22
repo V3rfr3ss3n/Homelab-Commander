@@ -6,6 +6,7 @@ from datetime import timedelta
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_API_TOKEN
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
 
@@ -25,6 +26,7 @@ from .const import (
     CONF_STATUS_URL,
     CONF_UPDATE_TEMPLATE_ID,
     CONF_VERIFY_SSL,
+    DOMAIN,
     PLATFORMS,
 )
 from .coordinator import (
@@ -39,6 +41,8 @@ from .panel import (
     async_unregister_panel,
 )
 from .reboot import async_remove_reboot_issues, async_sync_reboot_issues
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 @dataclass(slots=True)

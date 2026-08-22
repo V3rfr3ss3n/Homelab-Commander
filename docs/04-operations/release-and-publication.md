@@ -1,7 +1,7 @@
 ---
 title: Release und Veröffentlichung
 status: proposed
-updated: 2026-08-20
+updated: 2026-08-23
 tags: [operations, release, hacs, public]
 ---
 
@@ -17,10 +17,14 @@ tags: [operations, release, hacs, public]
   Platzhalter
 - Branding ist generisch und enthält keine privaten Assets
 
-Der Codeowner ist `@V3rfr3ss3n`. Der Entwicklungsstand verwendet weiterhin
-reservierte Manifest-URLs unter `example.invalid`, solange das Zielrepository
-unbekannt ist. Das ist kein Releasewert: `make release-check` schlägt absichtlich
-fehl, bis die öffentlichen URLs gesetzt wurden.
+Der Codeowner ist `@V3rfr3ss3n`. Das öffentliche Quellrepository ist
+[`V3rfr3ss3n/Homelab-Commander`](https://github.com/V3rfr3ss3n/Homelab-Commander);
+Fehlerberichte werden über dessen
+[Issue Tracker](https://github.com/V3rfr3ss3n/Homelab-Commander/issues) und
+Sicherheitslücken ausschließlich über
+[private Security Advisories](https://github.com/V3rfr3ss3n/Homelab-Commander/security/advisories/new)
+eingereicht. Reservierte `example.invalid`-Werte bleiben nur in synthetischen
+Beispielen und Test-Fixtures zulässig.
 
 ## HACS
 

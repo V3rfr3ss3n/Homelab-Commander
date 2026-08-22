@@ -9,6 +9,7 @@ from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.homelab_updates import (
+    CONFIG_SCHEMA,
     _async_reload_entry,
     async_migrate_entry,
     async_unload_entry,
@@ -33,6 +34,13 @@ from .test_api import (
     _native_job_payload,
     _payload,
 )
+
+
+def test_config_schema_preserves_non_yaml_configuration() -> None:
+    """The config-entry-only schema leaves unrelated YAML untouched."""
+    config: dict[str, object] = {"unrelated": {}}
+
+    assert CONFIG_SCHEMA(config) is config
 
 
 async def _setup_entry(
