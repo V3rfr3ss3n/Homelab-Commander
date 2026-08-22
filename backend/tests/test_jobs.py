@@ -123,6 +123,43 @@ def test_debian_apt_provider_parses_updates_and_never_requests_reboot() -> None:
         "ansible.builtin.apt",
         "update_cache=true upgrade=dist",
     )
+    assert provider.cache_refresh_module == (
+        "ansible.builtin.apt",
+        "update_cache=true cache_valid_time=0",
+    )
+    assert provider.list_command == (
+        "/usr/bin/env",
+        "LC_ALL=C",
+        "LANG=C",
+        "/usr/bin/apt",
+        "list",
+        "--upgradable",
+    )
+
+
+@pytest.mark.parametrize(
+    ("output", "updates", "security_updates"),
+    [
+        ("Listing...\n", 0, 0),
+        ("WARNING: apt has no stable CLI\nListing...\n", 0, 0),
+        ("package-a/stable 2 amd64 [upgradable from: 1]\n", 1, 0),
+        (
+            "package-a/stable 2 amd64 [upgradable from: 1]\n"
+            "package-b/stable-security 3 amd64 [upgradable from: 2]\n",
+            2,
+            1,
+        ),
+        ("package-a/updates 2 amd64 [upgradable from: 1]\n", 1, 0),
+    ],
+)
+def test_debian_apt_provider_accepts_empty_normal_and_security_lists(
+    output: str, updates: int, security_updates: int
+) -> None:
+    """No grep/no-match semantics can turn zero security updates into failure."""
+    status = DebianAptProvider().parse_updates(output, reboot_required=False)
+    assert status.updates == updates
+    assert status.security_updates == security_updates
+    assert not status.reboot_required
 
 
 def test_unknown_package_provider_fails_closed() -> None:
@@ -274,6 +311,41 @@ async def test_job_manager_sanitizes_unknown_failures_and_large_output(
     output, truncated = _safe_output("å" * MAX_JOB_LOG_BYTES, host)
     assert truncated
     assert len(output.encode()) <= MAX_JOB_LOG_BYTES
+
+
+async def test_cancelled_job_is_a_terminal_observable_state(tmp_path: Path) -> None:
+    """Persistence retains cancellation metadata without treating it as failure."""
+    database = Database(tmp_path / "cancelled.db")
+    await database.async_migrate()
+    hosts = HostRepository(database)
+    host = await hosts.async_create(
+        HostCreate(
+            name="Node 01",
+            address="node-01.example.invalid",
+            username="automation",
+        )
+    )
+    repository = JobRepository(database)
+    job = await repository.async_create(
+        JobAction.CUSTOM_TASK, host.id, host_name=host.name
+    )
+    assert await repository.async_claim(job.id)
+
+    await repository.async_finish(
+        job.id,
+        state=JobState.CANCELLED,
+        output="cancelled safely",
+        truncated=False,
+        exit_code=130,
+    )
+
+    persisted = await repository.async_get(job.id)
+    assert persisted is not None
+    assert persisted.state is JobState.CANCELLED
+    assert persisted.exit_code == 130
+    assert persisted.host_name == "Node 01"
+    assert persisted.log_available
+    assert persisted.duration is not None
 
 
 def test_custom_task_validation_rejects_unsafe_arguments_and_shells() -> None:

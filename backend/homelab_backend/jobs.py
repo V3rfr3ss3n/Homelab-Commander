@@ -19,8 +19,11 @@ from .models import Host, Job, JobAction, JobLog, JobState
 MAX_JOB_LOG_BYTES = 64 * 1024
 _MUTATING_ACTIONS = frozenset({JobAction.UPDATE, JobAction.REBOOT})
 _SELECT = (
-    "SELECT id, action, host_id, state, created_at, started_at, finished_at, "
-    "error_code, reboot_required, custom_task_id FROM jobs"
+    "SELECT jobs.id, jobs.action, jobs.host_id, hosts.name AS host_name, jobs.state, "
+    "jobs.created_at, jobs.started_at, jobs.finished_at, jobs.exit_code, "
+    "jobs.error_code, jobs.reboot_required, jobs.custom_task_id, "
+    "EXISTS(SELECT 1 FROM job_logs WHERE job_logs.job_id = jobs.id) "
+    "AS log_available FROM jobs LEFT JOIN hosts ON hosts.id = jobs.host_id"
 )
 
 
@@ -35,6 +38,7 @@ class JobRepository:
         action: JobAction,
         host_id: UUID,
         *,
+        host_name: str | None = None,
         custom_task_id: UUID | None = None,
     ) -> Job:
         now = datetime.now(UTC)
@@ -42,6 +46,7 @@ class JobRepository:
             id=uuid4(),
             action=action,
             host_id=host_id,
+            host_name=host_name,
             custom_task_id=custom_task_id,
             state=JobState.QUEUED,
             created_at=now,
@@ -63,13 +68,13 @@ class JobRepository:
 
     async def async_get(self, job_id: UUID) -> Job | None:
         row = await self._database.async_fetch_one(
-            f"{_SELECT} WHERE id = ?", (str(job_id),)
+            f"{_SELECT} WHERE jobs.id = ?", (str(job_id),)
         )
         return _job_from_row(row) if row is not None else None
 
     async def async_list(self, *, limit: int = 100) -> tuple[Job, ...]:
         rows = await self._database.async_fetch_all(
-            f"{_SELECT} ORDER BY created_at DESC LIMIT ?", (limit,)
+            f"{_SELECT} ORDER BY jobs.created_at DESC LIMIT ?", (limit,)
         )
         return tuple(_job_from_row(row) for row in rows)
 
@@ -100,6 +105,7 @@ class JobRepository:
         state: JobState,
         output: str,
         truncated: bool,
+        exit_code: int | None = None,
         error_code: str | None = None,
         reboot_required: bool | None = None,
     ) -> None:
@@ -107,11 +113,12 @@ class JobRepository:
 
         def finish(connection: sqlite3.Connection) -> None:
             connection.execute(
-                "UPDATE jobs SET state = ?, finished_at = ?, error_code = ?, "
-                "reboot_required = ? WHERE id = ?",
+                "UPDATE jobs SET state = ?, finished_at = ?, exit_code = ?, "
+                "error_code = ?, reboot_required = ? WHERE id = ?",
                 (
                     state,
                     datetime.now(UTC).isoformat(),
+                    exit_code,
                     error_code,
                     int(reboot_required) if reboot_required is not None else None,
                     str(job_id),
@@ -182,9 +189,10 @@ class JobManager:
 
     async def async_enqueue(self, action: JobAction, host_id: UUID) -> Job:
         """Validate the exact target before creating persistent work."""
-        if await self._hosts.async_get(host_id) is None:
+        host = await self._hosts.async_get(host_id)
+        if host is None:
             raise KeyError("Host not found")
-        job = await self._repository.async_create(action, host_id)
+        job = await self._repository.async_create(action, host_id, host_name=host.name)
         self._queue.put_nowait(job.id)
         return job
 
@@ -194,7 +202,8 @@ class JobManager:
 
     async def async_enqueue_custom(self, task_id: UUID, host_id: UUID) -> Job:
         """Queue one enabled custom task with two validated identities."""
-        if await self._hosts.async_get(host_id) is None:
+        host = await self._hosts.async_get(host_id)
+        if host is None:
             raise KeyError("Host not found")
         task = await self._custom_tasks.async_get(task_id)
         if task is None:
@@ -202,7 +211,10 @@ class JobManager:
         if not task.enabled:
             raise ValueError("Custom task is disabled")
         job = await self._repository.async_create(
-            JobAction.CUSTOM_TASK, host_id, custom_task_id=task_id
+            JobAction.CUSTOM_TASK,
+            host_id,
+            host_name=host.name,
+            custom_task_id=task_id,
         )
         self._queue.put_nowait(job.id)
         return job
@@ -246,7 +258,9 @@ class JobManager:
                 result = await self._executor.async_execute(job.action, host)
             await self._finish_success(job, host, result)
         except AutomationExecutionError as err:
-            await self._finish_failure(job, host, err.code, err.output)
+            await self._finish_failure(
+                job, host, err.code, err.output, exit_code=err.exit_code
+            )
         except Exception:
             await self._finish_failure(job, host, "internal_execution_error", "")
 
@@ -272,11 +286,18 @@ class JobManager:
             state=JobState.SUCCESS,
             output=output,
             truncated=truncated,
+            exit_code=result.exit_code,
             reboot_required=result.reboot_required,
         )
 
     async def _finish_failure(
-        self, job: Job, host: Host | None, code: str, raw_output: str
+        self,
+        job: Job,
+        host: Host | None,
+        code: str,
+        raw_output: str,
+        *,
+        exit_code: int | None = None,
     ) -> None:
         output, truncated = _safe_output(raw_output, host)
         await self._repository.async_finish(
@@ -284,6 +305,7 @@ class JobManager:
             state=JobState.FAILED,
             output=output,
             truncated=truncated,
+            exit_code=exit_code,
             error_code=code,
         )
 
@@ -305,6 +327,7 @@ def _job_from_row(row: sqlite3.Row) -> Job:
         id=UUID(row["id"]),
         action=JobAction(row["action"]),
         host_id=UUID(row["host_id"]) if row["host_id"] is not None else None,
+        host_name=row["host_name"],
         custom_task_id=(
             UUID(row["custom_task_id"]) if row["custom_task_id"] is not None else None
         ),
@@ -320,7 +343,9 @@ def _job_from_row(row: sqlite3.Row) -> Job:
             if row["finished_at"] is not None
             else None
         ),
+        exit_code=row["exit_code"],
         error_code=row["error_code"],
+        log_available=bool(row["log_available"]),
         reboot_required=(
             bool(row["reboot_required"]) if row["reboot_required"] is not None else None
         ),

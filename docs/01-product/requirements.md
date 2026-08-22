@@ -1,7 +1,7 @@
 ---
 title: Produktanforderungen
 status: accepted
-updated: 2026-08-21
+updated: 2026-08-22
 tags: [product, requirements]
 ---
 
@@ -97,6 +97,15 @@ tags: [product, requirements]
   Debian/Ubuntu; weitere Paketmanager werden hinter einem Protocol ergänzt.
 - **REQ-BCK-007 MUST:** Benutzerdefinierte Tasks werden strukturiert gespeichert.
   Shellausführung ist eine explizit sichtbare, validierte Entscheidung.
+- **REQ-BCK-008 MUST:** Der Execution Adapter wertet Prozess-Exit-Code,
+  Ansible-Taskstatus und Warntext getrennt aus. Ein privater Callback liefert
+  exakt ein validiertes JSON-Resultat; Freitext ist ausschließlich Joblog.
+- **REQ-BCK-009 MUST:** Alle eingebauten Aktionen verwenden dieselbe idiomatische
+  Python-Interpreter-Erkennung. `Test connection` prüft SSH, Python/Facts und
+  non-interactive sudo; kein fester Python-Pfad wird vorausgesetzt.
+- **REQ-BCK-010 MUST:** `check_updates` ermittelt Facts, aktualisiert den APT-Cache,
+  liest Updates locale-stabil und prüft Rebootbedarf in getrennten Phasen. Leere
+  Update- und Security-Mengen sowie `changed=false` sind erfolgreiche Ergebnisse.
 - **REQ-API-001 MUST:** Die HTTP-API stellt Health, Info, Hosts, Aktionen, Jobs,
   begrenzte Jobausgabe, Public Key und Custom Tasks versioniert bereit.
 - **REQ-API-002 MUST:** Standalone-Zugriffe benötigen ein API-Token. Secrets,
@@ -108,8 +117,35 @@ tags: [product, requirements]
   und typisierten Domainmodellen ab, nicht von Provider-Payloads oder Pfaden.
 - **REQ-HA-003 MUST:** Jobstatus und Custom Tasks erscheinen dynamisch, ohne dass
   ein Neustart oder eine statische Entity-Liste nötig ist.
+- **REQ-HA-004 MUST:** Aktueller Backendzustand, letzter Job und historisch letzter
+  fehlgeschlagener Job sind getrennte Zustände. Hub und Hosts veröffentlichen nur
+  kompakte Jobmetadaten; vollständige Jobausgabe gelangt weder in Entity-
+  Attribute noch Diagnostics oder Recorder.
 - **REQ-ADD-001 MUST:** Das Add-on verwendet Home Assistant Ingress, läuft ohne
   Host-Netzwerk und ohne Docker-Socket und fordert keine unnötigen Privilegien.
+- **REQ-UI-001 MUST:** Die Management-UI funktioniert am Server-Root und unter
+  einem beliebigen Ingress-Prefix; Assets und Requests verwenden relative URLs.
+- **REQ-UI-002 MUST:** Alle UI-Aktionen zeigen Loading, Erfolg oder einen
+  verständlichen Fehler. Standalone tauscht das Token einmalig gegen eine
+  kurzlebige opaque HttpOnly-Session; Ingress gibt es nicht an den Browser weiter.
+  Cookie-basierte und Ingress-Mutationen bleiben per CSRF geschützt.
+- **REQ-UI-003 MUST:** Update, Reboot und Custom Tasks erfordern eine explizite
+  Bestätigung. Automatisierte UI-Tests verwenden ausschließlich synthetische
+  Execution Adapter und starten keine echte Hostaktion.
+- **REQ-UI-004 MUST:** Standalone unterscheidet sichtbar zwischen nicht verbunden,
+  verbindend und verbunden. Eine gültige UI-Session überlebt F5 und lädt Daten
+  automatisch neu. Disconnect, Sessionablauf sowie `401` entfernen geschützte
+  Daten aus Zustand und DOM, ohne den API-Token persistent zu speichern.
+- **REQ-UI-005 MUST:** Standalone-Sessions besitzen acht Stunden absolute und 60
+  Minuten Idle-Lifetime, liegen nur im Backend-Arbeitsspeicher und verwenden ein
+  `HttpOnly`, `SameSite=Strict`, pfadbegrenztes sowie bei HTTPS `Secure` Cookie.
+  External API bleibt Bearer-authentifiziert; Ingress erzeugt keine UI-Session.
+- **REQ-UI-006 MUST:** Solange mindestens ein Job `queued` oder `running` ist,
+  aktualisiert die UI Jobs und Hosts automatisch mit höchstens einem Poller.
+  Terminalzustände stoppen schnelles Polling; Fehler verwenden begrenzten Backoff.
+- **REQ-UI-007 MUST:** `#/jobs/<job-id>` öffnet im Standalone- und Ingress-Modus
+  dieselbe routbare Jobansicht. Der Hash enthält nie Zugangsdaten; Log und
+  Metadaten benötigen eine gültige UI-Session beziehungsweise Ingress-Auth.
 
 ## Status-Payload `0.1`
 

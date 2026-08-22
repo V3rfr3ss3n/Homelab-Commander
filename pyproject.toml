@@ -33,6 +33,7 @@ dev = [
   "httpx2==2.9.1",
   "mypy==1.18.2",
   "pip-audit==2.9.0",
+  "playwright==1.62.0",
   "pytest-cov==7.1.0",
   "pytest-homeassistant-custom-component>=0.13.338",
   "ruff==0.12.12",
@@ -90,8 +91,10 @@ select = [
 known-first-party = ["custom_components.homelab_updates"]
 
 [tool.ruff.lint.per-file-ignores]
-# FastAPI/HA hooks stay async; awaited comprehensions require lists; app HTML is minified.
+# FastAPI/HA hooks stay async; awaited comprehensions require lists; UI assets
+# intentionally preserve readable JavaScript/CSS lines inside Python strings.
 "backend/homelab_backend/app.py" = ["C409", "E501", "RUF029"]
+"backend/homelab_backend/ui.py" = ["E501"]
 "backend/tests/test_automation.py" = ["RUF029"]
 "custom_components/homelab_updates/__init__.py" = ["RUF029"]
 "custom_components/homelab_updates/adapters/native.py" = ["C409"]

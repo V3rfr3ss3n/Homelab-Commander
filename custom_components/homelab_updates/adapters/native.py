@@ -9,7 +9,14 @@ from uuid import UUID
 from aiohttp import ClientError, ClientResponse, ClientSession, ClientTimeout
 
 from ..const import DEFAULT_REQUEST_TIMEOUT, MAX_STATUS_RESPONSE_BYTES
-from ..domain import BackendTask, CustomTaskDefinition, HostStatus, TaskId, TaskPhase
+from ..domain import (
+    BackendJobLog,
+    BackendTask,
+    CustomTaskDefinition,
+    HostStatus,
+    TaskId,
+    TaskPhase,
+)
 from ..exceptions import (
     AuthenticationError,
     BackendTaskError,
@@ -63,7 +70,7 @@ class NativeBackendClient:
         payload = await self._async_request_json("POST", "/api/v1/actions/check")
         if not isinstance(payload, list):
             raise BackendTaskError("The native batch task response is invalid")
-        tasks = tuple(_parse_job(item) for item in payload)
+        tasks = tuple(self._parse_job(item) for item in payload)
         return _batch_task(tasks)
 
     async def async_refresh_hosts(self) -> BackendTask:
@@ -86,7 +93,7 @@ class NativeBackendClient:
             "POST",
             f"/api/v1/hosts/{canonical_host}/actions/tasks/{canonical_task}",
         )
-        return _parse_job(payload)
+        return self._parse_job(payload)
 
     async def async_get_task(self, task_id: TaskId) -> BackendTask:
         """Fetch a UUID job or aggregate an in-memory batch handle."""
@@ -106,7 +113,22 @@ class NativeBackendClient:
         payload = await self._async_request_json("GET", "/api/v1/jobs")
         if not isinstance(payload, list):
             raise BackendTaskError("The native job list response is invalid")
-        return tuple(_parse_job(item) for item in payload)
+        return tuple(self._parse_job(item) for item in payload)
+
+    async def async_get_job_log(self, job_id: str) -> BackendJobLog:
+        """Fetch a bounded redacted log without exposing credentials in its URL."""
+        canonical = _uuid(job_id, "job")
+        payload = await self._async_request_json(
+            "GET", f"/api/v1/jobs/{canonical}/log", not_found="Job log not found"
+        )
+        if not isinstance(payload, dict):
+            raise BackendTaskError("The native job log response is invalid")
+        returned_id = _uuid_field(payload, "job_id", BackendTaskError)
+        output = payload.get("output")
+        truncated = payload.get("truncated")
+        if not isinstance(output, str) or not isinstance(truncated, bool):
+            raise BackendTaskError("The native job log response is invalid")
+        return BackendJobLog(returned_id, output, truncated)
 
     async def async_get_custom_tasks(self) -> tuple[CustomTaskDefinition, ...]:
         """Fetch safe custom-task metadata for dynamic entity discovery."""
@@ -120,13 +142,18 @@ class NativeBackendClient:
         payload = await self._async_request_json(
             "POST", f"/api/v1/hosts/{canonical}/actions/{action}"
         )
-        return _parse_job(payload)
+        return self._parse_job(payload)
 
     async def _async_get_single(self, job_id: str) -> BackendTask:
         payload = await self._async_request_json("GET", f"/api/v1/jobs/{job_id}")
-        return _parse_job(payload)
+        return self._parse_job(payload)
 
-    async def _async_request_json(self, method: str, path: str) -> object:
+    def _parse_job(self, payload: object) -> BackendTask:
+        return _parse_job(payload, base_url=self._base_url)
+
+    async def _async_request_json(
+        self, method: str, path: str, *, not_found: str | None = None
+    ) -> object:
         headers = {
             "Accept": "application/json",
             "Authorization": f"Bearer {self._api_token}",
@@ -142,10 +169,12 @@ class NativeBackendClient:
             ) as response:
                 if response.status in {401, 403}:
                     raise AuthenticationError("Native backend authentication failed")
+                if response.status == 404 and not_found is not None:
+                    raise BackendTaskError(not_found)
                 if response.status < 200 or response.status >= 300:
                     raise CannotConnectError("The native backend returned an error")
                 return await _read_json(response)
-        except (AuthenticationError, InvalidStatusDataError):
+        except (AuthenticationError, BackendTaskError, InvalidStatusDataError):
             raise
         except (TimeoutError, ClientError) as err:
             raise CannotConnectError("The native backend cannot be reached") from err
@@ -179,7 +208,7 @@ def _parse_host(payload: object) -> HostStatus:
     )
 
 
-def _parse_job(payload: object) -> BackendTask:
+def _parse_job(payload: object, *, base_url: str | None = None) -> BackendTask:
     if not isinstance(payload, dict):
         raise BackendTaskError("A native job response is invalid")
     task_id = _uuid_field(payload, "id", BackendTaskError)
@@ -191,6 +220,7 @@ def _parse_job(payload: object) -> BackendTask:
         "running": TaskPhase.RUNNING,
         "success": TaskPhase.SUCCESS,
         "failed": TaskPhase.FAILED,
+        "cancelled": TaskPhase.CANCELLED,
     }
     phase = phases.get(raw_state, TaskPhase.UNKNOWN)
     return BackendTask(
@@ -199,9 +229,17 @@ def _parse_job(payload: object) -> BackendTask:
         raw_status=raw_state,
         action=_optional_text(payload, "action", BackendTaskError),
         host_id=_optional_uuid_field(payload, "host_id", BackendTaskError),
+        host_name=_optional_text(payload, "host_name", BackendTaskError),
         created_at=_optional_datetime(payload, "created_at", BackendTaskError),
+        started_at=_optional_datetime(payload, "started_at", BackendTaskError),
         finished_at=_optional_datetime(payload, "finished_at", BackendTaskError),
+        exit_code=_optional_int(payload, "exit_code", BackendTaskError),
         error_code=_optional_text(payload, "error_code", BackendTaskError),
+        short_error=_optional_text(payload, "short_error", BackendTaskError),
+        duration=_optional_number(payload, "duration", BackendTaskError),
+        log_available=_optional_bool(payload, "log_available", BackendTaskError)
+        or False,
+        job_url=f"{base_url.rstrip('/')}/#/jobs/{task_id}" if base_url else None,
         reboot_required=_optional_bool(payload, "reboot_required", BackendTaskError),
     )
 
@@ -302,6 +340,28 @@ def _optional_bool(
     if not isinstance(value, bool):
         raise error_type(f"The native {field} value is invalid")
     return value
+
+
+def _optional_int(
+    payload: dict[object, object], field: str, error_type: type[BackendTaskError]
+) -> int | None:
+    value = payload.get(field)
+    if value is None:
+        return None
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise error_type(f"The native {field} value is invalid")
+    return value
+
+
+def _optional_number(
+    payload: dict[object, object], field: str, error_type: type[BackendTaskError]
+) -> float | None:
+    value = payload.get(field)
+    if value is None:
+        return None
+    if not isinstance(value, int | float) or isinstance(value, bool) or value < 0:
+        raise error_type(f"The native {field} value is invalid")
+    return float(value)
 
 
 def _optional_datetime(

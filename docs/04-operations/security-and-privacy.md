@@ -1,7 +1,7 @@
 ---
 title: Security und Privacy
 status: accepted
-updated: 2026-08-21
+updated: 2026-08-22
 tags: [operations, security, privacy]
 ---
 
@@ -44,7 +44,8 @@ Entwicklungsnetzes.
 | privater SSH-Key verlässt Backend | persistente Datei `0600`, API liefert nur Public Key |
 | Command Injection | strukturierte `argv`, kein Shell-Aufruf; Shell-Modus separat und standardmäßig aus |
 | parallele Hostmutation | persistente Queue plus Lock je kanonischer Host-UUID |
-| fremder UI-Request | Supervisor Ingress, Admin-Panel und CSRF-Token für Mutationen |
+| fremder UI-Request | Supervisor Ingress beziehungsweise HttpOnly-Session, SameSite und CSRF für Mutationen |
+| XSS/Tokenabfluss aus UI | externe same-origin Assets, restriktive CSP; API-Token nur beim Login, Session-Cookie HttpOnly |
 | unbegrenzte Prozessausgabe | UTF-8-Normalisierung, NUL-Entfernung, Redaction und 64-KiB-Grenze |
 
 ## Logging
@@ -57,6 +58,13 @@ Backend-Jobausgabe wird nicht in den Prozesslog geschrieben. Sie liegt begrenzt
 in SQLite und wird vor Speicherung um Zieladresse und SSH-Benutzer bereinigt.
 Paketnamen können betriebliche Informationen enthalten; deshalb ist der
 Job-Log-Endpunkt nur authentifiziert erreichbar und gehört nicht in Bugreports.
+Der Ansible Adapter liest fachliche Daten ausschließlich aus seinem markierten
+JSON-Envelope. Warnungen und stderr bleiben technische Ausgabe; sie werden weder
+als Erfolg interpretiert noch ungeprüft in API-Fehlertexte übernommen.
+Home Assistant erhält davon nur Job-ID, Typ, Zustand, Zeiten, sicheren Fehlercode
+und eine tokenfreie UI-URL. Vollständige Ausgabe wird weder Entityattribut,
+Sensorzustand noch Diagnostics-Inhalt. Der `#/jobs/<job-id>`-Hash trägt keine
+Credentials; der anschließende Abruf bleibt session-/Ingress-authentifiziert.
 
 ## Vertrauensgrenzen des nativen Backends
 
@@ -65,6 +73,26 @@ Supervisor Ingress authentifiziert den UI-Zugriff; der Browser erhält dabei das
 API-Token nicht. Der Ingress-Modus darf nur innerhalb des Supervisor-Netzes
 aktiviert werden und wird vom Container-Entrypoint ausschließlich bei vorhandener
 `/data/options.json` gesetzt.
+
+Die External API `/api/v1` bleibt ausschließlich durch Bearer Token geschützt.
+Die Standalone-UI sendet das eingegebene Token einmalig an den Login-Endpunkt und
+speichert es weder in URL, DOM-Ausgabe, Local/Session Storage, IndexedDB noch
+Cookie. Das Backend erzeugt eine opaque Session-ID mit Systemzufall und hält
+Sessionzustand nur im Prozessspeicher. Das Cookie ist `HttpOnly`,
+`SameSite=Strict`, auf `/ui-api` begrenzt und bei HTTPS `Secure`. Seine absolute
+Lifetime beträgt acht Stunden, der Idle Timeout 60 Minuten.
+
+F5 validiert die vorhandene Session und lädt Backenddaten neu. Disconnect
+widerruft sie serverseitig und löscht das Cookie. Ablauf, ungültiger Cookie oder
+`401` entfernen geschützte Daten und verlangen den API-Token erneut. Ein Backend-
+Neustart verwirft alle Sessions; eine Browser-Neustart-Wiederherstellung ist nicht
+garantiert, weil das Cookie bewusst keine persistente Ablaufzeit erhält. Ingress
+erzeugt keine solche Session und verwendet weiter Supervisor Auth. Mutationen
+beider UI-Modi prüfen zusätzlich den CSRF-Header. Siehe
+[[../02-architecture/adr/0006-standalone-ui-session|ADR-0006]].
+UI-Dokument und CSRF-Token werden mit `Cache-Control: no-store` ausgeliefert.
+JavaScript und CSS kommen als externe same-origin Assets; die Content Security
+Policy erlaubt keine Inline-Skripte.
 
 Der Backend-Schlüssel ist eine privilegierte Maschinenidentität. Wird für den
 Remote-Account passwortloses `sudo` eingerichtet, ist der Schlüssel entsprechend

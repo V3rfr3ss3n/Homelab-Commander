@@ -41,6 +41,7 @@ class TaskPhase(StrEnum):
     RUNNING = "running"
     SUCCESS = "success"
     FAILED = "failed"
+    CANCELLED = "cancelled"
     UNKNOWN = "unknown"
 
 
@@ -56,10 +57,26 @@ class BackendTask:
     raw_status: str
     action: str | None = None
     host_id: str | None = None
+    host_name: str | None = None
     created_at: datetime | None = None
+    started_at: datetime | None = None
     finished_at: datetime | None = None
+    exit_code: int | None = None
     error_code: str | None = None
+    short_error: str | None = None
+    duration: float | None = None
+    log_available: bool = False
+    job_url: str | None = None
     reboot_required: bool | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class BackendJobLog:
+    """Bounded redacted job output fetched explicitly from a backend."""
+
+    job_id: str
+    output: str
+    truncated: bool
 
 
 @dataclass(frozen=True, slots=True)

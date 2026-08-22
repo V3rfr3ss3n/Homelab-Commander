@@ -87,12 +87,22 @@ async def async_setup_entry(
         ]
         if entry.runtime_data.jobs_coordinator is not None:
             entities.extend(
-                HomelabLastHostJobSensor(
-                    coordinator,
-                    entry.runtime_data.jobs_coordinator,
-                    host_id,
-                )
+                entity
                 for host_id in sorted(host_ids)
+                for entity in (
+                    HomelabHostJobSensor(
+                        coordinator,
+                        entry.runtime_data.jobs_coordinator,
+                        host_id,
+                        failed_only=False,
+                    ),
+                    HomelabHostJobSensor(
+                        coordinator,
+                        entry.runtime_data.jobs_coordinator,
+                        host_id,
+                        failed_only=True,
+                    ),
+                )
             )
         return entities
 
@@ -122,7 +132,17 @@ async def async_setup_entry(
             HomelabGlobalJobSensor(
                 entry.runtime_data.jobs_coordinator,
                 entry.entry_id,
-                "last_job_error",
+                "last_job",
+            ),
+            HomelabGlobalJobSensor(
+                entry.runtime_data.jobs_coordinator,
+                entry.entry_id,
+                "last_job_type",
+            ),
+            HomelabGlobalJobSensor(
+                entry.runtime_data.jobs_coordinator,
+                entry.entry_id,
+                "last_failed_job",
             ),
         ])
 
@@ -148,10 +168,9 @@ class HomelabUpdatesSensor(HomelabUpdatesEntity, SensorEntity):
         return self.entity_description.value_fn(self.host_status)
 
 
-class HomelabLastHostJobSensor(HomelabUpdatesEntity, SensorEntity):
-    """Expose the latest backend job phase for one host."""
+class HomelabHostJobSensor(HomelabUpdatesEntity, SensorEntity):
+    """Expose a host's latest job or historical latest failed job."""
 
-    _attr_translation_key = "last_job"
     _attr_icon = "mdi:progress-clock"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
@@ -160,9 +179,14 @@ class HomelabLastHostJobSensor(HomelabUpdatesEntity, SensorEntity):
         coordinator: HomelabUpdatesCoordinator,
         jobs_coordinator: BackendJobsCoordinator,
         host_id: str,
+        *,
+        failed_only: bool,
     ) -> None:
-        super().__init__(coordinator, host_id, "last_job")
+        key = "last_failed_job" if failed_only else "last_job"
+        super().__init__(coordinator, host_id, key)
+        self._attr_translation_key = key
         self._jobs_coordinator = jobs_coordinator
+        self._failed_only = failed_only
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
@@ -173,17 +197,14 @@ class HomelabLastHostJobSensor(HomelabUpdatesEntity, SensorEntity):
     @property
     def native_value(self) -> str | None:
         task = self._latest_task
-        return task.phase.value if task is not None else None
+        return task.raw_status if task is not None else None
 
     @property
-    def extra_state_attributes(self) -> dict[str, str] | None:
+    def extra_state_attributes(self) -> dict[str, str | int | float | bool] | None:
         task = self._latest_task
         if task is None:
             return None
-        return {
-            "action": task.action or "unknown",
-            "job_id": str(task.task_id),
-        }
+        return _job_attributes(task)
 
     @property
     def _latest_task(self) -> BackendTask | None:
@@ -192,6 +213,7 @@ class HomelabLastHostJobSensor(HomelabUpdatesEntity, SensorEntity):
                 task
                 for task in self._jobs_coordinator.data
                 if task.host_id == self._host_id
+                and (not self._failed_only or task.phase is TaskPhase.FAILED)
             ),
             None,
         )
@@ -235,11 +257,30 @@ class HomelabGlobalJobSensor(SensorEntity):
             return sum(
                 task.phase is TaskPhase.RUNNING for task in self._coordinator.data
             )
-        failed = next(
-            (task for task in self._coordinator.data if task.phase is TaskPhase.FAILED),
-            None,
-        )
-        return failed.error_code if failed is not None else None
+        task = self._selected_task
+        if self._key == "last_job_type":
+            return task.action if task is not None else None
+        return task.raw_status if task is not None else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, str | int | float | bool] | None:
+        if self._key in {"queued_jobs", "running_jobs", "last_job_type"}:
+            return None
+        task = self._selected_task
+        return _job_attributes(task, include_host=True) if task is not None else None
+
+    @property
+    def _selected_task(self) -> BackendTask | None:
+        if self._key == "last_failed_job":
+            return next(
+                (
+                    task
+                    for task in self._coordinator.data
+                    if task.phase is TaskPhase.FAILED
+                ),
+                None,
+            )
+        return next(iter(self._coordinator.data), None)
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -249,3 +290,27 @@ class HomelabGlobalJobSensor(SensorEntity):
             manufacturer=NAME,
             model="Native operations backend",
         )
+
+
+def _job_attributes(
+    task: BackendTask, *, include_host: bool = False
+) -> dict[str, str | int | float | bool]:
+    """Build compact recorder-safe metadata; execution output is never included."""
+    attributes: dict[str, str | int | float | bool] = {
+        "job_id": str(task.task_id),
+        "type": task.action or "unknown",
+        "log_available": task.log_available,
+    }
+    optional: tuple[tuple[str, str | int | float | None], ...] = (
+        ("started_at", task.started_at.isoformat() if task.started_at else None),
+        ("finished_at", task.finished_at.isoformat() if task.finished_at else None),
+        ("duration", task.duration),
+        ("exit_code", task.exit_code),
+        ("error_code", task.error_code),
+        ("short_error", task.short_error),
+        ("job_url", task.job_url),
+    )
+    if include_host and task.host_name is not None:
+        attributes["host"] = task.host_name
+    attributes.update({key: value for key, value in optional if value is not None})
+    return attributes

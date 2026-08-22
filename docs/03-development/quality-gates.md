@@ -1,7 +1,7 @@
 ---
 title: Quality Gates
 status: accepted
-updated: 2026-08-21
+updated: 2026-08-22
 tags: [development, quality, ci, testing]
 ---
 
@@ -18,7 +18,7 @@ ergänzt öffentliche URL-/Codeowner-Prüfungen.
 | Format | Ruff | `ruff format --check .` ohne Diff |
 | Lint | Ruff | `ruff check .` ohne ungeklärte Suppression |
 | Types | Mypy | Strict Check ohne Fehler |
-| Tests | Pytest | alle Unit-/Integrationstests grün |
+| Tests | Pytest + Playwright | alle Unit-/Integration-/Browsertests grün |
 | Coverage | Coverage.py | mindestens 95 % Lines **und** 95 % Branches, unabhängig geprüft |
 | HA validation | Hassfest | Manifest, Services, Übersetzungen und Struktur gültig |
 | HACS | HACS Action | Repository als Integration valide |
@@ -33,7 +33,9 @@ ergänzt öffentliche URL-/Codeowner-Prüfungen.
 2. **Adapter contracts:** gemockte HTTP-Requests/Responses und Fehlerabbildung.
 3. **Home Assistant integration:** Config Flow, Coordinator, Registry, Entities,
    Lifecycle, Reauth/Reconfigure und Diagnostics.
-4. **Isolierte manuelle Abnahme:** temporäre Home-Assistant-Testinstanz und Fake-
+4. **Browser:** echtes Headless Chromium gegen einen lokalen ASGI-Server im
+   Standalone- und Ingress-Prefix-Modus; Execution Adapter bleibt synthetisch.
+5. **Isolierte manuelle Abnahme:** temporäre Home-Assistant-Testinstanz und Fake-
    Backend; niemals ein produktives Homelab.
 
 ## Mindest-Testmatrix
@@ -47,6 +49,15 @@ ergänzt öffentliche URL-/Codeowner-Prüfungen.
 - Task waiting/running/success/failed/error/unknown/timeout/cancel
 - Backendausfälle unabhängig voneinander
 - Token nicht in Logs, Exceptions, Diagnostics oder Entityattributen
+- Native Adapter: Exit-Code, `ok`/`failed`-Event und Warntext unabhängig prüfen
+- Debian/Ubuntu: automatische Python-3-Erkennung ohne `python`-Symlink,
+  sudo-/APT-Lock-Fehler, APT 0/normal/security und Rebootdatei vorhanden/fehlend
+- Private Callback-Ausgabe mindestens synthetisch gegen localhost prüfen; niemals
+  einen realen Host, Paketupdate oder Reboot aus dem Quality Gate starten
+- Standalone UI: Login-Cookieflags, Token-Leakage, F5-Recovery, Ablauf,
+  ungültige Session, Logout und CSRF; External Bearer und Ingress bleiben getrennt
+- Live UI: `queued → running → success/failed`, Hostrefresh, genau ein Poller,
+  Stopp ohne aktive Jobs/bei Disconnect und Wiederaufnahme nach Reload
 
 ## Dependency Policy
 
@@ -75,6 +86,12 @@ Dadurch entsteht für Persistenz und Worker keine zusätzliche Runtime-Abhängig
 `httpx2` ist ausschließlich eine gepinnte Entwicklungsabhängigkeit. Starlettes
 aktueller `TestClient` nutzt sie für isolierte ASGI-Requests; sie wird nicht in das
 Backend-Container-Image oder die Home-Assistant-Integration aufgenommen.
+
+`playwright` ist ebenfalls ausschließlich eine gepinnte Entwicklungsabhängigkeit.
+Es prüft die ausgelieferte Management-UI mit echtem Chromium und einem lokalen,
+synthetischen Backend. Ein neuer Entwicklungsrechner installiert den Browser
+einmalig mit `make browser-install`; CI installiert Chromium samt Systempaketen
+vor `make quality`.
 
 ## Ausnahmen
 

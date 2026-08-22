@@ -1,5 +1,6 @@
 """Native backend API and persistence tests."""
 
+import asyncio
 import stat
 import subprocess
 from datetime import UTC, datetime
@@ -19,6 +20,11 @@ from backend.homelab_backend.automation import (
 from backend.homelab_backend.config import Settings
 from backend.homelab_backend.models import CustomTask, Host, JobAction
 from backend.homelab_backend.ssh_keys import SshKeyStore
+from backend.homelab_backend.ui_sessions import (
+    UI_SESSION_COOKIE,
+    UI_SESSION_COOKIE_PATH,
+    UiSessionStore,
+)
 
 TOKEN = "synthetic-token-with-at-least-32-characters"
 AUTH = {"Authorization": f"Bearer {TOKEN}"}
@@ -35,7 +41,9 @@ class FakeExecutor:
         self.calls.append((action, host.id))
         if self.fail:
             raise AutomationExecutionError(
-                "synthetic_failure", f"failed {host.address} as {host.username}"
+                "synthetic_failure",
+                f"failed {host.address} as {host.username}",
+                exit_code=2,
             )
         return ExecutionResult(
             output=f"checked {host.address} as {host.username}",
@@ -58,12 +66,29 @@ class FakeExecutor:
         return ExecutionResult(output=f"custom {host.address}")
 
 
+class PendingExecutor(FakeExecutor):
+    """Executor that remains controllably pending for queue-state assertions."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.release = asyncio.Event()
+
+    async def async_execute(self, action: JobAction, host: Host) -> ExecutionResult:
+        await self.release.wait()
+        return await super().async_execute(action, host)
+
+    async def async_release(self) -> None:
+        self.release.set()
+
+
 def _client(
     data_dir: Path,
     executor: FakeExecutor | None = None,
     *,
     allow_shell_tasks: bool = False,
     ingress_mode: bool = False,
+    session_store: UiSessionStore | None = None,
+    base_url: str = "http://testserver",
 ) -> TestClient:
     return TestClient(
         create_app(
@@ -74,8 +99,24 @@ def _client(
                 ingress_mode=ingress_mode,
             ),
             executor=executor,
-        )
+            session_store=session_store,
+        ),
+        base_url=base_url,
     )
+
+
+def _csrf(client: TestClient) -> str:
+    page = client.get("/")
+    return page.text.split('name="csrf-token" content="', 1)[1].split('"', 1)[0]
+
+
+def _ui_login(client: TestClient, csrf: str, token: str = TOKEN) -> None:
+    response = client.post(
+        "/ui-api/auth/login",
+        headers={"X-CSRF-Token": csrf},
+        json={"api_token": token},
+    )
+    assert response.status_code == 200
 
 
 def _create_host(client: TestClient) -> dict[str, object]:
@@ -250,6 +291,12 @@ def test_actions_are_queued_and_update_status_without_implicit_reboot(
         assert response.status_code == 202
         job = _terminal_job(client, response.json()["id"])
         assert job["state"] == "success"
+        assert job["job_id"] == job["id"]
+        assert job["type"] == "update"
+        assert job["host_name"] == "Node 01"
+        assert job["exit_code"] == 0
+        assert job["duration"] >= 0
+        assert job["log_available"] is True
         assert job["reboot_required"] is True
         assert executor.calls == [(JobAction.UPDATE, UUID(host_id))]
 
@@ -275,7 +322,9 @@ def test_failed_job_uses_safe_error_code_and_redacted_log(tmp_path: Path) -> Non
         )
         job = _terminal_job(client, response.json()["id"])
         assert job["state"] == "failed"
+        assert job["exit_code"] == 2
         assert job["error_code"] == "synthetic_failure"
+        assert job["short_error"] == "Synthetic failure"
         log = client.get(f"/api/v1/jobs/{job['id']}/log", headers=AUTH).json()
         assert log["output"] == "failed [redacted] as [redacted]"
 
@@ -390,8 +439,34 @@ def test_ingress_ui_uses_supervisor_boundary_and_csrf(tmp_path: Path) -> None:
         page = client.get("/")
         assert page.status_code == 200
         assert TOKEN not in page.text
+        assert 'name="api-base" content="ui-api/"' in page.text
+        assert 'src="./ui.js"' in page.text
+        assert "onclick=" not in page.text
+        assert "script-src 'self'" in page.headers["content-security-policy"]
+        assert client.get("/ui.js").status_code == 200
+        assert client.get("/ui.css").status_code == 200
         csrf = page.text.split('name="csrf-token" content="', 1)[1].split('"', 1)[0]
         assert client.get("/ui-api/snapshot").status_code == 200
+        assert client.get("/ui-api/info").status_code == 200
+        assert client.get("/ui-api/hosts").status_code == 200
+        assert client.get("/ui-api/public-key").status_code == 200
+        assert client.get("/ui-api/custom-tasks").status_code == 200
+        assert client.get("/ui-api/jobs").status_code == 200
+        assert client.get("/ui-api/auth/session").status_code == 404
+        assert (
+            client.post(
+                "/ui-api/auth/login",
+                headers={"X-CSRF-Token": csrf},
+                json={"api_token": TOKEN},
+            ).status_code
+            == 404
+        )
+        assert (
+            client.post(
+                "/ui-api/auth/logout", headers={"X-CSRF-Token": csrf}
+            ).status_code
+            == 404
+        )
         assert (
             client.post(
                 "/ui-api/hosts",
@@ -417,17 +492,86 @@ def test_ingress_ui_uses_supervisor_boundary_and_csrf(tmp_path: Path) -> None:
         )
 
 
-def test_standalone_ui_api_requires_bearer_token(tmp_path: Path) -> None:
-    """The UI bridge cannot bypass authentication outside Supervisor Ingress."""
+def test_standalone_ui_uses_short_lived_cookie_session_and_csrf(
+    tmp_path: Path,
+) -> None:
+    """UI sessions remain separate from external Bearer authentication."""
     with _client(tmp_path, FakeExecutor()) as client:
+        page = client.get("/")
+        assert 'name="api-base" content="ui-api/"' in page.text
+        assert page.headers["cache-control"] == "no-store"
+        csrf = _csrf(client)
         assert client.get("/ui-api/snapshot").status_code == 401
-        assert client.get("/ui-api/snapshot", headers=AUTH).status_code == 200
+        assert client.get("/ui-api/snapshot", headers=AUTH).status_code == 401
+        assert (
+            client.post("/ui-api/auth/login", json={"api_token": TOKEN}).status_code
+            == 403
+        )
+        rejected = client.post(
+            "/ui-api/auth/login",
+            headers={"X-CSRF-Token": csrf},
+            json={"api_token": "wrong-token-that-is-at-least-32-characters"},
+        )
+        assert rejected.status_code == 401
+        assert UI_SESSION_COOKIE not in client.cookies
+
+        login = client.post(
+            "/ui-api/auth/login",
+            headers={"X-CSRF-Token": csrf},
+            json={"api_token": TOKEN},
+        )
+        assert login.json() == {"authenticated": True}
+        cookie_header = login.headers["set-cookie"]
+        assert f"{UI_SESSION_COOKIE}=" in cookie_header
+        assert f"Path={UI_SESSION_COOKIE_PATH}" in cookie_header
+        assert "HttpOnly" in cookie_header
+        assert "SameSite=strict" in cookie_header
+        assert "Secure" not in cookie_header
+        assert TOKEN not in cookie_header
+        assert client.get("/ui-api/auth/session").json() == {"authenticated": True}
+        assert client.get("/ui-api/snapshot").status_code == 200
+
+        assert client.get("/api/v1/info").status_code == 401
+        assert client.get("/api/v1/info", headers=AUTH).status_code == 200
+        assert client.post("/ui-api/hosts", json={}).status_code == 403
+
+        assert client.post("/ui-api/auth/logout").status_code == 403
+        logout = client.post("/ui-api/auth/logout", headers={"X-CSRF-Token": csrf})
+        assert logout.status_code == 204
+        assert client.get("/ui-api/auth/session").status_code == 401
+        assert client.get("/ui-api/snapshot").status_code == 401
+
+
+def test_ui_session_cookie_is_secure_on_https_and_invalid_cookie_is_cleared(
+    tmp_path: Path,
+) -> None:
+    """Transport-aware cookies fail closed without storing the API token."""
+    with _client(tmp_path, FakeExecutor(), base_url="https://testserver") as client:
+        csrf = _csrf(client)
+        _ui_login(client, csrf)
+        login = client.post(
+            "/ui-api/auth/login",
+            headers={"X-CSRF-Token": csrf},
+            json={"api_token": TOKEN},
+        )
+        assert "Secure" in login.headers["set-cookie"]
+
+        client.cookies.set(
+            UI_SESSION_COOKIE,
+            "invalid-opaque-session",
+            path=UI_SESSION_COOKIE_PATH,
+        )
+        expired = client.get("/ui-api/auth/session")
+        assert expired.status_code == 401
+        assert expired.json() == {"authenticated": False}
+        assert f'{UI_SESSION_COOKIE}=""' in expired.headers["set-cookie"]
 
 
 def test_api_reports_conflicts_missing_jobs_and_missing_tasks(tmp_path: Path) -> None:
     """Conflict and not-found branches remain stable public API contracts."""
     missing_id = "00000000-0000-4000-8000-000000000001"
-    with _client(tmp_path, FakeExecutor()) as client:
+    executor = PendingExecutor()
+    with _client(tmp_path, executor) as client:
         first = _create_host(client)
         second = client.post(
             "/api/v1/hosts",
@@ -450,14 +594,19 @@ def test_api_reports_conflicts_missing_jobs_and_missing_tasks(tmp_path: Path) ->
             client.get(f"/api/v1/jobs/{missing_id}/log", headers=AUTH).status_code
             == 404
         )
+        assert client.get(f"/api/v1/jobs/{missing_id}/log").status_code == 401
 
         pending = client.post(
             f"/api/v1/hosts/{first['id']}/actions/check-updates", headers=AUTH
         ).json()
-        pending_log = client.get(
-            f"/api/v1/jobs/{pending['id']}/log", headers=AUTH
-        ).json()
-        assert pending_log["output"] == ""
+        try:
+            pending_log = client.get(
+                f"/api/v1/jobs/{pending['id']}/log", headers=AUTH
+            ).json()
+            assert pending_log["output"] == ""
+        finally:
+            assert client.portal is not None
+            client.portal.call(executor.async_release)
 
         assert (
             client.patch(
@@ -612,9 +761,15 @@ def test_ingress_management_routes_cover_crud_actions_and_errors(
             ).status_code
             == 200
         )
+        metadata = client.get(f"/ui-api/jobs/{terminal['id']}", headers=headers)
+        assert metadata.status_code == 200
+        assert metadata.json()["job_id"] == terminal["id"]
         assert (
             client.get(f"/ui-api/jobs/{missing_id}/log", headers=headers).status_code
             == 404
+        )
+        assert (
+            client.get(f"/ui-api/jobs/{missing_id}", headers=headers).status_code == 404
         )
         assert (
             client.post(

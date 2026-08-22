@@ -70,6 +70,45 @@ _MIGRATIONS: tuple[str, ...] = (
     ALTER TABLE jobs ADD COLUMN custom_task_id TEXT
         REFERENCES custom_tasks(id) ON DELETE SET NULL;
     """,
+    """
+    ALTER TABLE job_logs RENAME TO old_job_logs;
+    ALTER TABLE jobs RENAME TO old_jobs;
+
+    CREATE TABLE jobs (
+        id TEXT PRIMARY KEY,
+        action TEXT NOT NULL,
+        host_id TEXT REFERENCES hosts(id) ON DELETE SET NULL,
+        state TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        started_at TEXT,
+        finished_at TEXT,
+        exit_code INTEGER,
+        error_code TEXT,
+        reboot_required INTEGER,
+        custom_task_id TEXT REFERENCES custom_tasks(id) ON DELETE SET NULL,
+        CHECK (state IN ('queued', 'running', 'success', 'failed', 'cancelled'))
+    );
+    INSERT INTO jobs (
+        id, action, host_id, state, created_at, started_at, finished_at,
+        error_code, reboot_required, custom_task_id
+    )
+    SELECT id, action, host_id, state, created_at, started_at, finished_at,
+        error_code, reboot_required, custom_task_id
+    FROM old_jobs;
+
+    CREATE TABLE job_logs (
+        job_id TEXT PRIMARY KEY REFERENCES jobs(id) ON DELETE CASCADE,
+        output TEXT NOT NULL,
+        truncated INTEGER NOT NULL DEFAULT 0
+    );
+    INSERT INTO job_logs(job_id, output, truncated)
+        SELECT job_id, output, truncated FROM old_job_logs;
+
+    DROP TABLE old_job_logs;
+    DROP TABLE old_jobs;
+    CREATE INDEX jobs_created_at ON jobs(created_at DESC);
+    CREATE INDEX jobs_host_created ON jobs(host_id, created_at DESC);
+    """,
 )
 
 

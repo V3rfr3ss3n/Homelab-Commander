@@ -1,7 +1,7 @@
 ---
 title: Backlog
 status: active
-updated: 2026-08-20
+updated: 2026-08-22
 tags: [project, backlog]
 ---
 
@@ -26,8 +26,11 @@ und eine Privacy-Prüfung.
 - [ ] kontrollierbares Job-Cancelling mit persistentem Zustand ergänzen
 - [ ] Custom-Task-Policy um Become, Timeout, Bestätigung und optionale
   Host-/Gruppenfreigaben erweitern
-- [ ] Authentifizierungsvarianten jenseits von Bearer Token bewerten
+- [ ] Authentifizierungsvarianten für externe API-Clients jenseits von Bearer
+  Token bewerten; die Standalone UI nutzt bereits eine separate Kurzzeitsession
 - [ ] Push-Status und Webhooks bewerten
+- [ ] für `0.3` Server-Sent Events oder WebSockets als Ersatz für aktives
+  Management-UI-Jobpolling bewerten
 - [ ] native TLS-Terminierung bewerten; bis dahin HTTPS über einen Reverse Proxy
 - [ ] weitere Package Provider für DNF, Pacman und APK implementieren
 
@@ -45,7 +48,6 @@ und eine Privacy-Prüfung.
 - [ ] Mutation Testing für Parser und Task-Zustandsautomat
 - [ ] Architekturtests für Import-/Abhängigkeitsgrenzen
 - [ ] automatisierte Dokument-Linkprüfung
-- [ ] browserbasierte End-to-End-Tests für die Ingress-Oberfläche
 
 ## Abgelehnt oder zurückgestellt
 

@@ -1,7 +1,7 @@
 ---
 title: Abnahme
 status: accepted
-updated: 2026-08-21
+updated: 2026-08-22
 tags: [product, acceptance, release]
 ---
 
@@ -82,3 +82,33 @@ tags: [product, acceptance, release]
 11. Container/App besitzen weder Docker-Socket noch Host-Netzwerk oder unnötige
     Mounts/Capabilities.
 12. Das vollständige Quality Gate prüft Integration und Backend gemeinsam.
+13. Ein echter Headless-Chromium-Test bedient Connect, Public-Key-Copy sowie
+    Host-/Task-Anlage im Standalone-Modus und prüft sichtbare Auth-Fehler.
+14. Derselbe Browser-Test lädt UI-Assets und API-Aufrufe unter einem synthetischen
+    Ingress-Prefix; kein Request fällt auf den Server-Root zurück.
+15. Standalone zeigt vor Authentifizierung und nach Disconnect eindeutig
+    `Not connected`. Eine gültige kurzlebige HttpOnly-Session überlebt Reload und
+    lädt alle geschützten Daten automatisch; Ablauf oder `401` setzt den sicheren
+    Loginzustand wieder her. Der API-Token liegt in keinem Browserspeicher/Cookie.
+16. Native Ansible-Läufe liefern Daten über einen privaten JSON-Callback. Warnings
+    bleiben im technischen Joblog und können einen erfolgreichen Task nicht in
+    `failed` umdeuten.
+17. `Test connection` validiert SSH, automatische Python-3-Erkennung, minimale
+    Distribution-Facts und non-interactive sudo mit derselben Inventory-Strategie
+    wie `check_updates`.
+18. `check_updates` behandelt keine Updates, keine Security Updates, fehlende
+    `reboot-required`-Datei und unveränderten APT-Cache als Erfolg. Python-, sudo-,
+    APT-Lock- und Phasenfehler erscheinen als verständlicher stabiler Fehlercode.
+19. Jobs wechseln in der UI ohne manuellen Refresh von `queued` über `running` in
+    `success` oder `failed`. Hosts und Dashboard werden bei Abschluss aktualisiert;
+    ohne aktive Jobs sowie nach Disconnect läuft kein schneller Poller.
+20. Backend Connectivity bleibt online, wenn nur ein historischer Job fehlschlug;
+    Latest Job und Latest Failed Job zeigen unabhängig Typ, Zustand und Zeit.
+21. Hub und Host Entities enthalten ausschließlich kompakte Jobmetadaten. Weder
+    vollständiger Log noch Authorization-Daten gelangen in State, Attribute,
+    Recorder oder Diagnostics.
+22. `#/jobs/<job-id>` zeigt Metadaten und redigierten Log in Standalone und unter
+    synthetischem Ingress-Prefix. Ohne Standalone-Session wird erst authentifiziert
+    und anschließend derselbe Job geöffnet; keine URL enthält ein Token.
+23. Abschluss von Check, Update, Reboot und Custom Task aktualisiert Jobs,
+    Queuezählung und Hostzustand ohne manuellen Home-Assistant-Reload.

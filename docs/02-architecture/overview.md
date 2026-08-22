@@ -1,7 +1,7 @@
 ---
 title: Architektur
 status: accepted
-updated: 2026-08-21
+updated: 2026-08-22
 tags: [architecture, design]
 ---
 
@@ -16,7 +16,7 @@ flowchart LR
     HA -. optional .-> SE[Semaphore Provider]
     UI[Add-on Ingress UI] --> NB
     NB --> DB[(SQLite)]
-    NB --> AN[Ansible Runner]
+    NB --> AN[Ansible execution adapter]
     AN --> H[Managed Linux hosts]
 ```
 
@@ -73,11 +73,49 @@ Execution Adapter. SQLite speichert Hosts, Jobs und Custom Tasks. Ein begrenzter
 Worker nimmt Jobs aus der persistenten Queue; mutierende Aktionen werden pro
 Host serialisiert. SSH- und Ansible-Details gelangen nicht in API-Domainmodelle.
 
+Der Ansible Adapter erzeugt pro Lauf ein isoliertes Ein-Host-Inventory. Alle
+Module verwenden `auto_silent` für dieselbe automatische Interpreter-Erkennung.
+Ein projektinterner stdout-Callback kapselt genau ein Modulevent als JSON;
+Warnungen und technische Ausgabe bleiben getrennt im begrenzten Joblog. Der
+Adapter akzeptiert Daten nur bei Prozess-Exit `0`, Taskstatus `ok` und gültigem
+Envelope. Das ersetzt das frühere Parsen des menschenlesbaren Ad-hoc-Formats.
+
+Das additive API-Jobmodell normalisiert Hostname, Typ, Zustand, Zeitstempel,
+Exit-Code, sicheren Kurzfehler, Dauer und Logverfügbarkeit. Home Assistant hält
+davon ausschließlich kompakte Metadaten im Coordinator: der neueste Job und der
+neueste fehlgeschlagene Job werden unabhängig ausgewählt. Ein späterer Erfolg
+überschreibt deshalb den aktuellen Job, aber nicht den historischen Fehler.
+
+Der Debian-Provider beschreibt Paketmanageroperationen, nicht deren Transport.
+`check_updates` orchestriert Facts, idempotenten APT-Cache-Refresh, locale-stabile
+Paketliste und Reboot-Dateistatus als einzeln klassifizierte Phasen. Weitere
+Provider können dieselbe Grenze nutzen, ohne API, Queue oder Entities zu ändern.
+
 ### Add-on
 
 Das Add-on verpackt exakt denselben Backend-Kern. Es ergänzt Startskript,
 Optionsübersetzung und eine Ingress-Weboberfläche, erhält aber weder
 Docker-Socket noch Host-Netzwerk. Persistente Daten liegen unter `/data`.
+
+### Management UI Auth und Livezustand
+
+Die External API bleibt Bearer-authentifiziert. Standalone tauscht den Token an
+einem dedizierten Login-Endpunkt gegen eine kurzlebige, prozesslokale opaque
+Session im HttpOnly Cookie. Ingress nutzt stattdessen ausschließlich Supervisor
+als Authentifizierungsgrenze. Mutationen beider UI-Modi benötigen CSRF.
+
+Ein zentraler Dashboard-Refresh lädt die vollständige Ansicht. Nur während
+`queued`/`running` existiert, lädt ein einzelner UI-Poller gezielt Jobs und Hosts
+nach. Terminalzustände stoppen ihn; Fehler verlängern das Intervall. Spätere
+Push-Transporte können diese Presentation-Grenze ersetzen, ohne Queue oder API-
+Domainmodelle zu ändern. Siehe [[adr/0006-standalone-ui-session]].
+
+Jobbuttons navigieren ausschließlich über einen lokalen Hash nach
+`#/jobs/<job-id>`. Der Hash bewahrt beliebige Ingress-Prefixe und wird nicht an
+den Server übertragen. Metadaten und redigierter Log kommen weiterhin aus
+authentifizierten `/ui-api`-Routen. Standalone behält den Hash im Loginzustand und
+öffnet ihn nach erfolgreicher Sessionerzeugung; weder Token noch Session-ID
+werden Bestandteil des Links.
 
 ## Vorgesehene Laufzeitobjekte
 

@@ -22,8 +22,8 @@ separate status endpoint remains available as an optional legacy provider.
 - update, security-update, kernel, distribution and last-check sensors
 - native update entities and explicit reboot buttons
 - a reboot confirmation through Home Assistant Repairs when a reboot is needed
-- persistent asynchronous jobs with queue/running/failed/success states
-- backend health, queue counts, last error and per-host last-job entities
+- persistent asynchronous jobs with queued/running/success/failed/cancelled states
+- connectivity, queue counts, latest job and separate historical-failure entities
 - dynamically discovered custom-task buttons
 - backend-managed persistent ED25519 identity; the API exposes only its public key
 - host and custom-task CRUD in an Ingress-compatible management page
@@ -65,6 +65,14 @@ Entity modules know neither REST endpoint paths nor Semaphore payloads.
 The sample binds the API only to `127.0.0.1:8099`. Change the port mapping only
 when another machine must connect, and retain token authentication and network
 filtering. Persistent state uses the `homelab-updates-data` volume.
+The management UI is served at the same origin. Standalone exchanges the API
+token once for an opaque, short-lived HttpOnly cookie; the token is not persisted
+in browser storage or cookies. A normal reload recovers that session and reloads
+the dashboard. Disconnect, expiry, or a backend restart returns to **Not
+connected**. Active jobs update automatically without a manual Refresh click.
+Each recent job opens at the token-free `#/jobs/<job-id>` route with compact
+metadata and its bounded redacted log. The same deep link works below an Ingress
+prefix and returns to the requested job after standalone authentication.
 
 ## Home Assistant app
 
@@ -97,12 +105,23 @@ integration-supplied inventory limit.
 Existing `0.1` config entries migrate automatically to the Semaphore provider.
 See the [migration guide](docs/04-operations/migration-0.1-to-0.2.md).
 
+The native hub exposes backend connectivity, running and queued job counts, the
+latest job and type, and a separate latest failed job. Every host has the same
+latest/latest-failed distinction. Entity attributes contain only compact
+metadata and a token-free job URL; full output is never written to Home
+Assistant state or Recorder.
+
 ## Managed host setup
 
 The backend supports Debian and Ubuntu through `DebianAptProvider`. Register a
 dedicated, least-privilege remote user, install the public key shown by the UI,
 and grant only the sudo operations required by the APT and reboot Ansible modules.
 Do not copy a private key into Home Assistant or the repository.
+
+`Test connection` validates SSH, automatic Python 3 discovery, distribution facts
+and non-interactive sudo using the same inventory policy as later jobs. A check
+then refreshes APT metadata, reads a locale-stable update list and reports reboot
+need; warnings remain in the technical job log and are not treated as failures.
 
 Detailed commands and threat-model notes are in the
 [native backend operations guide](docs/04-operations/native-backend.md).
@@ -118,11 +137,15 @@ administrators for editing.
 ## Security and privacy
 
 - API access uses a constant-time checked Bearer token.
+- Standalone UI uses an eight-hour absolute/one-hour idle opaque HttpOnly session;
+  the API token is sent only to the login endpoint.
 - Ingress relies on Supervisor access control; mutations also require a per-process
   CSRF token.
 - private SSH keys, authorization headers and configuration dictionaries are not
   returned or logged;
 - job output is bounded, NUL-stripped and redacts the selected host address/user;
+- job logs remain behind API-token, standalone-session or Ingress authentication
+  and are never copied into Home Assistant entities or diagnostics;
 - mutating jobs are serialized per host and unknown targets fail before execution;
 - examples use only `example.invalid`, synthetic UUIDs and generic host names.
 
@@ -135,6 +158,7 @@ Python `3.14` and `uv` are required:
 
 ```bash
 uv sync --locked
+make browser-install
 make quality
 ```
 

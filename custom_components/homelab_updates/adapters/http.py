@@ -15,6 +15,7 @@ from ..const import (
     TASK_TERMINAL_SUCCESS,
 )
 from ..domain import (
+    BackendJobLog,
     BackendTask,
     Command,
     CustomTaskDefinition,
@@ -274,6 +275,12 @@ class SemaphoreBackend:
     async def async_get_custom_tasks(self) -> tuple[CustomTaskDefinition, ...]:
         """Semaphore custom templates are not auto-exposed as trusted tasks."""
         return ()
+
+    async def async_get_job_log(self, job_id: str) -> BackendJobLog:
+        """Reject the native-only normalized log contract explicitly."""
+        raise SemaphoreTaskError(
+            f"Normalized job logs are unavailable for Semaphore task {job_id}"
+        )
 
     async def async_get_task_output(self, task_id: int) -> object:
         """Fetch task output without logging its potentially sensitive body."""

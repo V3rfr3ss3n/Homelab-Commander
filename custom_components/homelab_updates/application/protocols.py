@@ -3,7 +3,13 @@
 from collections.abc import Mapping, Sequence
 from typing import Protocol
 
-from ..domain import BackendTask, CustomTaskDefinition, HostStatus, TaskId
+from ..domain import (
+    BackendJobLog,
+    BackendTask,
+    CustomTaskDefinition,
+    HostStatus,
+    TaskId,
+)
 
 
 class HostProvider(Protocol):
@@ -42,6 +48,9 @@ class AutomationBackend(Protocol):
 
     async def async_get_tasks(self) -> Sequence[BackendTask]:
         """Fetch recent tasks visible to this backend."""
+
+    async def async_get_job_log(self, job_id: str) -> BackendJobLog:
+        """Fetch one authenticated, bounded backend job log on demand."""
 
     async def async_get_custom_tasks(self) -> Sequence[CustomTaskDefinition]:
         """Fetch custom actions exposed by this backend."""

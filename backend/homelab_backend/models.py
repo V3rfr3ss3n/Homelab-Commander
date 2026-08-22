@@ -5,7 +5,7 @@ from enum import StrEnum
 from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
 HostName = Annotated[str, Field(min_length=1, max_length=100)]
 HostAddress = Annotated[
@@ -78,6 +78,15 @@ class JobState(StrEnum):
     RUNNING = "running"
     SUCCESS = "success"
     FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+_SHORT_JOB_ERRORS = {
+    "apt_lock_unavailable": "APT is locked by another process",
+    "invalid_ansible_output": "Ansible returned an invalid structured result",
+    "python_interpreter_unavailable": "Python 3 is not available on the host",
+    "sudo_unavailable": "Non-interactive sudo is not available",
+}
 
 
 class Job(BaseModel):
@@ -88,13 +97,50 @@ class Job(BaseModel):
     id: UUID
     action: JobAction
     host_id: UUID | None
+    host_name: str | None = None
     custom_task_id: UUID | None = None
     state: JobState
     created_at: datetime
     started_at: datetime | None = None
     finished_at: datetime | None = None
+    exit_code: int | None = None
     error_code: str | None = None
+    log_available: bool = False
     reboot_required: bool | None = None
+
+    # Mypy does not yet understand Pydantic's decorator above a property.
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def job_id(self) -> UUID:
+        """Expose the explicit API identity while retaining the v1 `id` field."""
+        return self.id
+
+    # Mypy does not yet understand Pydantic's decorator above a property.
+    @computed_field(alias="type")  # type: ignore[prop-decorator]
+    @property
+    def job_type(self) -> JobAction:
+        """Expose action semantics under the provider-neutral API name."""
+        return self.action
+
+    # Mypy does not yet understand Pydantic's decorator above a property.
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def short_error(self) -> str | None:
+        """Return a safe, bounded explanation without execution output."""
+        if self.error_code is None:
+            return None
+        return _SHORT_JOB_ERRORS.get(
+            self.error_code, self.error_code.replace("_", " ").capitalize()
+        )
+
+    # Mypy does not yet understand Pydantic's decorator above a property.
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def duration(self) -> float | None:
+        """Return terminal runtime in seconds when both timestamps exist."""
+        if self.started_at is None or self.finished_at is None:
+            return None
+        return max(0.0, (self.finished_at - self.started_at).total_seconds())
 
 
 class JobLog(BaseModel):
@@ -186,3 +232,17 @@ class InfoResponse(BaseModel):
     version: str
     api_version: str
     capabilities: tuple[str, ...]
+
+
+class UiLoginRequest(BaseModel):
+    """One-time API-token input accepted only by standalone UI login."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    api_token: str = Field(min_length=32, max_length=4096)
+
+
+class UiSessionResponse(BaseModel):
+    """Non-sensitive standalone UI authentication state."""
+
+    authenticated: bool

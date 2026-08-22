@@ -1,7 +1,7 @@
 ---
 title: TODO
 status: active
-updated: 2026-08-21
+updated: 2026-08-22
 tags: [project, todo]
 ---
 
@@ -12,7 +12,9 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## In Arbeit
 
-- _Kein Paket; `0.2.0-dev` wartet auf die externe Release-Abnahme._
+- [ ] T-020a Container-Build und Healthcheck der UI-Änderung wiederholen,
+  sobald ein lokaler Docker-Daemon erreichbar ist. Compose-Validierung und alle
+  codebasierten Gates sind grün; Docker Desktop stellte keinen API-Socket bereit.
 
 ## Als Nächstes
 
@@ -48,3 +50,17 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 - [x] T-019 Native Backend, App/Add-on, Standalone-Container,
   Provider-Migration, Ingress-Verwaltung und vollständiges Quality Gate für
   `0.2.0-dev` implementiert
+- [x] T-020 Management-UI nach realem E2E-Smoke repariert und mit Chromium-
+  Regressionstests für Standalone und Ingress-Prefix abgesichert
+- [x] T-021 Standalone-UI mit explizitem Verbindungszustand, Disconnect und
+  sicherem Session-Reset bei Reload sowie `401`/`403` ergänzt
+- [x] T-022 Realen `check_updates`-Fehler bis zum Ad-hoc-Output-Parser analysiert;
+  strukturierten Ansible-Callback, konsistente Interpreter-/sudo-Prüfung,
+  robuste APT-Phasen, UI-Fehlertexte und vollständige Regression ergänzt
+- [x] T-023 Standalone-Token gegen kurzlebige serverseitige HttpOnly-Session mit
+  F5-Recovery, CSRF, Ablauf und serverseitigem Logout getauscht
+- [x] T-024 Management-UI um einzelnes bedarfsgesteuertes Job-Polling mit
+  Hostrefresh, Action-Locking, Backoff und Reload-/Disconnect-Lifecycle ergänzt
+- [x] T-025 Native Job-Observability um Connectivity, getrennte Latest-/Failure-
+  Semantik, kompakte HA-Metadaten, expliziten Logabruf und authentifizierte
+  Standalone-/Ingress-Deep-Links ergänzt

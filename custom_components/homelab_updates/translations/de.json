@@ -75,7 +75,7 @@
   "entity": {
     "binary_sensor": {
       "backend_health": {
-        "name": "Backend-Zustand"
+        "name": "Backend-Verbindung"
       },
       "reboot_required": {
         "name": "Neustart erforderlich"
@@ -108,8 +108,11 @@
       "last_job": {
         "name": "Letzter Job"
       },
-      "last_job_error": {
-        "name": "Letzter Jobfehler"
+      "last_job_type": {
+        "name": "Letzter Jobtyp"
+      },
+      "last_failed_job": {
+        "name": "Letzter fehlgeschlagener Job"
       },
       "queued_jobs": {
         "name": "Wartende Jobs"

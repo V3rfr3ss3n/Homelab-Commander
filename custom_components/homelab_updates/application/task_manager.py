@@ -87,13 +87,8 @@ class TaskManager:
 
         self._states[key] = started
         self._notify_listeners()
-        refresh_on_success = command in {
-            Command.CHECK_ALL,
-            Command.REFRESH_STATUS,
-            Command.UPDATE_HOST,
-        }
         tracker = self._hass.async_create_task(
-            self._async_track(key, started.task_id, refresh_on_success),
+            self._async_track(key, started.task_id),
             f"Track Homelab Updates task {started.task_id}",
         )
         self._tasks[key] = tracker
@@ -114,7 +109,7 @@ class TaskManager:
         self._states[key] = started
         self._notify_listeners()
         tracker = self._hass.async_create_task(
-            self._async_track(key, started.task_id, True),
+            self._async_track(key, started.task_id),
             f"Track Homelab Updates task {started.task_id}",
         )
         self._tasks[key] = tracker
@@ -141,7 +136,6 @@ class TaskManager:
         self,
         key: str,
         task_id: TaskId,
-        refresh_on_success: bool,
     ) -> None:
         """Poll one task until completion, cancellation, or timeout."""
         loop = asyncio.get_running_loop()
@@ -165,10 +159,10 @@ class TaskManager:
                 self._states[key] = task
                 self._notify_listeners()
                 if task.phase is TaskPhase.SUCCESS:
-                    if refresh_on_success:
-                        await self._refresh_callback()
+                    await self._refresh_callback()
                     return
-                if task.phase is TaskPhase.FAILED:
+                if task.phase in {TaskPhase.FAILED, TaskPhase.CANCELLED}:
+                    await self._refresh_callback()
                     raise BackendTaskError(
                         f"Automation task {task_id} failed for {key}"
                     )
@@ -179,11 +173,16 @@ class TaskManager:
         except asyncio.CancelledError:
             raise
         except HomelabUpdatesError as err:
-            self._states[key] = BackendTask(
-                task_id=task_id,
-                phase=TaskPhase.FAILED,
-                raw_status="failed",
-            )
+            current = self._states.get(key)
+            if current is None or current.phase not in {
+                TaskPhase.FAILED,
+                TaskPhase.CANCELLED,
+            }:
+                self._states[key] = BackendTask(
+                    task_id=task_id,
+                    phase=TaskPhase.FAILED,
+                    raw_status="failed",
+                )
             self._notify_listeners()
             _LOGGER.error("Task %s failed for command %s: %s", task_id, key, err)
         finally:

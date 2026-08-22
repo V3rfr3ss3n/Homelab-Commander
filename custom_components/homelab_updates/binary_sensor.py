@@ -1,6 +1,9 @@
 """Binary sensor platform for host reboot requirements."""
 
-from homeassistant.components.binary_sensor import BinarySensorEntity
+from homeassistant.components.binary_sensor import (
+    BinarySensorDeviceClass,
+    BinarySensorEntity,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -55,6 +58,7 @@ class HomelabBackendHealthBinarySensor(
     _attr_has_entity_name = True
     _attr_translation_key = "backend_health"
     _attr_icon = "mdi:server-network"
+    _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
 
     def __init__(self, coordinator: BackendJobsCoordinator, entry_id: str) -> None:
         self._coordinator = coordinator

@@ -535,13 +535,53 @@ async def test_native_client_lists_jobs_and_rejects_invalid_target(
     client = _native_client(aiohttp_client_session)
     aioclient_mock.get(  # type: ignore[attr-defined]
         f"{NATIVE_URL}/api/v1/jobs",
-        json=[_native_job_payload(state="failed", error_code="synthetic")],
+        json=[
+            _native_job_payload(
+                state="failed",
+                host_name="Node 01",
+                started_at="2026-01-15T12:00:01Z",
+                finished_at="2026-01-15T12:00:03Z",
+                exit_code=2,
+                error_code="synthetic",
+                short_error="Synthetic failure",
+                duration=2.0,
+                log_available=True,
+            )
+        ],
     )
     tasks = await client.async_get_tasks()
     assert tasks[0].phase is TaskPhase.FAILED
     assert tasks[0].error_code == "synthetic"
+    assert tasks[0].host_name == "Node 01"
+    assert tasks[0].exit_code == 2
+    assert tasks[0].duration == 2.0
+    assert tasks[0].log_available
+    assert tasks[0].job_url == f"{NATIVE_URL}/#/jobs/{JOB_ID}"
     with pytest.raises(BackendTaskError):
         await client.async_reboot_host("not-a-uuid")
+
+
+async def test_native_client_gets_job_log_and_maps_not_found(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+) -> None:
+    """Job logs are explicit, typed, and never put the API token in the URL."""
+    client = _native_client(aiohttp_client_session)
+    url = f"{NATIVE_URL}/api/v1/jobs/{JOB_ID}/log"
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        url,
+        json={"job_id": JOB_ID, "output": "redacted output", "truncated": False},
+    )
+
+    log = await client.async_get_job_log(JOB_ID)
+
+    assert log.output == "redacted output"
+    assert API_TOKEN not in str(aioclient_mock.mock_calls[-1][0])  # type: ignore[attr-defined]
+
+    aioclient_mock.clear_requests()  # type: ignore[attr-defined]
+    aioclient_mock.get(url, status=404)  # type: ignore[attr-defined]
+    with pytest.raises(BackendTaskError, match="Job log not found"):
+        await client.async_get_job_log(JOB_ID)
 
 
 async def test_native_client_discovers_and_runs_custom_tasks(
@@ -673,6 +713,12 @@ async def test_native_client_rejects_invalid_host_fields(
         _native_job_payload(created_at="invalid"),
         _native_job_payload(created_at="2026-01-15T12:00:00"),
         _native_job_payload(reboot_required="false"),
+        _native_job_payload(host_name=1),
+        _native_job_payload(started_at="invalid"),
+        _native_job_payload(exit_code=True),
+        _native_job_payload(short_error=1),
+        _native_job_payload(duration=-1),
+        _native_job_payload(log_available="true"),
     ],
 )
 async def test_native_client_rejects_invalid_job_fields(

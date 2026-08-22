@@ -24,7 +24,13 @@ from custom_components.homelab_updates.const import (
 from custom_components.homelab_updates.domain import HostStatus
 
 from .conftest import API_TOKEN, STATUS_URL
-from .test_api import HOST_ID, NATIVE_URL, _native_host_payload, _payload
+from .test_api import (
+    HOST_ID,
+    NATIVE_URL,
+    _native_host_payload,
+    _native_job_payload,
+    _payload,
+)
 
 
 async def _setup_entry(
@@ -243,10 +249,97 @@ async def test_native_setup_creates_job_and_health_entities(
         for entity in er.async_get(hass).entities.values()
         if entity.config_entry_id == entry.entry_id
     }
-    assert len(unique_ids) == 16
+    assert len(unique_ids) == 19
     assert f"{DOMAIN}_{HOST_ID}_last_job" in unique_ids
+    assert f"{DOMAIN}_{HOST_ID}_last_failed_job" in unique_ids
     assert f"{DOMAIN}_{entry.entry_id}_backend_health" in unique_ids
     assert f"{DOMAIN}_{entry.entry_id}_queued_jobs" in unique_ids
     assert f"{DOMAIN}_{entry.entry_id}_running_jobs" in unique_ids
-    assert f"{DOMAIN}_{entry.entry_id}_last_job_error" in unique_ids
+    assert f"{DOMAIN}_{entry.entry_id}_last_job" in unique_ids
+    assert f"{DOMAIN}_{entry.entry_id}_last_job_type" in unique_ids
+    assert f"{DOMAIN}_{entry.entry_id}_last_failed_job" in unique_ids
     assert f"{DOMAIN}_{HOST_ID}_custom_task_{task_id}" in unique_ids
+
+
+async def test_native_job_entities_separate_current_success_from_old_failure(
+    hass: HomeAssistant, aioclient_mock: object
+) -> None:
+    """A historical failure never masquerades as current backend or job health."""
+    failed_id = "00000000-0000-4000-8000-000000000003"
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/hosts", json=[_native_host_payload()]
+    )
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/jobs",
+        json=[
+            _native_job_payload(
+                action="check_updates",
+                state="success",
+                host_name="Node 01",
+                started_at="2026-01-15T21:39:00Z",
+                finished_at="2026-01-15T21:40:00Z",
+                exit_code=0,
+                duration=60,
+                log_available=True,
+            ),
+            _native_job_payload(
+                id=failed_id,
+                action="check_updates",
+                state="failed",
+                host_name="Node 01",
+                started_at="2026-01-15T17:52:00Z",
+                finished_at="2026-01-15T17:53:00Z",
+                exit_code=0,
+                error_code="invalid_ansible_output",
+                short_error="Ansible returned an invalid structured result",
+                duration=60,
+                log_available=True,
+            ),
+        ],
+    )
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/custom-tasks", json=[]
+    )
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="backend.example.invalid",
+        version=2,
+        minor_version=1,
+        unique_id=f"native|{NATIVE_URL}",
+        data={
+            CONF_BACKEND_TYPE: BACKEND_NATIVE,
+            CONF_BACKEND_URL: NATIVE_URL,
+            "api_token": API_TOKEN,
+            CONF_POLL_INTERVAL: 300,
+            CONF_VERIFY_SSL: True,
+        },
+    )
+    entry.add_to_hass(hass)
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    connectivity = hass.states.get("binary_sensor.homelab_updates_backend_connectivity")
+    assert connectivity is not None
+    assert connectivity.state == "on"
+    assert connectivity.attributes["device_class"] == "connectivity"
+    latest = hass.states.get("sensor.homelab_updates_last_job")
+    historical = hass.states.get("sensor.homelab_updates_last_failed_job")
+    host_latest = hass.states.get("sensor.node_01_last_job")
+    host_historical = hass.states.get("sensor.node_01_last_failed_job")
+    assert latest is not None
+    assert historical is not None
+    assert host_latest is not None
+    assert host_historical is not None
+    assert latest.state == host_latest.state == "success"
+    assert latest.attributes["type"] == "check_updates"
+    assert historical.state == host_historical.state == "failed"
+    assert historical.attributes["job_id"] == failed_id
+    assert historical.attributes["error_code"] == "invalid_ansible_output"
+    assert historical.attributes["finished_at"] == "2026-01-15T17:53:00+00:00"
+    last_type = hass.states.get("sensor.homelab_updates_last_job_type")
+    assert last_type is not None
+    assert last_type.state == "check_updates"
+    assert "output" not in latest.attributes
+    assert "output" not in historical.attributes
+    assert API_TOKEN not in historical.attributes["job_url"]

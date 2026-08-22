@@ -86,10 +86,10 @@ async def test_task_manager_tracks_success_and_refreshes(
     await manager.async_cancel()
 
 
-async def test_task_manager_reboot_does_not_refresh(
+async def test_task_manager_reboot_refreshes_job_observability(
     hass: HomeAssistant,
 ) -> None:
-    """A reboot task completion does not immediately require host availability."""
+    """A reboot completion refreshes job and host observability once."""
     backend = Mock()
     backend.async_reboot_host = AsyncMock(return_value=_task(124, TaskPhase.WAITING))
     backend.async_get_task = AsyncMock(return_value=_task(124, TaskPhase.SUCCESS))
@@ -104,7 +104,7 @@ async def test_task_manager_reboot_does_not_refresh(
     )
     await manager.async_start(Command.REBOOT_HOST, "node-01")
     await hass.async_block_till_done()
-    refresh.assert_not_awaited()
+    refresh.assert_awaited_once()
 
 
 async def test_task_manager_failure_is_recorded(
@@ -115,10 +115,11 @@ async def test_task_manager_failure_is_recorded(
     backend = Mock()
     backend.async_check_hosts = AsyncMock(return_value=_task(125, TaskPhase.WAITING))
     backend.async_get_task = AsyncMock(return_value=_task(125, TaskPhase.FAILED))
+    refresh = AsyncMock()
     manager = TaskManager(
         hass,
         backend,
-        AsyncMock(),
+        refresh,
         Mock(),
         poll_interval=0,
         task_timeout=timedelta(seconds=1),
@@ -128,8 +129,33 @@ async def test_task_manager_failure_is_recorded(
         await hass.async_block_till_done()
 
     assert manager.task_state(Command.CHECK_ALL).phase is TaskPhase.FAILED  # type: ignore[union-attr]
+    refresh.assert_awaited_once()
     assert "125" in caplog.text
     assert "synthetic-test-token" not in caplog.text
+
+
+async def test_task_manager_cancelled_job_refreshes_and_stops_tracking(
+    hass: HomeAssistant,
+) -> None:
+    """Cancelled is terminal and refreshes the observable history."""
+    backend = Mock()
+    backend.async_check_hosts = AsyncMock(return_value=_task(225, TaskPhase.WAITING))
+    backend.async_get_task = AsyncMock(return_value=_task(225, TaskPhase.CANCELLED))
+    refresh = AsyncMock()
+    manager = TaskManager(
+        hass,
+        backend,
+        refresh,
+        Mock(),
+        poll_interval=0,
+        task_timeout=timedelta(seconds=1),
+    )
+
+    await manager.async_start(Command.CHECK_ALL)
+    await hass.async_block_till_done()
+
+    refresh.assert_awaited_once()
+    assert manager.task_state(Command.CHECK_ALL).phase is TaskPhase.CANCELLED  # type: ignore[union-attr]
 
 
 async def test_task_manager_rejects_duplicate(hass: HomeAssistant) -> None:

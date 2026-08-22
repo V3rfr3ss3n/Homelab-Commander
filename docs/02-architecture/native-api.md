@@ -1,7 +1,7 @@
 ---
 title: Native API v1
 status: accepted
-updated: 2026-08-21
+updated: 2026-08-22
 tags: [architecture, api, backend]
 ---
 
@@ -35,16 +35,40 @@ Home-Assistant-Client nicht verfolgt. IDs sind kanonische UUIDs.
 OpenAPI liegt unter `/api/openapi.json`, die interaktive Entwicklungsansicht unter
 `/api/docs`. Diese Dokumente ersetzen keine Autorisierungsprüfung.
 
+## Management-UI-Grenze
+
+`/ui-api` ist kein alternativer externer API-Zugang. Standalone verwendet
+`POST /ui-api/auth/login`, `GET /ui-api/auth/session` und
+`POST /ui-api/auth/logout` für eine kurzlebige HttpOnly-Session. Mutationen
+verlangen zusätzlich `X-CSRF-Token`. Ingress verwendet dieselben Management-
+Routen ohne diese Session, weil Supervisor authentifiziert; CSRF bleibt aktiv.
+Bearer Header verleihen außerhalb von Ingress keinen Zugriff auf `/ui-api`, und
+UI-Cookies verleihen keinen Zugriff auf `/api/v1`.
+
 ## Jobsemantik
 
 `POST`-Aktionen antworten sofort mit `202` und einem persistenten Job. Zustände
-sind `queued`, `running`, `success` oder `failed`. Nach Prozessabbruch werden
+sind `queued`, `running`, `success`, `failed` oder `cancelled`. Nach Prozessabbruch werden
 `running`-Jobs beim Start erneut als `queued` aufgenommen. Update, Reboot und
 Custom Tasks verwenden ein Lock je Host. Ein unbekannter Host oder Task scheitert
 vor dem Anlegen beziehungsweise vor der Ausführung.
 
+Jede Jobantwort behält die kompatiblen Felder `id` und `action` und ergänzt
+`job_id`, `type`, `host_name`, `started_at`, `finished_at`, `exit_code`,
+`short_error`, `duration` und `log_available`. `short_error` ist ein begrenzter,
+sicherer Hinweis und niemals Prozessausgabe. `duration` wird nur aus vorhandenen
+Start-/Endzeitstempeln berechnet. `log_available` verweist ausschließlich auf den
+separat authentifizierten Log-Endpunkt.
+
 Ein erfolgreicher Update Job kann `reboot_required=true` melden. Das ist nur ein
 Statuswert und startet niemals selbst einen Reboot.
+
+Ein fehlgeschlagener Job enthält einen sicheren `error_code`; technische Details
+bleiben im authentifizierten, redigierten Log. Native Built-ins verwenden unter
+anderem `python_interpreter_unavailable`, `sudo_unavailable`,
+`apt_lock_unavailable`, die phasengenauen `check_updates_*_failed`-Codes und
+`invalid_ansible_output`. Clients müssen unbekannte additive Codes generisch
+darstellen können.
 
 ## Schemakompatibilität
 

@@ -1,6 +1,7 @@
 """Domain models for Homelab Updates."""
 
 from .models import (
+    BackendJobLog,
     BackendTask,
     Command,
     CustomTaskDefinition,
@@ -11,6 +12,7 @@ from .models import (
 )
 
 __all__ = [
+    "BackendJobLog",
     "BackendTask",
     "Command",
     "CustomTaskDefinition",

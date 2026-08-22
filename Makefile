@@ -1,4 +1,7 @@
-.PHONY: audit format format-check lint privacy quality release-check test types
+.PHONY: audit browser-install format format-check lint privacy quality release-check test types
+
+browser-install:
+	uv run playwright install chromium
 
 format:
 	uv run ruff format .
