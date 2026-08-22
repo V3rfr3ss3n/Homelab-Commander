@@ -59,7 +59,9 @@ tags: [product, requirements]
 - **REQ-CMD-002 MUST:** Hostaktionen senden exakt die technische Host-ID als
   Zielbegrenzung.
 - **REQ-CMD-003 MUST:** Taskzustände werden asynchron, begrenzt und cancelbar
-  verfolgt. Unbekannte Zustände verursachen keinen Crash.
+  verfolgt. Unbekannte Zustände verursachen keinen Crash. Nach jedem terminalen
+  Ergebnis wird der Tracker vor der finalen Listener-Benachrichtigung entfernt,
+  damit Buttons und Panel nicht fälschlich weiter `running` anzeigen.
 - **REQ-CMD-004 MUST:** Ein erfolgreicher Task stößt einen Statusrefresh an; erst
   dessen Daten entscheiden über den sichtbaren Endzustand.
 - **REQ-CMD-005 MUST:** Reboot und Update erfolgen nur nach expliziter Aktion.

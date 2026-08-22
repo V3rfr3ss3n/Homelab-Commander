@@ -67,3 +67,5 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 - [x] T-026 Native Hub-Aktionen bereinigt und administratorgeschützte Home-
   Assistant-Hauptansicht mit Hosts, Jobs, bedarfsgesteuerten Logs und Backend-
   Link ergänzt
+- [x] T-027 Task-Tracker-Abschluss veröffentlicht nach dem Entfernen den finalen
+  Idle-Zustand, damit Panel und Action-Buttons nicht auf `running` stehen bleiben

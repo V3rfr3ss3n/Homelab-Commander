@@ -96,6 +96,28 @@ async def test_panel_moves_to_next_loaded_native_entry_on_unload(
     assert second.runtime_data.panel_registered is True
 
 
+async def test_admin_panel_supports_an_empty_job_history(
+    hass: HomeAssistant,
+    aioclient_mock: object,
+    hass_ws_client: WebSocketGenerator,
+) -> None:
+    """A healthy backend without jobs publishes explicit empty latest states."""
+    entry = await _setup_native_entry(hass, aioclient_mock)
+    client = await hass_ws_client()
+
+    await client.send_json_auto_id({
+        "type": f"{DOMAIN}/subscribe_panel",
+        "entry_id": entry.entry_id,
+    })
+    assert (await client.receive_json())["success"] is True
+    snapshot = (await client.receive_json())["event"]
+
+    assert snapshot["backend_online"] is True
+    assert snapshot["jobs"] == []
+    assert snapshot["last_job"] is None
+    assert snapshot["last_failed_job"] is None
+
+
 async def test_admin_panel_streams_metadata_and_fetches_log_explicitly(
     hass: HomeAssistant,
     aioclient_mock: object,

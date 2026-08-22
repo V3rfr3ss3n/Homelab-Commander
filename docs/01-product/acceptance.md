@@ -122,3 +122,6 @@ tags: [product, acceptance, release]
     Home Assistants authentifizierte WebSocket-Verbindung. Nicht-Administratoren
     werden abgewiesen; Token und Log erscheinen weder im Statusstream noch in
     Browser Storage oder Panel-Konfiguration.
+27. Sobald ein globaler Check terminal `success`, `failed` oder `cancelled` ist,
+    wechselt das Panel aus **Prüfung läuft…** zurück zu **Hosts prüfen**, ohne auf
+    einen späteren periodischen Coordinator-Poll zu warten.

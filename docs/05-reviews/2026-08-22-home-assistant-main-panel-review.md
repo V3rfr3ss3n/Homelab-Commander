@@ -22,6 +22,10 @@ Templates.
 - Der erste geladene Native-Eintrag registriert **Homelab Updates** als admin-only
   Seitenleisten-Panel. Beim Unload übernimmt deterministisch der nächste geladene
   Native-Eintrag.
+- Ein Tracker veröffentlicht nach dem terminalen Ergebnis zusätzlich den Zustand
+  nach seiner Entfernung. Dadurch wechseln Panel und Entity-Buttons sofort von
+  `running` zu idle; ein bereits erfolgreicher Job kann nicht mehr mit
+  **Prüfung läuft…** kombiniert erscheinen.
 - Das Panel zeigt Connectivity, Hoststatus, laufende/wartende Jobs, letzten Job
   und historischen letzten Fehler getrennt.
 - Statussnapshots enthalten keine Jobausgabe und keine Credentials. **Log öffnen**
@@ -38,8 +42,8 @@ Templates.
 
 ## Verifikation
 
-`make quality` ist vollständig grün: 255 Tests, 98,21 % Line Coverage und
-95,14 % Branch Coverage. Ruff Format/Lint, Mypy strict, echter Chromium,
+`make quality` ist vollständig grün: 257 Tests, 98,22 % Line Coverage und
+95,16 % Branch Coverage. Ruff Format/Lint, Mypy strict, echter Chromium,
 Dependency Audit und Privacy-Scan sind ebenfalls grün. Die Regression deckt
 Panel-Registrierung/Unload/Übergabe, Nicht-Admin-Ablehnung, token-/logfreie
 Snapshots, expliziten Logabruf, Check-Command, sichere Textdarstellung und den

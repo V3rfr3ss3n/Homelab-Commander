@@ -86,6 +86,40 @@ async def test_task_manager_tracks_success_and_refreshes(
     await manager.async_cancel()
 
 
+async def test_task_manager_notifies_when_successful_tracker_becomes_idle(
+    hass: HomeAssistant,
+) -> None:
+    """The final listener event clears checking after refreshed job success."""
+    backend = Mock()
+    backend.async_check_hosts = AsyncMock(return_value=_task(131, TaskPhase.WAITING))
+    backend.async_get_task = AsyncMock(return_value=_task(131, TaskPhase.SUCCESS))
+    running_states: list[bool] = []
+    manager: TaskManager
+
+    def observe_refresh() -> None:
+        assert manager.is_running(Command.CHECK_ALL)
+
+    manager = TaskManager(
+        hass,
+        backend,
+        AsyncMock(side_effect=observe_refresh),
+        Mock(),
+        poll_interval=0,
+        task_timeout=timedelta(seconds=1),
+    )
+    manager.async_add_listener(
+        lambda: running_states.append(manager.is_running(Command.CHECK_ALL))
+    )
+
+    await manager.async_start(Command.CHECK_ALL)
+    assert running_states[-1] is True
+    await hass.async_block_till_done()
+
+    assert manager.task_state(Command.CHECK_ALL).phase is TaskPhase.SUCCESS  # type: ignore[union-attr]
+    assert manager.is_running(Command.CHECK_ALL) is False
+    assert running_states[-1] is False
+
+
 async def test_task_manager_reboot_refreshes_job_observability(
     hass: HomeAssistant,
 ) -> None:

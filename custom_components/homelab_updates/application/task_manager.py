@@ -86,13 +86,15 @@ class TaskManager:
             raise
 
         self._states[key] = started
-        self._notify_listeners()
         tracker = self._hass.async_create_task(
             self._async_track(key, started.task_id),
             f"Track Homelab Updates task {started.task_id}",
         )
         self._tasks[key] = tracker
-        tracker.add_done_callback(lambda _task: self._tasks.pop(key, None))
+        tracker.add_done_callback(
+            lambda completed: self._async_tracker_done(key, completed)
+        )
+        self._notify_listeners()
         return started
 
     async def async_start_custom(self, task_id: str, host_id: str) -> BackendTask:
@@ -107,13 +109,15 @@ class TaskManager:
             self._auth_failure_callback()
             raise
         self._states[key] = started
-        self._notify_listeners()
         tracker = self._hass.async_create_task(
             self._async_track(key, started.task_id),
             f"Track Homelab Updates task {started.task_id}",
         )
         self._tasks[key] = tracker
-        tracker.add_done_callback(lambda _task: self._tasks.pop(key, None))
+        tracker.add_done_callback(
+            lambda completed: self._async_tracker_done(key, completed)
+        )
+        self._notify_listeners()
         return started
 
     def is_custom_running(self, task_id: str, host_id: str) -> bool:
@@ -192,6 +196,13 @@ class TaskManager:
         """Notify a stable snapshot of listeners."""
         for listener in tuple(self._listeners):
             listener()
+
+    def _async_tracker_done(self, key: str, completed: asyncio.Task[None]) -> None:
+        """Remove one completed tracker and publish the final idle state."""
+        if self._tasks.get(key) is not completed:
+            return
+        self._tasks.pop(key)
+        self._notify_listeners()
 
     async def _async_dispatch(
         self, command: Command, host_id: str | None
