@@ -46,6 +46,8 @@ Entwicklungsnetzes.
 | parallele Hostmutation | persistente Queue plus Lock je kanonischer Host-UUID |
 | fremder UI-Request | Supervisor Ingress beziehungsweise HttpOnly-Session, SameSite und CSRF für Mutationen |
 | XSS/Tokenabfluss aus UI | externe same-origin Assets, restriktive CSP; API-Token nur beim Login, Session-Cookie HttpOnly |
+| unberechtigter HA-Panelzugriff | Panel und WebSocket-Commands nur für HA-Administratoren; Backend-Token bleibt im Config Entry |
+| persistenter Logabfluss in HA | Statusstream ohne Ausgabe; begrenzter redigierter Log nur nach explizitem admin-authentifiziertem Abruf |
 | unbegrenzte Prozessausgabe | UTF-8-Normalisierung, NUL-Entfernung, Redaction und 64-KiB-Grenze |
 
 ## Logging
@@ -65,6 +67,16 @@ Home Assistant erhält davon nur Job-ID, Typ, Zustand, Zeiten, sicheren Fehlerco
 und eine tokenfreie UI-URL. Vollständige Ausgabe wird weder Entityattribut,
 Sensorzustand noch Diagnostics-Inhalt. Der `#/jobs/<job-id>`-Hash trägt keine
 Credentials; der anschließende Abruf bleibt session-/Ingress-authentifiziert.
+
+Das native Home-Assistant-Panel verwendet ausschließlich Home Assistants
+authentifizierte WebSocket-Verbindung. Panel, Statusabonnement, Hostprüfung und
+Logabruf verlangen Administratorrechte. Die Panel-Konfiguration enthält nur die
+Config-Entry-ID und eine bereits konfigurierte tokenfreie Backend-Basis-URL. Der
+Backend-Token bleibt serverseitig im Config Entry und wird vom Native Adapter
+verwendet. Statusevents enthalten ausschließlich kompakte Metadaten; der
+begrenzte redigierte Log wird nach **Log öffnen** einmalig übertragen, mit
+`textContent` gerendert und weder in Entities, Recorder, Diagnostics, DOM-
+Attributen noch Browser Storage persistiert.
 
 ## Vertrauensgrenzen des nativen Backends
 

@@ -112,3 +112,13 @@ tags: [product, acceptance, release]
     und anschließend derselbe Job geöffnet; keine URL enthält ein Token.
 23. Abschluss von Check, Update, Reboot und Custom Task aktualisiert Jobs,
     Queuezählung und Hostzustand ohne manuellen Home-Assistant-Reload.
+24. Ein Native-Hub zeigt nur **Hosts prüfen** als globale manuelle Aktion; ein
+    Semaphore-Hub behält **Hosts prüfen** und **Status aktualisieren**, weil dort
+    zwei getrennte Templates angesprochen werden.
+25. Native registriert für Administratoren **Homelab Updates** in der
+    Home-Assistant-Seitenleiste. Die Hauptansicht zeigt Onlinezustand, Hosts,
+    Queuezählung, letzten Job und letzten fehlgeschlagenen Job.
+26. **Log öffnen** lädt einen begrenzten redigierten Joblog erst auf Klick über
+    Home Assistants authentifizierte WebSocket-Verbindung. Nicht-Administratoren
+    werden abgewiesen; Token und Log erscheinen weder im Statusstream noch in
+    Browser Storage oder Panel-Konfiguration.

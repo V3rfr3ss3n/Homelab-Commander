@@ -2,6 +2,7 @@
 
 from unittest.mock import AsyncMock, patch
 
+from homeassistant.components import frontend
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
@@ -22,6 +23,7 @@ from custom_components.homelab_updates.const import (
     DOMAIN,
 )
 from custom_components.homelab_updates.domain import HostStatus
+from custom_components.homelab_updates.panel import PANEL_URL_PATH
 
 from .conftest import API_TOKEN, STATUS_URL
 from .test_api import (
@@ -78,6 +80,7 @@ async def test_setup_creates_devices_and_entities(
         "example-node",
         "Homelab Updates",
     }
+    assert not frontend.async_panel_exists(hass, PANEL_URL_PATH)
 
 
 async def test_new_host_is_added_dynamically(
@@ -249,7 +252,9 @@ async def test_native_setup_creates_job_and_health_entities(
         for entity in er.async_get(hass).entities.values()
         if entity.config_entry_id == entry.entry_id
     }
-    assert len(unique_ids) == 19
+    assert len(unique_ids) == 18
+    assert f"{DOMAIN}_{entry.entry_id}_check_all" in unique_ids
+    assert f"{DOMAIN}_{entry.entry_id}_refresh_status" not in unique_ids
     assert f"{DOMAIN}_{HOST_ID}_last_job" in unique_ids
     assert f"{DOMAIN}_{HOST_ID}_last_failed_job" in unique_ids
     assert f"{DOMAIN}_{entry.entry_id}_backend_health" in unique_ids
@@ -259,6 +264,18 @@ async def test_native_setup_creates_job_and_health_entities(
     assert f"{DOMAIN}_{entry.entry_id}_last_job_type" in unique_ids
     assert f"{DOMAIN}_{entry.entry_id}_last_failed_job" in unique_ids
     assert f"{DOMAIN}_{HOST_ID}_custom_task_{task_id}" in unique_ids
+
+    assert frontend.async_panel_exists(hass, PANEL_URL_PATH)
+    panel = hass.data[frontend.DATA_PANELS][PANEL_URL_PATH].to_response()
+    assert panel["title"] == "Homelab Updates"
+    assert panel["require_admin"] is True
+    assert panel["config"]["entry_id"] == entry.entry_id  # type: ignore[index]
+    assert panel["config"]["management_url"] == NATIVE_URL  # type: ignore[index]
+    assert API_TOKEN not in str(panel)
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert not frontend.async_panel_exists(hass, PANEL_URL_PATH)
 
 
 async def test_native_job_entities_separate_current_success_from_old_failure(

@@ -12,6 +12,7 @@ def test_addon_uses_ingress_without_privileged_host_access() -> None:
     config = yaml.safe_load((ROOT / "addon/homelab_updates/config.yaml").read_text())
     assert config["ingress"] is True
     assert config["panel_admin"] is True
+    assert config["panel_title"] == "Homelab Updates Backend"
     assert config["ingress_port"] == 8099
     assert config["ports"] == {"8099/tcp": None}
     assert config["image"] == "ghcr.io/v3rfr3ss3n/homelab-updates-backend"

@@ -29,6 +29,7 @@ packages = ["backend/homelab_backend"]
 
 [dependency-groups]
 dev = [
+  "home-assistant-frontend==20260729.7",
   "homeassistant==2026.8.2",
   "httpx2==2.9.1",
   "mypy==1.18.2",

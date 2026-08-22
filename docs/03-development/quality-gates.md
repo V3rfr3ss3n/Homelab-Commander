@@ -34,7 +34,8 @@ ergänzt öffentliche URL-/Codeowner-Prüfungen.
 3. **Home Assistant integration:** Config Flow, Coordinator, Registry, Entities,
    Lifecycle, Reauth/Reconfigure und Diagnostics.
 4. **Browser:** echtes Headless Chromium gegen einen lokalen ASGI-Server im
-   Standalone- und Ingress-Prefix-Modus; Execution Adapter bleibt synthetisch.
+   Standalone- und Ingress-Prefix-Modus sowie gegen einen synthetischen
+   Home-Assistant-Panel-Harness; Execution Adapter bleibt synthetisch.
 5. **Isolierte manuelle Abnahme:** temporäre Home-Assistant-Testinstanz und Fake-
    Backend; niemals ein produktives Homelab.
 
@@ -58,6 +59,9 @@ ergänzt öffentliche URL-/Codeowner-Prüfungen.
   ungültige Session, Logout und CSRF; External Bearer und Ingress bleiben getrennt
 - Live UI: `queued → running → success/failed`, Hostrefresh, genau ein Poller,
   Stopp ohne aktive Jobs/bei Disconnect und Wiederaufnahme nach Reload
+- HA Panel: admin-only WebSocket-Commands, token-/logfreier Statusstream,
+  expliziter Logabruf, sichere Textdarstellung, Backend-Link und globale
+  Native-Hostprüfung im echten Browser
 
 ## Dependency Policy
 
@@ -92,6 +96,12 @@ Es prüft die ausgelieferte Management-UI mit echtem Chromium und einem lokalen,
 synthetischen Backend. Ein neuer Entwicklungsrechner installiert den Browser
 einmalig mit `make browser-install`; CI installiert Chromium samt Systempaketen
 vor `make quality`.
+
+`home-assistant-frontend` ist ausschließlich eine versionsgleich zu Home
+Assistant gepinnte Entwicklungsabhängigkeit. Die isolierte HA-Testumgebung lädt
+damit den echten `frontend`-/`panel_custom`-Lifecycle. In einer regulären Home-
+Assistant-Installation gehört dieses Paket bereits zur Plattform und wird nicht
+von der Custom Integration ausgeliefert oder nachinstalliert.
 
 ## Ausnahmen
 

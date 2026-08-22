@@ -65,6 +65,12 @@ tags: [product, requirements]
 - **REQ-CMD-005 MUST:** Reboot und Update erfolgen nur nach expliziter Aktion.
 - **REQ-CMD-006 MUST:** Statusdaten bleiben nutzbar, wenn nur das Command-Backend
   ausfällt.
+- **REQ-CMD-007 MUST:** Das native Backend bietet genau eine manuelle globale
+  Statusaktion `Hosts prüfen`; sie erzeugt reale Check-Jobs und aktualisiert den
+  Status nach Abschluss. Passive Coordinator-Polls benötigen keinen zweiten
+  Nutzerbutton. Der getrennte `Status-Export/Refresh` bleibt ausschließlich beim
+  Semaphore-Provider sichtbar, weil er dort einen anderen Template-Use-Case
+  auslöst.
 
 ## Sicherheit, Betrieb und Qualität
 
@@ -121,6 +127,13 @@ tags: [product, requirements]
   fehlgeschlagener Job sind getrennte Zustände. Hub und Hosts veröffentlichen nur
   kompakte Jobmetadaten; vollständige Jobausgabe gelangt weder in Entity-
   Attribute noch Diagnostics oder Recorder.
+- **REQ-HA-005 MUST:** Für Native registriert die Integration eine
+  administratorgeschützte Home-Assistant-Seitenleistenansicht. Sie zeigt Hosts,
+  Jobzustände und getrennte Latest-/Failure-Semantik, startet die eine globale
+  Hostprüfung und lädt begrenzte redigierte Logs nur nach expliziter Auswahl über
+  Home Assistants authentifizierte Verbindung. API-Token, Session-Cookies und
+  Logs werden nicht in Browser Storage, Panel-Konfiguration oder Statusstreams
+  übernommen.
 - **REQ-ADD-001 MUST:** Das Add-on verwendet Home Assistant Ingress, läuft ohne
   Host-Netzwerk und ohne Docker-Socket und fordert keine unnötigen Privilegien.
 - **REQ-UI-001 MUST:** Die Management-UI funktioniert am Server-Root und unter

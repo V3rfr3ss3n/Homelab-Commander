@@ -7,6 +7,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_API_TOKEN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.typing import ConfigType
 
 from .adapters import HttpStatusProvider, NativeBackendClient, SemaphoreBackend
 from .application import AutomationBackend, HostProvider, TaskManager
@@ -32,6 +33,11 @@ from .coordinator import (
     HomelabUpdatesCoordinator,
 )
 from .domain import Command
+from .panel import (
+    async_register_panel,
+    async_setup_panel_support,
+    async_unregister_panel,
+)
 from .reboot import async_remove_reboot_issues, async_sync_reboot_issues
 
 
@@ -46,6 +52,7 @@ class HomelabUpdatesRuntimeData:
     custom_tasks_coordinator: CustomTasksCoordinator | None
     task_manager: TaskManager
     reboot_issue_ids: set[str]
+    panel_registered: bool
 
     @property
     def status_client(self) -> HostProvider:
@@ -59,6 +66,12 @@ class HomelabUpdatesRuntimeData:
 
 
 type HomelabUpdatesConfigEntry = ConfigEntry[HomelabUpdatesRuntimeData]
+
+
+async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
+    """Set up shared frontend assets and authenticated panel commands once."""
+    await async_setup_panel_support(hass)
+    return True
 
 
 async def async_setup_entry(
@@ -142,7 +155,9 @@ async def async_setup_entry(
         custom_tasks_coordinator=custom_tasks_coordinator,
         task_manager=task_manager,
         reboot_issue_ids=set(),
+        panel_registered=False,
     )
+    entry.runtime_data.panel_registered = await async_register_panel(hass, entry)
     async_sync_reboot_issues(hass, entry)
     entry.async_on_unload(
         coordinator.async_add_listener(lambda: async_sync_reboot_issues(hass, entry))
@@ -160,6 +175,7 @@ async def async_unload_entry(
     if not await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         return False
     await entry.runtime_data.task_manager.async_cancel()
+    await async_unregister_panel(hass, entry)
     return True
 
 

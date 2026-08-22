@@ -13,6 +13,9 @@ und eine Privacy-Prüfung.
 
 ## Product
 
+- [ ] Auswahl oder getrennte Panel-Pfade für mehrere gleichzeitig geladene
+  Native-Config-Entries bewerten; `0.2` übergibt das globale Panel beim Unload
+  an den nächsten geladenen Eintrag
 - [ ] letzter Command-Status und Laufzeit je Host
 - [ ] Security-only Update als optionale Backend-Capability
 - [ ] Paketliste mit begrenzter, datenschutzfreundlicher Darstellung

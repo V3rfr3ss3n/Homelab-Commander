@@ -64,3 +64,6 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 - [x] T-025 Native Job-Observability um Connectivity, getrennte Latest-/Failure-
   Semantik, kompakte HA-Metadaten, expliziten Logabruf und authentifizierte
   Standalone-/Ingress-Deep-Links ergänzt
+- [x] T-026 Native Hub-Aktionen bereinigt und administratorgeschützte Home-
+  Assistant-Hauptansicht mit Hosts, Jobs, bedarfsgesteuerten Logs und Backend-
+  Link ergänzt

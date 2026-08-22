@@ -12,6 +12,8 @@ tags: [architecture, design]
 ```mermaid
 flowchart LR
     U[Home Assistant user] --> HA[Homelab Updates]
+    U --> HP[HA sidebar panel]
+    HP --> HA
     HA --> NB[Native Backend API]
     HA -. optional .-> SE[Semaphore Provider]
     UI[Add-on Ingress UI] --> NB
@@ -43,9 +45,10 @@ flowchart TD
 
 ### Presentation
 
-Config Flow, Coordinator-gebundene Entities, DeviceInfo, Übersetzungen und
-Diagnostics. Diese Module übersetzen zwischen Home-Assistant-Konzepten und
-Application Services, enthalten aber keine Backend-Payloadlogik.
+Config Flow, Coordinator-gebundene Entities, DeviceInfo, Übersetzungen,
+Diagnostics und das native Seitenleisten-Panel. Diese Module übersetzen zwischen
+Home-Assistant-Konzepten und Application Services, enthalten aber keine Backend-
+Payloadlogik.
 
 ### Application
 
@@ -117,6 +120,29 @@ authentifizierten `/ui-api`-Routen. Standalone behält den Hash im Loginzustand 
 öffnet ihn nach erfolgreicher Sessionerzeugung; weder Token noch Session-ID
 werden Bestandteil des Links.
 
+### Home-Assistant-Hauptansicht
+
+Für den ersten geladenen Native-Config-Entry registriert die Integration ein
+administratorgeschütztes `panel_custom` unter `/homelab-updates`. Ein statisches,
+abhängigkeitsfreies Web Component rendert Coordinator- und Task-Manager-Daten.
+Kompakte Snapshots laufen über einen Home-Assistant-WebSocket-Subscribe-Command;
+Host- und Joblistener pushen Änderungen ohne einen zweiten Browser-Poller.
+
+Der reguläre Snapshot enthält nie Jobausgabe oder Credentials. **Log öffnen**
+ruft einen getrennten admin-only WebSocket-Command auf, der über den bereits
+konfigurierten Native Adapter genau einen begrenzten redigierten Log abholt. Der
+Browser erhält dadurch weder den Backend-Token noch eine Backend-Session. Ein
+weiterer Command startet ausschließlich `CHECK_ALL`. Das Panel rendert fremde
+Texte mit `textContent` und nutzt weder HTML-Injektion noch Browser Storage.
+
+**Backend verwalten** ist ein tokenfreier Link auf die konfigurierte Backend-URL
+und eignet sich insbesondere für Standalone beziehungsweise browser-erreichbare
+Reverse-Proxy-URLs. Das Home-Assistant-App-Ingress bleibt eine getrennte
+Management-Oberfläche, weil dessen Supervisor-URL nicht aus der Backend-API-URL
+ableitbar ist. Bei mehreren Native-Einträgen besitzt zunächst der erste geladene
+Eintrag das globale Panel; nach dessen Unload wird ein weiterer geladener Native-
+Eintrag übernommen. Siehe [[adr/0007-home-assistant-main-panel]].
+
 ## Vorgesehene Laufzeitobjekte
 
 Ein typisiertes `ConfigEntry.runtime_data` enthält mindestens Coordinator,
@@ -163,4 +189,5 @@ Python-Protokolle und saubere Adaptergrenzen sind zunächst einfacher testbar un
 ausreichend flexibel.
 
 Siehe [[adr/0001-ports-and-adapters]], [[adr/0002-public-by-default]],
-[[adr/0004-safe-reboot-flow]] und [[adr/0005-native-backend-boundary]].
+[[adr/0004-safe-reboot-flow]], [[adr/0005-native-backend-boundary]] und
+[[adr/0007-home-assistant-main-panel]].

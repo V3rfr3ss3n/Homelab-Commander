@@ -14,7 +14,7 @@ ingress: true
 ingress_port: 8099
 ingress_entry: /
 panel_icon: mdi:server-network
-panel_title: Homelab Updates
+panel_title: Homelab Updates Backend
 panel_admin: true
 ports:
   8099/tcp: null

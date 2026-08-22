@@ -54,6 +54,22 @@ den redigierten Log, bleibt unter einem Ingress-Prefix relativ und enthält kein
 Token. Ohne gültige Standalone-Session bleibt der Deep Link erhalten, zeigt aber
 zunächst **Not connected**; nach dem Verbinden wird der gewünschte Job geladen.
 
+### Home Assistant Hauptansicht
+
+Mit einem geladenen Native-Config-Entry erscheint für Administratoren
+**Homelab Updates** direkt in Home Assistants Seitenleiste. Diese Hauptansicht
+zeigt Backendstatus, Hosts, laufende/wartende Jobs, den letzten Job und den
+historisch letzten Fehler. **Hosts prüfen** startet echte Check-Jobs für alle
+verwalteten Hosts. Die normalen Coordinator-Polls laufen automatisch und haben
+deshalb keinen zusätzlichen Aktualisieren-Button.
+
+**Log öffnen** lädt den redigierten Backendlog nur bei Bedarf über Home Assistants
+authentifizierte Verbindung. **Backend verwalten** öffnet die konfigurierte
+Backend-Basis-URL in einem neuen Tab. Diese URL muss aus dem Browser erreichbar
+sein; eine interne App-URL ist dafür ungeeignet. Beim Home-Assistant-App-Betrieb
+öffnet der separate Seitenleisteneintrag **Homelab Updates Backend** stattdessen
+die Supervisor-Ingress-Verwaltung.
+
 ## Konfiguration
 
 | Variable/Option | Pflicht | Bedeutung |
@@ -125,7 +141,8 @@ dieses Repositorys geprüft werden.
 - Mutierende Jobs desselben Hosts laufen nie parallel.
 - Logs enden bei 64 KiB und redigieren Zieladresse und Remote-Benutzer.
 - Home Assistant speichert nur kompakte Jobmetadaten. Vollständige Logs bleiben
-  im Backend und benötigen External-API-, Standalone-Session- oder Ingress-Auth.
+  im Backend und benötigen External-API-, Standalone-Session-, Ingress- oder
+  administratorgeschützte Home-Assistant-Panel-Auth.
 - Aktueller letzter Job und historisch letzter fehlgeschlagener Job sind getrennt;
   ein späterer Erfolg lässt einen älteren Fehler nur im historischen Sensor stehen.
 - Ein Update prüft danach den Status, löst aber keinen Reboot aus.

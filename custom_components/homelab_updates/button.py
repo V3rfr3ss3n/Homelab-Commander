@@ -8,7 +8,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import HomelabUpdatesConfigEntry
 from .application import TaskManager
-from .const import DOMAIN, NAME
+from .const import BACKEND_NATIVE, CONF_BACKEND_TYPE, DOMAIN, NAME
 from .coordinator import CustomTasksCoordinator, HomelabUpdatesCoordinator
 from .domain import Command
 from .entity import (
@@ -26,7 +26,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up global and dynamically discovered host buttons."""
     runtime = entry.runtime_data
-    async_add_entities([
+    global_buttons = [
         HomelabGlobalButton(
             entry.entry_id,
             runtime.task_manager,
@@ -34,14 +34,18 @@ async def async_setup_entry(
             "check_all",
             "mdi:update",
         ),
-        HomelabGlobalButton(
-            entry.entry_id,
-            runtime.task_manager,
-            Command.REFRESH_STATUS,
-            "refresh_status",
-            "mdi:database-refresh",
-        ),
-    ])
+    ]
+    if entry.data.get(CONF_BACKEND_TYPE) != BACKEND_NATIVE:
+        global_buttons.append(
+            HomelabGlobalButton(
+                entry.entry_id,
+                runtime.task_manager,
+                Command.REFRESH_STATUS,
+                "refresh_status",
+                "mdi:database-refresh",
+            )
+        )
+    async_add_entities(global_buttons)
     async_setup_dynamic_host_entities(
         entry,
         async_add_entities,

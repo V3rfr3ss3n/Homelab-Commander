@@ -3,6 +3,7 @@
   "config_flow": true,
   "documentation": "https://homelab-updates.example.invalid",
   "domain": "homelab_updates",
+  "dependencies": ["frontend", "panel_custom", "websocket_api"],
   "integration_type": "hub",
   "iot_class": "local_polling",
   "issue_tracker": "https://homelab-updates.example.invalid/issues",

@@ -15,7 +15,8 @@ by default.
 3. Refresh the store and install **Homelab Updates**.
 4. Set a random API token of at least 32 characters in **Configuration**.
 5. Keep shell tasks disabled unless their remote-code risk is explicitly accepted.
-6. Start the app, enable its sidebar entry and verify the Ingress dashboard.
+6. Start the app, enable its **Homelab Updates Backend** sidebar entry and verify
+   the Ingress dashboard.
 7. Copy only the displayed public SSH key to the dedicated remote user.
 8. Expose port `8099` only when the Home Assistant integration cannot reach the
    app through an internal route; the port remains protected by the same token.

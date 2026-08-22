@@ -24,6 +24,7 @@ separate status endpoint remains available as an optional legacy provider.
 - a reboot confirmation through Home Assistant Repairs when a reboot is needed
 - persistent asynchronous jobs with queued/running/success/failed/cancelled states
 - connectivity, queue counts, latest job and separate historical-failure entities
+- an admin-only Home Assistant sidebar overview with on-demand redacted job logs
 - dynamically discovered custom-task buttons
 - backend-managed persistent ED25519 identity; the API exposes only its public key
 - host and custom-task CRUD in an Ingress-compatible management page
@@ -110,6 +111,15 @@ latest job and type, and a separate latest failed job. Every host has the same
 latest/latest-failed distinction. Entity attributes contain only compact
 metadata and a token-free job URL; full output is never written to Home
 Assistant state or Recorder.
+
+For Native, administrators also get a **Homelab Updates** sidebar entry as the
+main Home Assistant view. It shows hosts, current job counts, the latest job and
+the separate latest failure. **Check hosts** is the single global manual action;
+normal coordinator refreshes happen automatically. **Open log** retrieves one
+bounded redacted log on demand through Home Assistant authentication, without
+exposing the backend token to the browser. **Manage backend** opens the configured
+browser-reachable backend URL. App installations retain a separate **Homelab
+Updates Backend** Ingress entry for host and task administration.
 
 ## Managed host setup
 
