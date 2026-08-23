@@ -4,22 +4,246 @@ on:
   pull_request:
   push:
     branches: [main]
+    tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      version:
+        description: Image version; must match the app version when publishing
+        required: true
+        default: 0.2.0-dev.0
+        type: string
+      publish:
+        description: Publish the versioned image to GHCR
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
 
+concurrency:
+  group: container-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  ARCHITECTURES: '["amd64", "aarch64"]'
+  IMAGE_NAME: homelab-updates-backend
+  REGISTRY_PREFIX: ghcr.io/v3rfr3ss3n
+
 jobs:
-  build:
+  policy:
+    name: Resolve publish policy
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 5
+    outputs:
+      publish: ${{ steps.policy.outputs.publish }}
+      version: ${{ steps.policy.outputs.version }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
-      - name: Build standalone and app image
-        run: docker build --tag homelab-updates-backend:test .
-      - name: Inspect unprivileged runtime identity
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve version and publish permission
+        id: policy
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          MANUAL_PUBLISH: ${{ inputs.publish || false }}
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REQUESTED_VERSION: ${{ inputs.version || '' }}
+        run: |
+          configured_version="$(sed -n 's/^version:[[:space:]]*//p' addon/homelab_updates/config.yaml)"
+          if [[ -z "${configured_version}" || "${configured_version}" == *$'\n'* ]]; then
+            echo "::error::Unable to read one app version from config.yaml"
+            exit 1
+          fi
+
+          version="${configured_version}"
+          publish=false
+          if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+            version="${REQUESTED_VERSION}"
+            publish="${MANUAL_PUBLISH}"
+            if [[ "${publish}" == "true" && "${REF_NAME}" != "main" ]]; then
+              echo "::error::Manual publication is allowed only from main"
+              exit 1
+            fi
+          elif [[ "${EVENT_NAME}" == "push" && "${REF_TYPE}" == "tag" ]]; then
+            version="${REF_NAME#v}"
+            publish=true
+            git merge-base --is-ancestor "${GITHUB_SHA}" origin/main || {
+              echo "::error::Version tags must point to a commit on main"
+              exit 1
+            }
+          fi
+
+          if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Image version is not a supported SemVer value"
+            exit 1
+          fi
+          if [[ "${publish}" == "true" && "${version}" != "${configured_version}" ]]; then
+            echo "::error::Published image version must match app config ${configured_version}"
+            exit 1
+          fi
+
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "publish=${publish}" >> "${GITHUB_OUTPUT}"
+
+  prepare:
+    name: Prepare architecture matrix
+    needs: policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - name: Prepare native runners
+        id: matrix
+        uses: home-assistant/builder/actions/prepare-multi-arch-matrix@4de35182ce1e329181bffcbcc84d33db5e2c7e10 # 2026.06.0
+        with:
+          architectures: ${{ env.ARCHITECTURES }}
+          image-name: ${{ env.IMAGE_NAME }}
+          registry-prefix: ${{ env.REGISTRY_PREFIX }}
+
+  build:
+    name: Build and validate ${{ matrix.arch }}
+    if: needs.policy.outputs.publish != 'true'
+    needs: [policy, prepare]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Build without publishing
+        uses: home-assistant/builder/actions/build-image@4de35182ce1e329181bffcbcc84d33db5e2c7e10 # 2026.06.0
+        with:
+          arch: ${{ matrix.arch }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          cosign: "false"
+          image: ${{ matrix.image }}
+          image-tags: ${{ needs.policy.outputs.version }}
+          labels: |
+            io.hass.type=app
+            io.hass.name=Homelab Updates
+            io.hass.description=Native operations backend for Homelab Updates
+          load: "true"
+          push: "false"
+          version: ${{ needs.policy.outputs.version }}
+
+      - name: Validate runtime contract
         run: >-
-          docker run --rm --entrypoint python
-          homelab-updates-backend:test -c
-          "import pwd; assert pwd.getpwnam('homelab-updates').pw_uid == 10001"
+          scripts/validate-container-image.sh
+          "${{ matrix.image }}:${{ needs.policy.outputs.version }}"
+          "${{ needs.policy.outputs.version }}"
+          "${{ matrix.arch }}"
+
+  publish:
+    name: Publish ${{ matrix.arch }}
+    if: needs.policy.outputs.publish == 'true'
+    needs: [policy, prepare]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Build and publish architecture image
+        uses: home-assistant/builder/actions/build-image@4de35182ce1e329181bffcbcc84d33db5e2c7e10 # 2026.06.0
+        with:
+          arch: ${{ matrix.arch }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          cosign: "false"
+          image: ${{ matrix.image }}
+          image-tags: ${{ needs.policy.outputs.version }}
+          labels: |
+            io.hass.type=app
+            io.hass.name=Homelab Updates
+            io.hass.description=Native operations backend for Homelab Updates
+          push: "true"
+          version: ${{ needs.policy.outputs.version }}
+
+  manifest:
+    name: Publish multi-architecture manifest
+    if: needs.policy.outputs.publish == 'true'
+    needs: [policy, prepare, publish]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Publish generic image reference
+        uses: home-assistant/builder/actions/publish-multi-arch-manifest@4de35182ce1e329181bffcbcc84d33db5e2c7e10 # 2026.06.0
+        with:
+          architectures: ${{ env.ARCHITECTURES }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          cosign: "false"
+          image-name: ${{ env.IMAGE_NAME }}
+          image-tags: ${{ needs.policy.outputs.version }}
+          registry-prefix: ${{ env.REGISTRY_PREFIX }}
+
+  verify-public:
+    name: Verify anonymous multi-architecture image
+    if: needs.policy.outputs.publish == 'true'
+    needs: [policy, manifest]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Verify manifest platforms without registry credentials
+        env:
+          IMAGE_REF: ${{ env.REGISTRY_PREFIX }}/${{ env.IMAGE_NAME }}:${{ needs.policy.outputs.version }}
+        run: |
+          docker logout ghcr.io || true
+          manifest="$(docker buildx imagetools inspect --raw "${IMAGE_REF}")"
+          jq -e '
+            [
+              .manifests[].platform
+              | select(.os == "linux")
+              | "\(.os)/\(.architecture)"
+            ]
+            | unique
+            | sort
+            == ["linux/amd64", "linux/arm64"]
+          ' <<< "${manifest}"
+
+      - name: Pull anonymously and validate runtime
+        env:
+          IMAGE_REF: ${{ env.REGISTRY_PREFIX }}/${{ env.IMAGE_NAME }}:${{ needs.policy.outputs.version }}
+        run: |
+          docker logout ghcr.io || true
+          for attempt in 1 2 3 4 5; do
+            if docker pull "${IMAGE_REF}"; then
+              scripts/validate-container-image.sh \
+                "${IMAGE_REF}" \
+                "${{ needs.policy.outputs.version }}" \
+                amd64
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::The published GHCR image is not anonymously pullable"
+          exit 1

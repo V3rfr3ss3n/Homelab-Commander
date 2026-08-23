@@ -1,7 +1,7 @@
 ---
 title: Abnahme
 status: accepted
-updated: 2026-08-22
+updated: 2026-08-23
 tags: [product, acceptance, release]
 ---
 
@@ -52,6 +52,8 @@ tags: [product, acceptance, release]
 - `rg`-basierter Privacy-Audit sowie Review der Git-Historie durchgeführt
 - Installation aus dem erzeugten Releaseartefakt in einer isolierten Testinstanz
   erfolgreich; keine Verbindung zu produktiver Infrastruktur
+- das von der App referenzierte Image ist ohne Registry-Anmeldung pullbar und
+  enthält `linux/amd64` sowie `linux/arm64`
 
 ## Nicht akzeptabel
 
@@ -125,3 +127,9 @@ tags: [product, acceptance, release]
 27. Sobald ein globaler Check terminal `success`, `failed` oder `cancelled` ist,
     wechselt das Panel aus **Prüfung läuft…** zurück zu **Hosts prüfen**, ohne auf
     einen späteren periodischen Coordinator-Poll zu warten.
+28. Pull Requests und normale `main`-Pushes bauen beide App-Architekturen ohne
+    Publication; nur ein passender Versionstag oder eine explizite Freigabe von
+    `main` veröffentlicht mit minimalen Package-Rechten.
+29. Ein frischer, nicht bei GHCR angemeldeter Runner zieht den generischen App-
+    Image-Tag und bestätigt ein Manifest für AMD64 und AArch64 sowie Healthcheck,
+    benötigte Werkzeuge und unprivilegierte Laufzeit.

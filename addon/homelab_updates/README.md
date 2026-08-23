@@ -9,4 +9,8 @@ Configure a random API token with at least 32 characters before first start.
 The optional port is disabled by default; expose it only when the Home Assistant
 integration cannot reach the app through an internal address.
 
+The app pulls the public, versioned AMD64/AArch64 image without registry
+credentials. Add
+`https://github.com/V3rfr3ss3n/Homelab-Commander` to the App Store repositories.
+
 See [the full operations guide](../../docs/04-operations/native-backend.md).

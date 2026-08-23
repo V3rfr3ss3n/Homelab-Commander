@@ -1,11 +1,20 @@
 """Static deployment security and consistency checks."""
 
 import json
+import struct
 from pathlib import Path
 
 import yaml
 
 ROOT = Path(__file__).parents[1]
+
+
+def _png_dimensions(path: Path) -> tuple[int, int]:
+    """Return dimensions from a local PNG without an image dependency."""
+    payload = path.read_bytes()
+    assert payload[:8] == b"\x89PNG\r\n\x1a\n"
+    assert payload[12:16] == b"IHDR"
+    return struct.unpack(">II", payload[16:24])
 
 
 def test_home_assistant_public_metadata_and_translation_contract() -> None:
@@ -61,11 +70,60 @@ def test_addon_uses_ingress_without_privileged_host_access() -> None:
     assert config["ingress_port"] == 8099
     assert config["ports"] == {"8099/tcp": None}
     assert config["image"] == "ghcr.io/v3rfr3ss3n/homelab-updates-backend"
+    assert config["version"] == "0.2.0-dev.0"
+    assert config["arch"] == ["aarch64", "amd64"]
     for forbidden in ("host_network", "privileged", "docker_api", "hassio_api"):
         assert forbidden not in config
     assert "map" not in config
-    assert (ROOT / "addon/homelab_updates/icon.png").stat().st_size > 0
-    assert (ROOT / "addon/homelab_updates/logo.png").stat().st_size > 0
+
+
+def test_packaged_branding_is_valid_and_consistent() -> None:
+    """Integration and app packages ship matching square PNG assets."""
+    integration_brand = ROOT / "custom_components/homelab_updates/brand"
+    addon = ROOT / "addon/homelab_updates"
+    integration_icon = integration_brand / "icon.png"
+    integration_icon_2x = integration_brand / "icon@2x.png"
+    addon_icon = addon / "icon.png"
+    addon_logo = addon / "logo.png"
+
+    assert _png_dimensions(integration_icon) == (256, 256)
+    assert _png_dimensions(integration_icon_2x) == (512, 512)
+    assert _png_dimensions(addon_icon) == (256, 256)
+    assert _png_dimensions(addon_logo) == (512, 512)
+    assert integration_icon.read_bytes() == addon_icon.read_bytes()
+    assert integration_icon_2x.read_bytes() == addon_logo.read_bytes()
+
+
+def test_public_app_repository_metadata_is_complete() -> None:
+    """The App Store entry links to its public project and has release notes."""
+    repository = yaml.safe_load((ROOT / "repository.yaml").read_text())
+    assert repository == {
+        "name": "Homelab Updates",
+        "url": "https://github.com/V3rfr3ss3n/Homelab-Commander",
+        "maintainer": "V3rfr3ss3n",
+    }
+    assert (ROOT / "addon/homelab_updates/CHANGELOG.md").is_file()
+
+
+def test_container_workflow_builds_multi_arch_and_gates_publication() -> None:
+    """Public images use the HA builder and an anonymous runtime gate."""
+    workflow = (ROOT / ".github/workflows/container.yml").read_text()
+    builder_ref = (
+        "home-assistant/builder/actions/"
+        "prepare-multi-arch-matrix@4de35182ce1e329181bffcbcc84d33db5e2c7e10"
+    )
+    assert builder_ref in workflow
+    assert workflow.count("@4de35182ce1e329181bffcbcc84d33db5e2c7e10") == 4
+    assert 'ARCHITECTURES: \'["amd64", "aarch64"]\'' in workflow
+    assert "image-name: ${{ env.IMAGE_NAME }}" in workflow
+    assert "if: needs.policy.outputs.publish != 'true'" in workflow
+    assert "if: needs.policy.outputs.publish == 'true'" in workflow
+    assert "packages: write" in workflow
+    assert "container-registry-password: ${{ secrets.GITHUB_TOKEN }}" in workflow
+    assert "docker logout ghcr.io || true" in workflow
+    assert "docker buildx imagetools inspect --raw" in workflow
+    assert "scripts/validate-container-image.sh" in workflow
+    assert "latest," not in workflow
 
 
 def test_compose_hardens_the_shared_image() -> None:

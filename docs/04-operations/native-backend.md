@@ -1,7 +1,7 @@
 ---
 title: Native Backend Betrieb
 status: active
-updated: 2026-08-22
+updated: 2026-08-23
 tags: [operations, backend, docker, ssh, ansible]
 ---
 
@@ -19,6 +19,13 @@ Image für Home Assistant. Persistente Daten liegen immer unter `/data`:
 
 Die App benötigt weder Host-Netzwerk, Docker-Socket noch Home-Assistant-
 Konfigurationszugriff. `/tmp` ist flüchtig. Backups müssen `/data` schützen.
+
+Nach der dokumentierten Veröffentlichung zieht die öffentliche App den exakt
+versionierten generischen Multi-Arch-Tag
+`ghcr.io/v3rfr3ss3n/homelab-updates-backend:0.2.0-dev.0`; Endnutzer benötigen
+keine Registry-Anmeldung. Der optionale Hostport ist ausschließlich nötig, wenn
+die Home-Assistant-Integration keinen anderen stabilen Netzwerkweg zur REST-API
+hat. Ingress selbst verwendet ihn ohne externe Veröffentlichung.
 
 ### Standalone Quick Start
 
