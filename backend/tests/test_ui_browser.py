@@ -20,6 +20,8 @@ from backend.tests.test_backend_api import TOKEN, FakeExecutor
 JOB_ID_CHECK = "00000000-0000-4000-8000-000000000091"
 JOB_ID_CONNECTION = "00000000-0000-4000-8000-000000000092"
 JOB_ID_FAILURE = "00000000-0000-4000-8000-000000000093"
+_SERVER_START_TIMEOUT_SECONDS = 5.0
+_SERVER_START_POLL_SECONDS = 0.01
 
 
 class _BrowserClock:
@@ -44,21 +46,24 @@ async def _live_server(app: Any) -> AsyncIterator[str]:
         uvicorn.Config(app, log_level="critical", lifespan="on", access_log=False)
     )
     task = asyncio.create_task(server.serve(sockets=[listener]))
-    for _attempt in range(1_000):
-        if server.started:
-            break
-        if task.done():
-            await task
-        await asyncio.sleep(0)
-    else:
-        server.should_exit = True
-        await task
-        raise AssertionError("Synthetic UI server did not start")
     try:
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + _SERVER_START_TIMEOUT_SECONDS
+        while not server.started:
+            if task.done():
+                await task
+                raise AssertionError("Synthetic UI server terminated before startup")
+            remaining = deadline - loop.time()
+            if remaining <= 0:
+                raise AssertionError("Synthetic UI server did not start")
+            await asyncio.sleep(min(_SERVER_START_POLL_SECONDS, remaining))
         yield f"http://127.0.0.1:{port}"
     finally:
         server.should_exit = True
-        await task
+        try:
+            await task
+        finally:
+            listener.close()
 
 
 class _PrefixProxy:
