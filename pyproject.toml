@@ -21,7 +21,7 @@ dependencies = [
 homelab-updates-backend = "homelab_backend.__main__:main"
 
 [build-system]
-requires = ["hatchling==1.27.0"]
+requires = ["hatchling==1.32.0"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
@@ -31,13 +31,13 @@ packages = ["backend/homelab_backend"]
 dev = [
   "home-assistant-frontend==20260729.7",
   "homeassistant==2026.8.2",
-  "httpx2==2.9.1",
-  "mypy==1.18.2",
-  "pip-audit==2.9.0",
+  "httpx2==2.12.0",
+  "mypy==2.3.1",
+  "pip-audit==2.10.1",
   "playwright==1.62.0",
   "pytest-cov==7.1.0",
   "pytest-homeassistant-custom-component>=0.13.338",
-  "ruff==0.12.12",
+  "ruff==0.16.3",
 ]
 
 [tool.pytest.ini_options]
