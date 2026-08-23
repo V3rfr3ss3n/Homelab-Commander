@@ -1,10 +1,10 @@
 {
-  "abort": {
-    "already_configured": "This automation backend project is already configured.",
-    "reauth_successful": "Reauthentication was successful.",
-    "reconfigure_successful": "The integration was reconfigured successfully."
-  },
   "config": {
+    "abort": {
+      "already_configured": "This automation backend project is already configured.",
+      "reauth_successful": "Reauthentication was successful.",
+      "reconfigure_successful": "The integration was reconfigured successfully."
+    },
     "error": {
       "cannot_connect": "Failed to connect to a configured service.",
       "invalid_auth": "The API token is invalid.",
@@ -14,6 +14,16 @@
       "unknown": "An unexpected error occurred."
     },
     "step": {
+      "native": {
+        "data": {
+          "api_token": "API token",
+          "backend_url": "Native backend URL",
+          "poll_interval": "Poll interval in seconds",
+          "verify_ssl": "Verify TLS certificates"
+        },
+        "description": "Connect to the native Homelab Updates backend.",
+        "title": "Native backend"
+      },
       "reauth_confirm": {
         "data": {
           "api_token": "API token"
@@ -24,6 +34,7 @@
       "reconfigure": {
         "data": {
           "check_template_id": "Check template ID",
+          "backend_url": "Native backend URL",
           "export_template_id": "Status export template ID",
           "poll_interval": "Poll interval in seconds",
           "project_id": "Project ID",
@@ -36,7 +47,7 @@
         "description": "Update service endpoints, templates, and polling behavior.",
         "title": "Reconfigure Homelab Updates"
       },
-      "user": {
+      "semaphore": {
         "data": {
           "api_token": "API token",
           "check_template_id": "Check template ID",
@@ -44,18 +55,28 @@
           "poll_interval": "Poll interval in seconds",
           "project_id": "Project ID",
           "reboot_template_id": "Reboot template ID",
-          "semaphore_url": "Automation backend URL",
+          "semaphore_url": "Semaphore URL",
           "status_url": "Status URL",
           "update_template_id": "Update template ID",
           "verify_ssl": "Verify TLS certificates"
         },
-        "description": "Connect Home Assistant to a status endpoint and an automation backend.",
+        "description": "Connect to the optional Semaphore legacy provider and status export.",
+        "title": "Semaphore legacy provider"
+      },
+      "user": {
+        "data": {
+          "backend_type": "Backend type"
+        },
+        "description": "Choose the backend that manages your homelab hosts.",
         "title": "Set up Homelab Updates"
       }
     }
   },
   "entity": {
     "binary_sensor": {
+      "backend_health": {
+        "name": "Backend connectivity"
+      },
       "reboot_required": {
         "name": "Reboot required"
       }
@@ -83,6 +104,21 @@
       },
       "last_check": {
         "name": "Last check"
+      },
+      "last_job": {
+        "name": "Last job"
+      },
+      "last_job_type": {
+        "name": "Last job type"
+      },
+      "last_failed_job": {
+        "name": "Last failed job"
+      },
+      "queued_jobs": {
+        "name": "Queued jobs"
+      },
+      "running_jobs": {
+        "name": "Running jobs"
       },
       "security_updates": {
         "name": "Security updates"

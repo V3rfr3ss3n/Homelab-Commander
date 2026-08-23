@@ -1,7 +1,7 @@
 ---
 title: Backlog
 status: active
-updated: 2026-08-20
+updated: 2026-08-22
 tags: [project, backlog]
 ---
 
@@ -13,6 +13,9 @@ und eine Privacy-Prüfung.
 
 ## Product
 
+- [ ] Auswahl oder getrennte Panel-Pfade für mehrere gleichzeitig geladene
+  Native-Config-Entries bewerten; `0.2` übergibt das globale Panel beim Unload
+  an den nächsten geladenen Eintrag
 - [ ] letzter Command-Status und Laufzeit je Host
 - [ ] Security-only Update als optionale Backend-Capability
 - [ ] Paketliste mit begrenzter, datenschutzfreundlicher Darstellung
@@ -23,10 +26,16 @@ und eine Privacy-Prüfung.
 
 ## Backends
 
-- [ ] Capability-Endpoint für ein zukünftiges Operations Backend definieren
-- [ ] zweiter Backend-Adapter als Architekturbeweis
-- [ ] Authentifizierungsvarianten jenseits von Bearer Token bewerten
+- [ ] kontrollierbares Job-Cancelling mit persistentem Zustand ergänzen
+- [ ] Custom-Task-Policy um Become, Timeout, Bestätigung und optionale
+  Host-/Gruppenfreigaben erweitern
+- [ ] Authentifizierungsvarianten für externe API-Clients jenseits von Bearer
+  Token bewerten; die Standalone UI nutzt bereits eine separate Kurzzeitsession
 - [ ] Push-Status und Webhooks bewerten
+- [ ] für `0.3` Server-Sent Events oder WebSockets als Ersatz für aktives
+  Management-UI-Jobpolling bewerten
+- [ ] native TLS-Terminierung bewerten; bis dahin HTTPS über einen Reverse Proxy
+- [ ] weitere Package Provider für DNF, Pacman und APK implementieren
 
 ## Homelab extensions
 

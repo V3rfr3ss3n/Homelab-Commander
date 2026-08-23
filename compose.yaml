@@ -1,0 +1,25 @@
+services:
+  homelab-updates:
+    build:
+      context: .
+    image: homelab-updates-backend:0.2.0-dev.0
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      HUL_API_TOKEN: ${HUL_API_TOKEN:?Set HUL_API_TOKEN to at least 32 characters}
+      HUL_ALLOW_SHELL_TASKS: "false"
+      HUL_LOG_LEVEL: INFO
+    ports:
+      - "127.0.0.1:8099:8099"
+    tmpfs:
+      - /tmp:mode=1777
+    volumes:
+      - homelab-updates-data:/data
+
+volumes:
+  homelab-updates-data:

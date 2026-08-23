@@ -8,13 +8,14 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import HomelabUpdatesConfigEntry
 from .application import TaskManager
-from .const import DOMAIN, NAME
-from .coordinator import HomelabUpdatesCoordinator
+from .const import BACKEND_NATIVE, CONF_BACKEND_TYPE, DOMAIN, NAME
+from .coordinator import CustomTasksCoordinator, HomelabUpdatesCoordinator
 from .domain import Command
 from .entity import (
     HomelabUpdatesEntity,
     async_setup_dynamic_host_entities,
     async_start_command,
+    async_start_custom_task,
 )
 
 
@@ -25,24 +26,26 @@ async def async_setup_entry(
 ) -> None:
     """Set up global and dynamically discovered host buttons."""
     runtime = entry.runtime_data
-    async_add_entities(
-        [
-            HomelabGlobalButton(
-                entry.entry_id,
-                runtime.task_manager,
-                Command.CHECK_ALL,
-                "check_all",
-                "mdi:update",
-            ),
+    global_buttons = [
+        HomelabGlobalButton(
+            entry.entry_id,
+            runtime.task_manager,
+            Command.CHECK_ALL,
+            "check_all",
+            "mdi:update",
+        ),
+    ]
+    if entry.data.get(CONF_BACKEND_TYPE) != BACKEND_NATIVE:
+        global_buttons.append(
             HomelabGlobalButton(
                 entry.entry_id,
                 runtime.task_manager,
                 Command.REFRESH_STATUS,
                 "refresh_status",
                 "mdi:database-refresh",
-            ),
-        ]
-    )
+            )
+        )
+    async_add_entities(global_buttons)
     async_setup_dynamic_host_entities(
         entry,
         async_add_entities,
@@ -52,6 +55,37 @@ async def async_setup_entry(
             host_id,
         ),
     )
+    if runtime.custom_tasks_coordinator is not None:
+        custom_tasks = runtime.custom_tasks_coordinator
+        known_pairs: set[tuple[str, str]] = set()
+
+        @callback
+        def _async_add_custom_tasks() -> None:
+            pairs = {
+                (host_id, task_id)
+                for host_id in runtime.coordinator.data
+                for task_id in custom_tasks.data
+            }
+            new_pairs = pairs - known_pairs
+            if not new_pairs:
+                return
+            known_pairs.update(new_pairs)
+            async_add_entities([
+                HomelabCustomTaskButton(
+                    runtime.coordinator,
+                    custom_tasks,
+                    runtime.task_manager,
+                    host_id,
+                    task_id,
+                )
+                for host_id, task_id in sorted(new_pairs)
+            ])
+
+        _async_add_custom_tasks()
+        entry.async_on_unload(
+            runtime.coordinator.async_add_listener(_async_add_custom_tasks)
+        )
+        entry.async_on_unload(custom_tasks.async_add_listener(_async_add_custom_tasks))
 
 
 class HomelabGlobalButton(ButtonEntity):
@@ -153,4 +187,51 @@ class HomelabRebootButton(HomelabUpdatesEntity, ButtonEntity):
             Command.REBOOT_HOST,
             self._host_id,
         )
+        self.async_write_ha_state()
+
+
+class HomelabCustomTaskButton(HomelabUpdatesEntity, ButtonEntity):
+    """Run one dynamically discovered custom task for one host."""
+
+    _attr_icon = "mdi:play-box-outline"
+
+    def __init__(
+        self,
+        coordinator: HomelabUpdatesCoordinator,
+        custom_tasks: CustomTasksCoordinator,
+        task_manager: TaskManager,
+        host_id: str,
+        task_id: str,
+    ) -> None:
+        super().__init__(coordinator, host_id, f"custom_task_{task_id}")
+        self._custom_tasks = custom_tasks
+        self._task_manager = task_manager
+        self._task_id = task_id
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            self._custom_tasks.async_add_listener(self.async_write_ha_state)
+        )
+        self.async_on_remove(
+            self._task_manager.async_add_listener(self.async_write_ha_state)
+        )
+
+    @property
+    def name(self) -> str:
+        task = self._custom_tasks.data.get(self._task_id)
+        return task.name if task is not None else self._task_id
+
+    @property
+    def available(self) -> bool:
+        task = self._custom_tasks.data.get(self._task_id)
+        return (
+            super().available
+            and task is not None
+            and task.enabled
+            and not self._task_manager.is_custom_running(self._task_id, self._host_id)
+        )
+
+    async def async_press(self) -> None:
+        await async_start_custom_task(self._task_manager, self._task_id, self._host_id)
         self.async_write_ha_state()

@@ -15,3 +15,7 @@ updates:
       development-dependencies:
         dependency-type: development
         patterns: ["*"]
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly

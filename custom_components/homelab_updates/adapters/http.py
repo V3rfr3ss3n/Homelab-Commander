@@ -14,7 +14,15 @@ from ..const import (
     TASK_TERMINAL_FAILURE,
     TASK_TERMINAL_SUCCESS,
 )
-from ..domain import Command, HostStatus, SemaphoreTask, TaskPhase
+from ..domain import (
+    BackendJobLog,
+    BackendTask,
+    Command,
+    CustomTaskDefinition,
+    HostStatus,
+    TaskId,
+    TaskPhase,
+)
 from ..exceptions import (
     AuthenticationError,
     CannotConnectError,
@@ -91,7 +99,7 @@ def parse_hosts(payload: object) -> dict[str, HostStatus]:
     return hosts
 
 
-def parse_task(payload: object, *, default_status: str = "waiting") -> SemaphoreTask:
+def parse_task(payload: object, *, default_status: str = "waiting") -> BackendTask:
     """Parse a Semaphore task response."""
     if not isinstance(payload, dict):
         raise SemaphoreTaskError("The task response is invalid")
@@ -113,10 +121,10 @@ def parse_task(payload: object, *, default_status: str = "waiting") -> Semaphore
         phase = TaskPhase.FAILED
     else:
         phase = TaskPhase.UNKNOWN
-    return SemaphoreTask(task_id=task_id, phase=phase, raw_status=raw_status)
+    return BackendTask(task_id=task_id, phase=phase, raw_status=raw_status)
 
 
-class StatusClient:
+class HttpStatusProvider:
     """Fetch and normalize all hosts from one status endpoint."""
 
     def __init__(
@@ -156,7 +164,7 @@ class StatusClient:
         return parse_hosts(payload)
 
 
-class SemaphoreClient:
+class SemaphoreBackend:
     """Automation backend adapter for the Semaphore task API."""
 
     def __init__(
@@ -197,8 +205,8 @@ class SemaphoreClient:
 
     async def async_start_command(
         self, command: Command, host_id: str | None = None
-    ) -> SemaphoreTask:
-        """Start a configured command task."""
+    ) -> BackendTask:
+        """Start a legacy configured command task."""
         if command in {Command.UPDATE_HOST, Command.REBOOT_HOST} and host_id is None:
             raise SemaphoreTaskError("This command requires a host")
         if command not in self._template_ids:
@@ -212,9 +220,32 @@ class SemaphoreClient:
         )
         return parse_task(payload)
 
+    async def async_check_hosts(self) -> BackendTask:
+        """Queue the configured read-only host check."""
+        return await self.async_start_command(Command.CHECK_ALL)
+
+    async def async_refresh_hosts(self) -> BackendTask:
+        """Queue the configured status export."""
+        return await self.async_start_command(Command.REFRESH_STATUS)
+
+    async def async_update_host(self, host_id: str) -> BackendTask:
+        """Queue an update for exactly one Semaphore inventory host."""
+        return await self.async_start_command(Command.UPDATE_HOST, host_id)
+
+    async def async_reboot_host(self, host_id: str) -> BackendTask:
+        """Queue a reboot for exactly one Semaphore inventory host."""
+        return await self.async_start_command(Command.REBOOT_HOST, host_id)
+
+    async def async_run_task(self, task_id: str, host_id: str) -> BackendTask:
+        """Queue a custom Semaphore template for exactly one host."""
+        template_id = _positive_integer(task_id, "template id", SemaphoreTaskError)
+        if not host_id.strip():
+            raise SemaphoreTaskError("This task requires a host")
+        return await self.async_start_task(template_id, host_id)
+
     async def async_start_task(
         self, template_id: int, limit: str | None = None
-    ) -> SemaphoreTask:
+    ) -> BackendTask:
         """Start an arbitrary configured Semaphore template."""
         body: dict[str, int | str] = {"template_id": template_id}
         if limit is not None:
@@ -224,12 +255,32 @@ class SemaphoreClient:
         )
         return parse_task(payload)
 
-    async def async_get_task(self, task_id: int) -> SemaphoreTask:
+    async def async_get_task(self, task_id: TaskId) -> BackendTask:
         """Fetch one task."""
+        numeric_task_id = _positive_integer(task_id, "task id", SemaphoreTaskError)
         payload = await self._async_request_json(
-            "GET", f"/api/project/{self._project_id}/tasks/{task_id}"
+            "GET", f"/api/project/{self._project_id}/tasks/{numeric_task_id}"
         )
         return parse_task(payload)
+
+    async def async_get_tasks(self) -> tuple[BackendTask, ...]:
+        """Fetch recent Semaphore tasks."""
+        payload = await self._async_request_json(
+            "GET", f"/api/project/{self._project_id}/tasks"
+        )
+        if not isinstance(payload, list):
+            raise SemaphoreTaskError("The task list response is invalid")
+        return tuple(parse_task(item) for item in payload)
+
+    async def async_get_custom_tasks(self) -> tuple[CustomTaskDefinition, ...]:
+        """Semaphore custom templates are not auto-exposed as trusted tasks."""
+        return ()
+
+    async def async_get_job_log(self, job_id: str) -> BackendJobLog:
+        """Reject the native-only normalized log contract explicitly."""
+        raise SemaphoreTaskError(
+            f"Normalized job logs are unavailable for Semaphore task {job_id}"
+        )
 
     async def async_get_task_output(self, task_id: int) -> object:
         """Fetch task output without logging its potentially sensitive body."""
@@ -363,3 +414,8 @@ def _timestamp(value: object) -> datetime:
     if parsed.tzinfo is None or parsed.utcoffset() is None:
         raise InvalidStatusDataError("The checked_at timestamp needs a timezone")
     return parsed
+
+
+# Compatibility aliases retained for the 0.1 import surface.
+StatusClient = HttpStatusProvider
+SemaphoreClient = SemaphoreBackend

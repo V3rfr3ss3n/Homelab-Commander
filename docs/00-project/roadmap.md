@@ -1,7 +1,7 @@
 ---
 title: Roadmap
 status: active
-updated: 2026-08-20
+updated: 2026-08-21
 tags: [project, roadmap]
 ---
 
@@ -26,12 +26,13 @@ kaschiert.
 - robustes Task-Tracking und Statusrefresh
 - Diagnostics, Übersetzungen, Tests und Release-Dokumentation
 
-## `0.2.x` – Operational feedback
+## `0.2.0-dev` – Native Backend
 
-- letzter Taskstatus, Laufzeit und verständlichere Fehlerzustände
-- Security-only Update, falls das Backend dies eindeutig unterstützt
-- optionaler Check je Host
-- Benachrichtigungen und intelligentere Refresh-Strategie
+- natives FastAPI-/SQLite-/Ansible-Backend mit persistenten Jobs
+- dasselbe Image für Standalone Docker und Home-Assistant-App
+- native Providerwahl und Migration bestehender Semaphore-Einträge
+- Ingress-Verwaltung für Hosts, Public Key, Jobs und Custom Tasks
+- letzter Taskstatus, Backend Health und Queue-Zustände in Home Assistant
 
 ## `0.3.x` – Maintenance workflows
 
@@ -42,9 +43,9 @@ kaschiert.
 
 ## `0.4.x` – Backend evolution
 
-- erster Adapter für eine dedizierte Homelab Operations API
+- weitere Adapter für Operations APIs
 - Capability Discovery statt fest angenommener Funktionen
-- Migrationspfad von Status-JSON plus Semaphore ohne Entity-Neuschreibung
+- Push-Status und Capability Negotiation bewerten
 
 ## Langfristig
 

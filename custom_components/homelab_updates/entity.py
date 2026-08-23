@@ -109,5 +109,28 @@ async def async_start_command(
         ) from err
 
 
+async def async_start_custom_task(
+    task_manager: TaskManager, task_id: str, host_id: str
+) -> None:
+    """Start a provider-defined task with the standard safe error mapping."""
+    try:
+        await task_manager.async_start_custom(task_id, host_id)
+    except AuthenticationError as err:
+        raise HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key="invalid_auth",
+        ) from err
+    except TaskAlreadyRunningError as err:
+        raise HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key="task_already_running",
+        ) from err
+    except HomelabUpdatesError as err:
+        raise HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key="task_start_failed",
+        ) from err
+
+
 def safe_extra_kwargs(kwargs: dict[str, Any]) -> None:
     """Consume HA update kwargs without using or logging their contents."""

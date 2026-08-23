@@ -7,6 +7,7 @@ from aiohttp import ClientSession
 from aiohttp.client_exceptions import ClientConnectionError
 
 from custom_components.homelab_updates.api import (
+    NativeBackendClient,
     SemaphoreClient,
     StatusClient,
     normalize_url,
@@ -16,6 +17,7 @@ from custom_components.homelab_updates.api import (
 from custom_components.homelab_updates.domain import Command, TaskPhase
 from custom_components.homelab_updates.exceptions import (
     AuthenticationError,
+    BackendTaskError,
     CannotConnectError,
     InvalidProjectError,
     InvalidStatusDataError,
@@ -24,6 +26,46 @@ from custom_components.homelab_updates.exceptions import (
 )
 
 from .conftest import API_TOKEN, SEMAPHORE_URL, STATUS_URL
+
+NATIVE_URL = "https://backend.example.invalid"
+HOST_ID = "00000000-0000-4000-8000-000000000001"
+JOB_ID = "00000000-0000-4000-8000-000000000002"
+
+
+def _native_client(session: ClientSession) -> NativeBackendClient:
+    return NativeBackendClient(session, NATIVE_URL, API_TOKEN)
+
+
+def _native_host_payload(**overrides: object) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "id": HOST_ID,
+        "name": "Node 01",
+        "distribution": "Example Linux",
+        "distribution_version": "1.0",
+        "kernel": "1.0.0-example",
+        "updates": 3,
+        "security_updates": 1,
+        "reboot_required": False,
+        "status": "ok",
+        "checked_at": "2026-01-15T12:00:00Z",
+    }
+    payload.update(overrides)
+    return payload
+
+
+def _native_job_payload(**overrides: object) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "id": JOB_ID,
+        "action": "update",
+        "host_id": HOST_ID,
+        "state": "queued",
+        "created_at": "2026-01-15T12:00:00Z",
+        "finished_at": None,
+        "error_code": None,
+        "reboot_required": None,
+    }
+    payload.update(overrides)
+    return payload
 
 
 def _payload(**overrides: object) -> dict[str, object]:
@@ -362,6 +404,38 @@ async def test_auxiliary_semaphore_endpoints(
     )
     assert await client.async_get_task_output(501) == [{"output": "synthetic"}]
 
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        task_url,
+        json=[
+            {"id": 501, "status": "success"},
+            {"id": 502, "status": "running"},
+        ],
+    )
+    tasks = await client.async_get_tasks()
+    assert [task.task_id for task in tasks] == [501, 502]
+
+
+async def test_semaphore_custom_task_is_fail_closed(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+) -> None:
+    """Custom legacy templates always carry an explicit inventory limit."""
+    task_url = f"{SEMAPHORE_URL}/api/project/1/tasks"
+    aioclient_mock.post(task_url, json={"id": 503})  # type: ignore[attr-defined]
+    client = _semaphore_client(aiohttp_client_session)
+
+    task = await client.async_run_task("99", "node-01")
+
+    assert task.task_id == 503
+    assert aioclient_mock.mock_calls[-1][2] == {  # type: ignore[attr-defined]
+        "template_id": 99,
+        "limit": "node-01",
+    }
+    with pytest.raises(SemaphoreTaskError):
+        await client.async_run_task("99", " ")
+    with pytest.raises(SemaphoreTaskError):
+        await client.async_run_task("not-a-number", "node-01")
+
 
 async def test_semaphore_transport_error(
     aioclient_mock: object,
@@ -396,3 +470,349 @@ async def test_semaphore_validation_errors(
     )
     with pytest.raises(error):
         await _semaphore_client(aiohttp_client_session).async_validate()
+
+
+async def test_native_client_validates_and_parses_hosts(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+) -> None:
+    """The native provider normalizes UUID hosts and accepts never-checked hosts."""
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/info", json={"api_version": "v1"}
+    )
+    client = _native_client(aiohttp_client_session)
+    await client.async_validate()
+
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/hosts",
+        json=[_native_host_payload(checked_at=None)],
+    )
+    hosts = await client.async_get_hosts()
+    assert hosts[HOST_ID].hostname == "Node 01"
+    assert hosts[HOST_ID].checked_at is None
+
+
+async def test_native_client_actions_and_batch_tracking(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+) -> None:
+    """Global and host actions keep their exact native job identities."""
+    client = _native_client(aiohttp_client_session)
+    aioclient_mock.post(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/hosts/{HOST_ID}/actions/update",
+        json=_native_job_payload(),
+    )
+    assert (await client.async_update_host(HOST_ID)).task_id == JOB_ID
+
+    second_job = "00000000-0000-4000-8000-000000000003"
+    aioclient_mock.post(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/actions/check",
+        json=[
+            _native_job_payload(action="check_updates"),
+            _native_job_payload(id=second_job, action="check_updates", state="running"),
+        ],
+    )
+    batch = await client.async_check_hosts()
+    assert batch.phase is TaskPhase.RUNNING
+
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/jobs/{JOB_ID}",
+        json=_native_job_payload(state="success"),
+    )
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/jobs/{second_job}",
+        json=_native_job_payload(id=second_job, state="success"),
+    )
+    completed = await client.async_get_task(batch.task_id)
+    assert completed.phase is TaskPhase.SUCCESS
+
+
+async def test_native_client_lists_jobs_and_rejects_invalid_target(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+) -> None:
+    """Job history is typed and malformed mutation targets never reach HTTP."""
+    client = _native_client(aiohttp_client_session)
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/jobs",
+        json=[
+            _native_job_payload(
+                state="failed",
+                host_name="Node 01",
+                started_at="2026-01-15T12:00:01Z",
+                finished_at="2026-01-15T12:00:03Z",
+                exit_code=2,
+                error_code="synthetic",
+                short_error="Synthetic failure",
+                duration=2.0,
+                log_available=True,
+            )
+        ],
+    )
+    tasks = await client.async_get_tasks()
+    assert tasks[0].phase is TaskPhase.FAILED
+    assert tasks[0].error_code == "synthetic"
+    assert tasks[0].host_name == "Node 01"
+    assert tasks[0].exit_code == 2
+    assert tasks[0].duration == 2.0
+    assert tasks[0].log_available
+    assert tasks[0].job_url == f"{NATIVE_URL}/#/jobs/{JOB_ID}"
+    with pytest.raises(BackendTaskError):
+        await client.async_reboot_host("not-a-uuid")
+
+
+async def test_native_client_gets_job_log_and_maps_not_found(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+) -> None:
+    """Job logs are explicit, typed, and never put the API token in the URL."""
+    client = _native_client(aiohttp_client_session)
+    url = f"{NATIVE_URL}/api/v1/jobs/{JOB_ID}/log"
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        url,
+        json={"job_id": JOB_ID, "output": "redacted output", "truncated": False},
+    )
+
+    log = await client.async_get_job_log(JOB_ID)
+
+    assert log.output == "redacted output"
+    assert API_TOKEN not in str(aioclient_mock.mock_calls[-1][0])  # type: ignore[attr-defined]
+
+    aioclient_mock.clear_requests()  # type: ignore[attr-defined]
+    aioclient_mock.get(url, status=404)  # type: ignore[attr-defined]
+    with pytest.raises(BackendTaskError, match="Job log not found"):
+        await client.async_get_job_log(JOB_ID)
+
+
+async def test_native_client_discovers_and_runs_custom_tasks(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+) -> None:
+    """Custom task metadata stays provider-neutral and execution is host-limited."""
+    task_id = "00000000-0000-4000-8000-000000000004"
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/custom-tasks",
+        json=[
+            {
+                "id": task_id,
+                "name": "Synthetic task",
+                "description": "No real command",
+                "enabled": True,
+                "mode": "command",
+                "argv": ["true"],
+            }
+        ],
+    )
+    client = _native_client(aiohttp_client_session)
+    tasks = await client.async_get_custom_tasks()
+    assert tasks[0].task_id == task_id
+    assert tasks[0].name == "Synthetic task"
+
+    aioclient_mock.post(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/hosts/{HOST_ID}/actions/tasks/{task_id}",
+        json=_native_job_payload(action="custom_task"),
+    )
+    assert (await client.async_run_task(task_id, HOST_ID)).task_id == JOB_ID
+
+
+@pytest.mark.parametrize("status", [401, 403])
+async def test_native_client_authentication_errors(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+    status: int,
+) -> None:
+    """Native authentication failures use the common reauth category."""
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/info", status=status
+    )
+    with pytest.raises(AuthenticationError):
+        await _native_client(aiohttp_client_session).async_validate()
+
+
+async def test_native_client_rejects_incompatible_and_non_list_responses(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+) -> None:
+    """Every native collection and compatibility boundary fails closed."""
+    client = _native_client(aiohttp_client_session)
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/info", json={"api_version": "v2"}
+    )
+    with pytest.raises(InvalidStatusDataError):
+        await client.async_validate()
+
+    for path in ("hosts", "jobs", "custom-tasks"):
+        aioclient_mock.get(  # type: ignore[attr-defined]
+            f"{NATIVE_URL}/api/v1/{path}", json={"unexpected": True}
+        )
+    with pytest.raises(InvalidStatusDataError):
+        await client.async_get_hosts()
+    with pytest.raises(BackendTaskError):
+        await client.async_get_tasks()
+    with pytest.raises(BackendTaskError):
+        await client.async_get_custom_tasks()
+
+    aioclient_mock.post(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/actions/check", json={"unexpected": True}
+    )
+    with pytest.raises(BackendTaskError):
+        await client.async_refresh_hosts()
+
+
+async def test_native_client_duplicate_hosts_and_empty_batch(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+) -> None:
+    """Duplicate UUIDs are rejected and an empty batch is already complete."""
+    client = _native_client(aiohttp_client_session)
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/hosts",
+        json=[_native_host_payload(), _native_host_payload(name="Duplicate")],
+    )
+    with pytest.raises(InvalidStatusDataError):
+        await client.async_get_hosts()
+    assert (await client.async_get_task("batch:")).phase is TaskPhase.SUCCESS
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        [],
+        _native_host_payload(id="invalid"),
+        _native_host_payload(name=1),
+        _native_host_payload(updates=-1),
+        _native_host_payload(updates=True),
+        _native_host_payload(reboot_required="false"),
+        _native_host_payload(checked_at=1),
+        _native_host_payload(checked_at="invalid"),
+        _native_host_payload(checked_at="2026-01-15T12:00:00"),
+    ],
+)
+async def test_native_client_rejects_invalid_host_fields(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+    payload: object,
+) -> None:
+    """Malformed host fields never become partial Home Assistant state."""
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/hosts", json=[payload]
+    )
+    with pytest.raises(InvalidStatusDataError):
+        await _native_client(aiohttp_client_session).async_get_hosts()
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        [],
+        _native_job_payload(id="invalid"),
+        _native_job_payload(state=1),
+        _native_job_payload(host_id="invalid"),
+        _native_job_payload(action=1),
+        _native_job_payload(created_at=1),
+        _native_job_payload(created_at="invalid"),
+        _native_job_payload(created_at="2026-01-15T12:00:00"),
+        _native_job_payload(reboot_required="false"),
+        _native_job_payload(host_name=1),
+        _native_job_payload(started_at="invalid"),
+        _native_job_payload(exit_code=True),
+        _native_job_payload(short_error=1),
+        _native_job_payload(duration=-1),
+        _native_job_payload(log_available="true"),
+    ],
+)
+async def test_native_client_rejects_invalid_job_fields(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+    payload: object,
+) -> None:
+    """Malformed job metadata maps to one safe task error."""
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/jobs", json=[payload]
+    )
+    with pytest.raises(BackendTaskError):
+        await _native_client(aiohttp_client_session).async_get_tasks()
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        [],
+        {"id": JOB_ID, "name": "Task", "enabled": "yes"},
+        {"id": JOB_ID, "name": 1, "enabled": True},
+    ],
+)
+async def test_native_client_rejects_invalid_custom_tasks(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+    payload: object,
+) -> None:
+    """Dynamic task discovery accepts only valid provider-neutral metadata."""
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/custom-tasks", json=[payload]
+    )
+    with pytest.raises(BackendTaskError):
+        await _native_client(aiohttp_client_session).async_get_custom_tasks()
+
+
+async def test_native_client_rejects_http_and_payload_failures(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+) -> None:
+    """HTTP, JSON, and response-size failures expose no backend body."""
+    client = _native_client(aiohttp_client_session)
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/info", status=500, content=b"sensitive body"
+    )
+    with pytest.raises(CannotConnectError):
+        await client.async_validate()
+    aioclient_mock.clear_requests()  # type: ignore[attr-defined]
+
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/info", content=b"not-json"
+    )
+    with pytest.raises(InvalidStatusDataError):
+        await client.async_validate()
+    aioclient_mock.clear_requests()  # type: ignore[attr-defined]
+
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/info", content=b"0" * (2 * 1024 * 1024 + 1)
+    )
+    with pytest.raises(InvalidStatusDataError):
+        await client.async_validate()
+
+
+async def test_native_client_covers_single_jobs_and_all_batch_phases(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+) -> None:
+    """Single-job lookup and empty, waiting, and failed batches are stable."""
+    client = _native_client(aiohttp_client_session)
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/jobs/{JOB_ID}",
+        json=_native_job_payload(reboot_required=True),
+    )
+    assert (await client.async_get_task(JOB_ID)).reboot_required is True
+
+    for payload, phase in (
+        ([], TaskPhase.SUCCESS),
+        ([_native_job_payload()], TaskPhase.WAITING),
+        ([_native_job_payload(state="failed")], TaskPhase.FAILED),
+    ):
+        aioclient_mock.post(  # type: ignore[attr-defined]
+            f"{NATIVE_URL}/api/v1/actions/check", json=payload
+        )
+        assert (await client.async_check_hosts()).phase is phase
+        aioclient_mock.clear_requests()  # type: ignore[attr-defined]
+
+
+async def test_native_client_maps_connection_errors(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+) -> None:
+    """Transport exceptions map to the provider-neutral connection error."""
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/info", exc=ClientConnectionError()
+    )
+    with pytest.raises(CannotConnectError):
+        await _native_client(aiohttp_client_session).async_validate()

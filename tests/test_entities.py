@@ -142,9 +142,9 @@ async def test_reboot_and_global_buttons_use_expected_targets(
     assert reboot_state is not None
     assert reboot_state.state == "unavailable"
 
-    runtime.coordinator.async_set_updated_data(
-        {"node-01": replace(host, reboot_required=True)}
-    )
+    runtime.coordinator.async_set_updated_data({
+        "node-01": replace(host, reboot_required=True)
+    })
     await hass.async_block_till_done()
     reboot_state = hass.states.get("button.example_node_reboot")
     assert reboot_state is not None

@@ -27,5 +27,7 @@ jobs:
           enable-cache: true
       - name: Install locked dependencies
         run: uv sync --locked
+      - name: Install browser for management UI tests
+        run: uv run playwright install --with-deps chromium
       - name: Run quality gate
         run: make quality

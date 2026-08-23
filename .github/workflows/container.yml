@@ -1,0 +1,25 @@
+name: Container
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Build standalone and app image
+        run: docker build --tag homelab-updates-backend:test .
+      - name: Inspect unprivileged runtime identity
+        run: >-
+          docker run --rm --entrypoint python
+          homelab-updates-backend:test -c
+          "import pwd; assert pwd.getpwnam('homelab-updates').pw_uid == 10001"

@@ -1,278 +1,187 @@
 # Homelab Updates
 
-Homelab Updates is a local-polling Home Assistant custom integration that shows
-Linux package status as native Home Assistant devices and runs explicit
-maintenance actions through Semaphore and Ansible.
+Homelab Updates is a public-safe Home Assistant project for viewing and
+deliberately operating Linux update state. Version `0.2.0-dev.0` consists of:
 
-> [!NOTE]
-> Version `0.1.0` is implemented but has not been publicly released. The public
-> repository URLs must be configured before creating a release.
+- a Home Assistant custom integration;
+- a native FastAPI/SQLite/Ansible backend;
+- a Home Assistant app (formerly add-on) with an Ingress management page.
 
-## Features
+The backend also runs as the same standalone Docker image. Semaphore plus a
+separate status endpoint remains available as an optional legacy provider.
 
-- Setup, reauthentication, and reconfiguration entirely in Home Assistant's UI
-- Any number of hosts discovered dynamically from one JSON status endpoint
-- One Home Assistant device per stable inventory host ID
-- Native update entity with install support and asynchronous progress tracking
-- Available update, security update, kernel, distribution, and last-check sensors
-- Reboot-required binary sensor and explicit host reboot button
-- Local light/dark-compatible branding for Home Assistant 2026.3 and newer
-- Native repair notification with confirmation before a required reboot
-- Global check-all and status-export/refresh buttons
-- Central polling: exactly one status request per coordinator refresh
-- Independent status and command failure domains
-- English and German UI translations
-- Privacy-preserving diagnostics without host identities or credentials
-- HACS-compatible layout and comprehensive automated quality gates
+> [!WARNING]
+> `0.2.0-dev.0` is a development version, not a stable release. Repository and
+> container publication are intentionally blocked until final public URLs and
+> release verification are complete.
+
+## What it provides
+
+- UI-only provider selection, setup, reauthentication and reconfiguration
+- stable UUID devices for native hosts; stable inventory IDs for Semaphore
+- update, security-update, kernel, distribution and last-check sensors
+- native update entities and explicit reboot buttons
+- a reboot confirmation through Home Assistant Repairs when a reboot is needed
+- persistent asynchronous jobs with queued/running/success/failed/cancelled states
+- connectivity, queue counts, latest job and separate historical-failure entities
+- an admin-only Home Assistant sidebar overview with on-demand redacted job logs
+- dynamically discovered custom-task buttons
+- backend-managed persistent ED25519 identity; the API exposes only its public key
+- host and custom-task CRUD in an Ingress-compatible management page
+- English and German Home Assistant and app configuration text
+- strict typing, high line/branch coverage, dependency audit and privacy gates
+
+Updates never trigger a reboot. Reboot remains a separate user action and is only
+enabled when the newest host status explicitly reports that it is required.
 
 ## Architecture
 
 ```text
-Home Assistant UI and entities
-             |
-       application services
-        /               \
-status provider     automation backend
-        |                  |
- local status API     Semaphore + Ansible
-                           |
-                       Linux hosts
+Home Assistant entities and config flow
+                 |
+       provider-neutral protocols
+          /                  \
+ native REST client       Semaphore adapter
+          |                  + status adapter
+ native backend
+ API → services → SQLite queue → Ansible → one selected host
+          |
+ Add-on Ingress UI or standalone Docker
 ```
 
-Entity modules do not know Semaphore endpoint details. External payloads are
-parsed into immutable domain models at adapter boundaries, making a future
-dedicated operations backend possible without rewriting entity platforms.
+Home Assistant never receives private SSH material and never starts Ansible. Host
+credentials, inventory, processes and persistent jobs stay inside the backend.
+Entity modules know neither REST endpoint paths nor Semaphore payloads.
 
-## Requirements
+## Native backend: Docker Compose
 
-- Home Assistant `2026.8.0` or newer
-- Semaphore with a project accessible through its HTTP API
-- Four task templates:
-  - check all managed hosts
-  - update one host with the Semaphore Limit Prompt enabled
-  - reboot one host with the Limit Prompt enabled
-  - export or refresh the status document
-- An HTTP or HTTPS endpoint serving the expected status JSON
+1. Generate a random token of at least 32 characters outside this repository.
+2. Export it as `HUL_API_TOKEN` in your shell or an uncommitted `.env` file.
+3. Start the service:
 
-Home Assistant never connects to hosts using SSH and does not run Ansible itself.
+   ```bash
+   docker compose up --build -d
+   ```
 
-## Installation
+The sample binds the API only to `127.0.0.1:8099`. Change the port mapping only
+when another machine must connect, and retain token authentication and network
+filtering. Persistent state uses the `homelab-updates-data` volume.
+The management UI is served at the same origin. Standalone exchanges the API
+token once for an opaque, short-lived HttpOnly cookie; the token is not persisted
+in browser storage or cookies. A normal reload recovers that session and reloads
+the dashboard. Disconnect, expiry, or a backend restart returns to **Not
+connected**. Active jobs update automatically without a manual Refresh click.
+Each recent job opens at the token-free `#/jobs/<job-id>` route with compact
+metadata and its bounded redacted log. The same deep link works below an Ingress
+prefix and returns to the requested job after standalone authentication.
 
-### Manual development installation
+## Home Assistant app
 
-1. Copy `custom_components/homelab_updates` into the Home Assistant configuration
-   directory under `custom_components/`.
-2. Restart Home Assistant.
-3. Clear the browser cache if the integration does not appear immediately.
-4. Continue with [Setup](#setup).
+The repository contains `repository.yaml` and the app under
+`addon/homelab_updates`. Configure a random API token before first start, then use
+the Ingress panel to copy the public SSH key, register hosts and create tasks.
 
-### HACS
+The app requests no host network, Docker socket, Home Assistant configuration
+mount or privileged capability. Its optional API port is disabled by default and
+can be exposed from the app's Network settings when required by the integration.
 
-HACS installation will be documented after the first public GitHub release. Until
-then, do not treat development snapshots as supported releases.
+## Home Assistant integration
 
-## Semaphore setup
+Copy `custom_components/homelab_updates` to Home Assistant, restart Home
+Assistant, then open **Settings → Devices & services → Add integration** and
+choose one provider:
 
-Create four templates in one project and record their numeric IDs. Host-specific
-update and reboot templates must allow Semaphore's Limit Prompt, because the
-integration supplies the stable inventory host ID as `limit`.
+### Native backend
 
-Conceptually, actions are sent as:
+Enter the backend base URL, the same API token, poll interval and TLS choice. The
+integration validates API v1 before storing the entry. A newly registered native
+host is visible immediately, even before its first status check.
 
-```json
-{
-  "template_id": 12,
-  "limit": "node-01"
-}
-```
+### Semaphore legacy provider
 
-The IDs are examples only. Every ID is entered in Home Assistant's UI and no
-project-specific value is compiled into the integration.
+Enter the Semaphore URL/token/project, separate status URL, four template IDs,
+poll interval and TLS choice. Host update and reboot templates must accept the
+integration-supplied inventory limit.
 
-Use a dedicated API token with the smallest permissions that can read the project
-and start or inspect the required tasks.
+Existing `0.1` config entries migrate automatically to the Semaphore provider.
+See the [migration guide](docs/04-operations/migration-0.1-to-0.2.md).
 
-## Expected status JSON
+The native hub exposes backend connectivity, running and queued job counts, the
+latest job and type, and a separate latest failed job. Every host has the same
+latest/latest-failed distinction. Entity attributes contain only compact
+metadata and a token-free job URL; full output is never written to Home
+Assistant state or Recorder.
 
-The endpoint returns one JSON object. Each top-level key is the canonical and
-stable Ansible inventory host ID:
+For Native, administrators also get a **Homelab Updates** sidebar entry as the
+main Home Assistant view. It shows hosts, current job counts, the latest job and
+the separate latest failure. **Check hosts** is the single global manual action;
+normal coordinator refreshes happen automatically. **Open log** retrieves one
+bounded redacted log on demand through Home Assistant authentication, without
+exposing the backend token to the browser. **Manage backend** opens the configured
+browser-reachable backend URL. App installations retain a separate **Homelab
+Updates Backend** Ingress entry for host and task administration.
 
-```json
-{
-  "node-01": {
-    "checked_at": "2026-01-15T12:00:00Z",
-    "distribution": "Example Linux",
-    "distribution_version": "1.0",
-    "host": "node-01",
-    "hostname": "example-node",
-    "kernel": "1.0.0-generic",
-    "reboot_required": false,
-    "security_updates": 2,
-    "status": "critical",
-    "updates": 5
-  }
-}
-```
+## Managed host setup
 
-`updates`, `security_updates`, `reboot_required`, and timezone-aware `checked_at`
-are required. Descriptive text fields are optional. Unknown fields are ignored.
-If the optional `host` field is present, it must equal its top-level key.
+The backend supports Debian and Ubuntu through `DebianAptProvider`. Register a
+dedicated, least-privilege remote user, install the public key shown by the UI,
+and grant only the sudo operations required by the APT and reboot Ansible modules.
+Do not copy a private key into Home Assistant or the repository.
 
-## Setup
+`Test connection` validates SSH, automatic Python 3 discovery, distribution facts
+and non-interactive sudo using the same inventory policy as later jobs. A check
+then refreshes APT metadata, reads a locale-stable update list and reports reboot
+need; warnings remain in the technical job log and are not treated as failures.
 
-1. Open **Settings → Devices & services → Add integration**.
-2. Search for **Homelab Updates**.
-3. Enter:
-   - Semaphore base URL
-   - API token
-   - project ID
-   - status document URL
-   - the four template IDs
-   - polling interval
-   - whether TLS certificates must be verified
-4. Submit the form. Home Assistant validates the backend project and the complete
-   status payload before storing the entry.
+Detailed commands and threat-model notes are in the
+[native backend operations guide](docs/04-operations/native-backend.md).
 
-HTTP is supported for isolated local networks. HTTPS with certificate validation
-is the safe default. Configured URLs cannot contain credentials, fragments, or
-query parameters.
+## Custom tasks
 
-Use **Reconfigure** on the integration entry to change endpoints, project,
-templates, TLS behavior, or polling interval. An authentication failure starts a
-dedicated reauthentication flow for replacing the token.
-
-## Entities
-
-Each discovered host receives:
-
-| Platform | Entity | Purpose |
-| --- | --- | --- |
-| Update | System updates | Native install action; available when `updates > 0` |
-| Sensor | Available updates | Total package count |
-| Sensor | Security updates | Security package count |
-| Sensor | Kernel | Diagnostic kernel string |
-| Sensor | Distribution | Diagnostic OS name and version |
-| Sensor | Last check | Timezone-aware timestamp |
-| Binary sensor | Reboot required | Status-provided reboot flag |
-| Button | Reboot | Host-limited restart; enabled only while a reboot is required |
-
-The integration hub device contains **Check all hosts** and **Refresh status**
-buttons. It never triggers automatic updates or reboots internally.
-
-The restart action uses Home Assistant's native `restart` button class and an
-alert icon. Home Assistant controls the final icon color according to the active
-frontend theme; integrations cannot force a portable red entity color. The
-button remains unavailable until the latest status explicitly reports
-`reboot_required: true` and is also locked while an update or reboot is running.
-
-## Data updates and task behavior
-
-The coordinator fetches the entire host snapshot at the configured interval. All
-entities read this in-memory snapshot and perform no network I/O in properties.
-
-After a command starts, its Semaphore task is polled asynchronously with a bounded
-deadline. A successful update, check, or status-export task requests a coordinator
-refresh. Semaphore success alone never claims a host is updated: only the next
-status payload changes update availability.
-
-When the refreshed status reports that a reboot is required, Home Assistant
-creates a warning under **Settings → System → Repairs**. Opening **Fix issue**
-shows a confirmation that names the affected host and warns about service
-interruption. Only submitting that dialog starts the host-limited reboot;
-closing it postpones the action. No update ever reboots a host automatically.
-
-If the status endpoint fails, status-driven entities become unavailable and
-recover on a later successful poll. A command-backend failure does not discard the
-last valid status snapshot. Missing hosts remain registered and become unavailable;
-new hosts are added dynamically.
+Command tasks are stored as an argument array and run through
+`ansible.builtin.command`, without shell interpretation. Shell tasks are a
+separate visible mode and are disabled by default at deployment level. Never put
+passwords or tokens in task commands; task definitions are returned to authorized
+administrators for editing.
 
 ## Security and privacy
 
-- Tokens are stored only in Home Assistant's config entry storage.
-- Tokens, authorization headers, raw response bodies, and configuration dumps are
-  never logged.
-- Diagnostics redact the token, sanitize URLs, omit host IDs, and expose only
-  aggregate runtime health.
-- Redirects are disabled, response sizes and request durations are bounded, and
-  TLS verification is disabled only for the selected config entry when explicitly
-  configured.
-- This repository uses only synthetic endpoints and host data.
+- API access uses a constant-time checked Bearer token.
+- Standalone UI uses an eight-hour absolute/one-hour idle opaque HttpOnly session;
+  the API token is sent only to the login endpoint.
+- Ingress relies on Supervisor access control; mutations also require a per-process
+  CSRF token.
+- private SSH keys, authorization headers and configuration dictionaries are not
+  returned or logged;
+- job output is bounded, NUL-stripped and redacts the selected host address/user;
+- job logs remain behind API-token, standalone-session or Ingress authentication
+  and are never copied into Home Assistant entities or diagnostics;
+- mutating jobs are serialized per host and unknown targets fail before execution;
+- examples use only `example.invalid`, synthetic UUIDs and generic host names.
 
-See [SECURITY.md](SECURITY.md) and the detailed
-[security model](docs/04-operations/security-and-privacy.md).
-
-## Troubleshooting
-
-### Integration icon still shows a placeholder
-
-Homelab Updates includes local `brand/icon.png` and `brand/icon@2x.png` assets.
-After replacing the integration files, restart Home Assistant and perform a hard
-browser refresh. Home Assistant and browsers may retain the previous placeholder
-in their brand cache for a while.
-
-### Cannot connect
-
-Verify that Home Assistant can resolve and reach both configured URLs. Confirm the
-scheme, port, firewall rules, and TLS certificate. Redirecting endpoints are not
-accepted.
-
-### Invalid authentication
-
-Create or rotate the Semaphore API token, then use the integration's reauthenticate
-flow. Do not paste tokens into issues or logs.
-
-### Invalid project
-
-Confirm that the numeric project exists and the token can access it.
-
-### Invalid status data
-
-Validate that the endpoint returns a JSON object, not an HTML login/error page.
-Check required scalar types and ensure `checked_at` contains a timezone.
-
-### Task starts but affects no host
-
-Enable the Limit Prompt on the Semaphore update/reboot template and confirm that
-the JSON top-level host ID exactly matches the Ansible inventory name.
-
-### Host is unavailable
-
-Confirm the host is still present in the newest status document. Hosts are not
-deleted merely because one snapshot omits them.
-
-## Removal
-
-1. Open **Settings → Devices & services → Homelab Updates**.
-2. Delete the config entry.
-3. Remove the integration from HACS or delete its custom component directory.
-4. Restart Home Assistant after manual file removal.
-
-Removing the integration does not modify Semaphore, Ansible, or managed hosts.
+Read the complete [security model](docs/04-operations/security-and-privacy.md) and
+[API contract](docs/02-architecture/native-api.md).
 
 ## Development
 
-The project uses Python 3.14, uv, Ruff, Mypy strict, Pytest, Coverage, Hassfest,
-HACS validation, dependency auditing, CodeQL, and secret/privacy scanning.
+Python `3.14` and `uv` are required:
 
 ```bash
 uv sync --locked
+make browser-install
 make quality
 ```
 
-The test suite uses synthetic fixtures and intercepts every network request. It
-must never contact a real backend. Read [CONTRIBUTING.md](CONTRIBUTING.md),
-[AGENTS.md](AGENTS.md), and the [documentation vault](docs/README.md) before
-changing behavior.
+Tests mock every HTTP request and execution adapter. They never contact a real
+backend, run Ansible against a host, update a host or reboot one. Start with
+[AGENTS.md](AGENTS.md) and the [Obsidian-ready docs vault](docs/README.md).
 
-## Known limitations
+## Removal
 
-- `0.1.0` supports one status provider and one Semaphore project per config entry.
-- Individual package selection, automatic reboot, direct SSH, Windows updates,
-  container updates, backup, snapshot, and VM lifecycle operations are out of
-  scope.
-- Removed hosts are retained as unavailable registry entries in `0.1.0`.
-- A public HACS release is blocked until real repository URLs are configured in
-  the manifest.
+Delete the Home Assistant config entry, then remove the integration. Stop and
+remove the app/container separately. Deleting the persistent backend volume also
+deletes its database and SSH identity and is intentionally not part of normal
+removal.
 
 ## License
 

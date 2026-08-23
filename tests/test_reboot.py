@@ -25,9 +25,9 @@ async def _require_reboot(
 ) -> str:
     runtime = entry.runtime_data
     host = runtime.coordinator.data["node-01"]
-    runtime.coordinator.async_set_updated_data(
-        {"node-01": replace(host, reboot_required=True)}
-    )
+    runtime.coordinator.async_set_updated_data({
+        "node-01": replace(host, reboot_required=True)
+    })
     await hass.async_block_till_done()
     return reboot_issue_id(entry.entry_id, "node-01")
 
@@ -55,9 +55,9 @@ async def test_reboot_required_creates_fixable_issue(
 
     runtime = mock_entry.runtime_data
     host = runtime.coordinator.data["node-01"]
-    runtime.coordinator.async_set_updated_data(
-        {"node-01": replace(host, reboot_required=False)}
-    )
+    runtime.coordinator.async_set_updated_data({
+        "node-01": replace(host, reboot_required=False)
+    })
     await hass.async_block_till_done()
     assert issue_registry.async_get_issue(DOMAIN, issue_id) is None
 

@@ -1,7 +1,7 @@
 ---
 title: Architektur
 status: accepted
-updated: 2026-08-20
+updated: 2026-08-22
 tags: [architecture, design]
 ---
 
@@ -12,14 +12,20 @@ tags: [architecture, design]
 ```mermaid
 flowchart LR
     U[Home Assistant user] --> HA[Homelab Updates]
-    HA --> SP[Status Provider]
-    HA --> AB[Automation Backend]
-    AB --> AN[Ansible]
+    U --> HP[HA sidebar panel]
+    HP --> HA
+    HA --> NB[Native Backend API]
+    HA -. optional .-> SE[Semaphore Provider]
+    UI[Add-on Ingress UI] --> NB
+    NB --> DB[(SQLite)]
+    NB --> AN[Ansible execution adapter]
     AN --> H[Managed Linux hosts]
 ```
 
-Home Assistant besitzt weder Inventar noch Hostzugangsdaten. Es liest
-normalisierten Status und sendet absichtliche Commands an einen Adapter.
+Home Assistant besitzt weder Inventar noch Hostzugangsdaten. Das native Backend
+ist dieselbe Anwendung im Add-on und Standalone-Container. Es liefert
+normalisierten Status und nimmt absichtliche Commands an. Semaphore bleibt ein
+alternativer Legacy-Provider.
 
 ## Schichten
 
@@ -28,7 +34,7 @@ flowchart TD
     E[Entity platforms and config flows]
     A[Application services and protocols]
     D[Typed domain models and state machines]
-    P[Status and Semaphore adapters]
+    P[Native and Semaphore adapters]
     I[Home Assistant and HTTP infrastructure]
     E --> A
     A --> D
@@ -39,9 +45,10 @@ flowchart TD
 
 ### Presentation
 
-Config Flow, Coordinator-gebundene Entities, DeviceInfo, Übersetzungen und
-Diagnostics. Diese Module übersetzen zwischen Home-Assistant-Konzepten und
-Application Services, enthalten aber keine Backend-Payloadlogik.
+Config Flow, Coordinator-gebundene Entities, DeviceInfo, Übersetzungen,
+Diagnostics und das native Seitenleisten-Panel. Diese Module übersetzen zwischen
+Home-Assistant-Konzepten und Application Services, enthalten aber keine Backend-
+Payloadlogik.
 
 ### Application
 
@@ -57,9 +64,84 @@ oder aiohttp-Typen.
 
 ### Adapters
 
-`HttpStatusProvider` kennt das Statusformat. `SemaphoreAutomationBackend` kennt
-Semaphore-Endpunkte, Authentifizierung und Responseformate. Spätere Backends
-implementieren dasselbe Protocol oder deklarieren Capabilities.
+`NativeBackendClient` kennt die versionierte native REST-API.
+`HttpStatusProvider` und `SemaphoreBackend` kapseln das Legacy-Modell mit
+getrenntem Status-Export. Alle implementieren dieselben Provider-Protocols oder
+deklarieren optionale Capabilities.
+
+### Native Backend
+
+Der Backend-Kern trennt API, Application Services, Domainmodelle, Persistenz und
+Execution Adapter. SQLite speichert Hosts, Jobs und Custom Tasks. Ein begrenzter
+Worker nimmt Jobs aus der persistenten Queue; mutierende Aktionen werden pro
+Host serialisiert. SSH- und Ansible-Details gelangen nicht in API-Domainmodelle.
+
+Der Ansible Adapter erzeugt pro Lauf ein isoliertes Ein-Host-Inventory. Alle
+Module verwenden `auto_silent` für dieselbe automatische Interpreter-Erkennung.
+Ein projektinterner stdout-Callback kapselt genau ein Modulevent als JSON;
+Warnungen und technische Ausgabe bleiben getrennt im begrenzten Joblog. Der
+Adapter akzeptiert Daten nur bei Prozess-Exit `0`, Taskstatus `ok` und gültigem
+Envelope. Das ersetzt das frühere Parsen des menschenlesbaren Ad-hoc-Formats.
+
+Das additive API-Jobmodell normalisiert Hostname, Typ, Zustand, Zeitstempel,
+Exit-Code, sicheren Kurzfehler, Dauer und Logverfügbarkeit. Home Assistant hält
+davon ausschließlich kompakte Metadaten im Coordinator: der neueste Job und der
+neueste fehlgeschlagene Job werden unabhängig ausgewählt. Ein späterer Erfolg
+überschreibt deshalb den aktuellen Job, aber nicht den historischen Fehler.
+
+Der Debian-Provider beschreibt Paketmanageroperationen, nicht deren Transport.
+`check_updates` orchestriert Facts, idempotenten APT-Cache-Refresh, locale-stabile
+Paketliste und Reboot-Dateistatus als einzeln klassifizierte Phasen. Weitere
+Provider können dieselbe Grenze nutzen, ohne API, Queue oder Entities zu ändern.
+
+### Add-on
+
+Das Add-on verpackt exakt denselben Backend-Kern. Es ergänzt Startskript,
+Optionsübersetzung und eine Ingress-Weboberfläche, erhält aber weder
+Docker-Socket noch Host-Netzwerk. Persistente Daten liegen unter `/data`.
+
+### Management UI Auth und Livezustand
+
+Die External API bleibt Bearer-authentifiziert. Standalone tauscht den Token an
+einem dedizierten Login-Endpunkt gegen eine kurzlebige, prozesslokale opaque
+Session im HttpOnly Cookie. Ingress nutzt stattdessen ausschließlich Supervisor
+als Authentifizierungsgrenze. Mutationen beider UI-Modi benötigen CSRF.
+
+Ein zentraler Dashboard-Refresh lädt die vollständige Ansicht. Nur während
+`queued`/`running` existiert, lädt ein einzelner UI-Poller gezielt Jobs und Hosts
+nach. Terminalzustände stoppen ihn; Fehler verlängern das Intervall. Spätere
+Push-Transporte können diese Presentation-Grenze ersetzen, ohne Queue oder API-
+Domainmodelle zu ändern. Siehe [[adr/0006-standalone-ui-session]].
+
+Jobbuttons navigieren ausschließlich über einen lokalen Hash nach
+`#/jobs/<job-id>`. Der Hash bewahrt beliebige Ingress-Prefixe und wird nicht an
+den Server übertragen. Metadaten und redigierter Log kommen weiterhin aus
+authentifizierten `/ui-api`-Routen. Standalone behält den Hash im Loginzustand und
+öffnet ihn nach erfolgreicher Sessionerzeugung; weder Token noch Session-ID
+werden Bestandteil des Links.
+
+### Home-Assistant-Hauptansicht
+
+Für den ersten geladenen Native-Config-Entry registriert die Integration ein
+administratorgeschütztes `panel_custom` unter `/homelab-updates`. Ein statisches,
+abhängigkeitsfreies Web Component rendert Coordinator- und Task-Manager-Daten.
+Kompakte Snapshots laufen über einen Home-Assistant-WebSocket-Subscribe-Command;
+Host- und Joblistener pushen Änderungen ohne einen zweiten Browser-Poller.
+
+Der reguläre Snapshot enthält nie Jobausgabe oder Credentials. **Log öffnen**
+ruft einen getrennten admin-only WebSocket-Command auf, der über den bereits
+konfigurierten Native Adapter genau einen begrenzten redigierten Log abholt. Der
+Browser erhält dadurch weder den Backend-Token noch eine Backend-Session. Ein
+weiterer Command startet ausschließlich `CHECK_ALL`. Das Panel rendert fremde
+Texte mit `textContent` und nutzt weder HTML-Injektion noch Browser Storage.
+
+**Backend verwalten** ist ein tokenfreier Link auf die konfigurierte Backend-URL
+und eignet sich insbesondere für Standalone beziehungsweise browser-erreichbare
+Reverse-Proxy-URLs. Das Home-Assistant-App-Ingress bleibt eine getrennte
+Management-Oberfläche, weil dessen Supervisor-URL nicht aus der Backend-API-URL
+ableitbar ist. Bei mehreren Native-Einträgen besitzt zunächst der erste geladene
+Eintrag das globale Panel; nach dessen Unload wird ein weiterer geladener Native-
+Eintrag übernommen. Siehe [[adr/0007-home-assistant-main-panel]].
 
 ## Vorgesehene Laufzeitobjekte
 
@@ -96,7 +178,7 @@ werden an der Grenze in sichere projektspezifische Exceptions übersetzt.
 
 ## Erweiterungspunkte
 
-- neue `StatusProvider`-Implementierung
+- neue `HostProvider`-Implementierung
 - neues `AutomationBackend`
 - optionale Backend-Capabilities
 - neue, thematisch begrenzte Entity-Plattform oder Application Services
@@ -106,5 +188,6 @@ Nicht vorgesehen ist ein universelles Plugin-System innerhalb der Integration.
 Python-Protokolle und saubere Adaptergrenzen sind zunächst einfacher testbar und
 ausreichend flexibel.
 
-Siehe [[adr/0001-ports-and-adapters]], [[adr/0002-public-by-default]] und
-[[adr/0004-safe-reboot-flow]].
+Siehe [[adr/0001-ports-and-adapters]], [[adr/0002-public-by-default]],
+[[adr/0004-safe-reboot-flow]], [[adr/0005-native-backend-boundary]] und
+[[adr/0007-home-assistant-main-panel]].
