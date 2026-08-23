@@ -5,8 +5,23 @@ a Home Assistant custom integration with a separate native backend that connects
 to managed hosts through SSH and Ansible.
 
 > [!WARNING]
-> Version `0.2.0-dev.0` is a development release. Use it in a test environment
+> Version `0.2.0-dev.1` is a development release. Use it in a test environment
 > first and keep backups of the backend `/data` volume.
+
+## Two components, one Native setup
+
+The recommended Native setup requires both installable components:
+
+| Component | Name in Home Assistant | Responsibility |
+| --- | --- | --- |
+| HACS custom integration | **Homelab Updates** | Config flow, devices, entities, update/reboot controls, diagnostics and the operational sidebar panel |
+| Home Assistant App | **Homelab Updates Backend** | FastAPI backend, SQLite, Ansible/OpenSSH, persistent jobs, SSH identity and the management Ingress UI |
+
+The App alone does not create Home Assistant entities. The HACS integration alone
+does not contain or run the native Ansible backend. Install both for the
+recommended Native experience. Their two sidebar entries are intentionally
+different: use **Homelab Updates Backend** to onboard hosts and use
+**Homelab Updates** for daily operation.
 
 ## What it does
 
@@ -31,21 +46,24 @@ The integration and the Home Assistant app use the same public repository:
 `https://github.com/V3rfr3ss3n/Homelab-Commander`
 
 1. In HACS, open **Integrations → Custom repositories**, add the repository URL
-   as category **Integration**, and install **Homelab Updates**.
-2. Restart Home Assistant after HACS finishes installing the integration.
-3. Open **Settings → Apps → App store → Repositories** and add the same
+   as category **Integration**.
+2. Install **Homelab Updates** from HACS.
+3. Restart Home Assistant after HACS finishes installing the integration.
+4. Open **Settings → Apps → App store → Repositories** and add the same
    repository URL.
-4. Install **Homelab Updates**, then open its **Configuration** tab.
-5. Generate a random API token with at least 32 characters outside this
-   repository, enter it as `api_token`, and keep shell tasks disabled.
-6. Start the app and open **Homelab Updates Backend** through Ingress.
-7. Copy the displayed public SSH key into the dedicated target user's
-   `authorized_keys` file. Never copy the private key.
-8. Add a Debian or Ubuntu host in the management UI and run **Test connection**.
-9. Make the backend API reachable from the Home Assistant integration as
-   described below. Then open **Settings → Devices & services → Add integration**,
-   select **Homelab Updates → Native backend**, and enter the backend URL and the
-   same API token.
+5. Install **Homelab Updates Backend**, then open its **Configuration** tab.
+6. Generate a random API token with at least 32 characters outside this
+   repository, enter it as `api_token`, keep shell tasks disabled, and start the
+   App.
+7. Open **Homelab Updates Backend** through its authenticated Ingress sidebar.
+8. Copy the displayed public SSH key to the dedicated target user's
+   `authorized_keys`, add the host, and run **Test connection**.
+9. Make the backend API reachable as described below. Open
+   **Settings → Devices & services → Add integration**, select
+   **Homelab Updates → Native backend**, and enter that URL and the same token.
+10. Use the **Homelab Updates** integration panel for daily host, update and job
+    operation; return to **Homelab Updates Backend** for host onboarding and
+    backend administration.
 
 There is no zero-configuration discovery in this development version.
 
@@ -55,7 +73,21 @@ Ingress itself does not need a published port. The Home Assistant integration,
 however, must reach the backend REST API continuously. This version does not
 discover a stable Supervisor-internal app hostname automatically.
 
-For the predictable public-installation path:
+On Home Assistant OS and Supervised installations, Core can normally reach the
+App through the internal app network without publishing a host port. Run
+`ha addons list` in the Home Assistant terminal and locate the full installed App
+identifier. If it is `<repository-id>_homelab_updates`, use:
+
+`http://<repository-id>-homelab-updates:8099`
+
+as the Native backend URL, replacing underscores with hyphens exactly as shown.
+The repository identifier is generated from the repository URL and must never be
+copied from another installation or hardcoded in this project. Keep the port
+mapping disabled when this URL works. The API still requires the configured
+Bearer token.
+
+If the internal name is unavailable in a particular installation, use this LAN
+fallback:
 
 1. Open the app's **Network** settings.
 2. Publish `8099/tcp` on an unused Home Assistant host port.
@@ -63,7 +95,7 @@ For the predictable public-installation path:
    `http://ha-host.example.invalid:8099`, replacing the reserved example host
    with your Home Assistant host's actual LAN address.
 
-The published port is protected by the API token but does not provide TLS.
+The published external API is protected by the API token but does not provide TLS.
 Restrict it to a trusted network and never expose it directly to the internet.
 If you already have a trusted reverse proxy or a verified Supervisor-internal
 route, you may use that instead and leave the host port disabled.
@@ -130,7 +162,7 @@ Ingress management page.
 ### App installation reports GHCR denied
 
 The app requires the public image
-`ghcr.io/v3rfr3ss3n/homelab-updates-backend:0.2.0-dev.0`. A `401` or `403`
+`ghcr.io/v3rfr3ss3n/homelab-updates-backend:0.2.0-dev.1`. A `401` or `403`
 means that this exact image version has not been published publicly yet. Users
 must not log in to GHCR; the maintainer must complete the documented publication
 and one-time package-visibility step.
@@ -145,9 +177,10 @@ separate. There is no external branding URL in `hacs.json`, and Home Assistant
 
 ### Integration cannot connect to the app
 
-Do not enter a Supervisor Ingress URL as the backend URL. Publish the app's API
-port or provide another route that Home Assistant Core can reach, then use the
-same API token configured in the app.
+Do not enter a Supervisor Ingress URL as the backend URL. Use the generated
+internal App hostname described above, publish the API port as a LAN fallback, or
+provide another route that Home Assistant Core can reach. Use the same API token
+configured in the App.
 
 ## Standalone Docker
 

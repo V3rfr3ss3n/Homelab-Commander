@@ -5,13 +5,16 @@ import stat
 import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 from uuid import UUID
 
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.homelab_backend.app import create_app
+from backend.homelab_backend.app import (
+    _resolve_supervisor_ingress_addresses,
+    create_app,
+)
 from backend.homelab_backend.automation import (
     AutomationExecutionError,
     ExecutionResult,
@@ -89,6 +92,7 @@ def _client(
     ingress_mode: bool = False,
     session_store: UiSessionStore | None = None,
     base_url: str = "http://testserver",
+    client_host: str | None = None,
 ) -> TestClient:
     return TestClient(
         create_app(
@@ -100,8 +104,15 @@ def _client(
             ),
             executor=executor,
             session_store=session_store,
+            ingress_proxy_addresses=(
+                frozenset({"supervisor-proxy"}) if ingress_mode else None
+            ),
         ),
         base_url=base_url,
+        client=(
+            client_host or ("supervisor-proxy" if ingress_mode else "testclient"),
+            50000,
+        ),
     )
 
 
@@ -490,6 +501,81 @@ def test_ingress_ui_uses_supervisor_boundary_and_csrf(tmp_path: Path) -> None:
             ).status_code
             == 201
         )
+
+        assert client.get("/api/v1/info").status_code == 401
+        assert client.get("/api/v1/info", headers=AUTH).status_code == 200
+
+
+def test_ingress_ui_rejects_requests_outside_supervisor_proxy(tmp_path: Path) -> None:
+    """Ingress trust never makes management routes public on the app port."""
+    with _client(
+        tmp_path,
+        FakeExecutor(),
+        ingress_mode=True,
+        client_host="192.0.2.10",
+    ) as client:
+        assert client.get("/").status_code == 403
+        assert client.get("/ui.js").status_code == 403
+        assert client.get("/ui.css").status_code == 403
+        assert client.get("/ui-api/info").status_code == 403
+        assert client.get("/api/v1/info").status_code == 401
+        assert client.get("/api/v1/info", headers=AUTH).status_code == 200
+
+
+def test_ingress_resolves_stable_supervisor_alias_at_startup(tmp_path: Path) -> None:
+    """Production Ingress trust derives from Supervisor DNS, not a stored IP."""
+    resolver = AsyncMock(return_value=frozenset({"resolved-supervisor-proxy"}))
+    app = create_app(
+        Settings(data_dir=tmp_path, api_token=TOKEN, ingress_mode=True),
+        executor=FakeExecutor(),
+    )
+    with (
+        patch(
+            "backend.homelab_backend.app._resolve_supervisor_ingress_addresses",
+            resolver,
+        ),
+        TestClient(app, client=("resolved-supervisor-proxy", 50000)) as client,
+    ):
+        assert client.get("/").status_code == 200
+        assert client.get("/ui-api/info").status_code == 200
+    resolver.assert_awaited_once_with()
+
+
+@pytest.mark.asyncio
+async def test_ingress_proxy_address_resolution_filters_non_ip_results() -> None:
+    """Supervisor resolution accepts only concrete string addresses."""
+    getaddrinfo = AsyncMock(
+        return_value=[
+            (2, 1, 6, "", ("198.51.100.1", 0)),
+            (1, 1, 0, "", (7,)),
+        ]
+    )
+    with patch.object(asyncio.get_running_loop(), "getaddrinfo", getaddrinfo):
+        assert await _resolve_supervisor_ingress_addresses() == frozenset({
+            "198.51.100.1"
+        })
+
+
+@pytest.mark.asyncio
+async def test_ingress_proxy_address_resolution_fails_closed_on_dns_error() -> None:
+    """Ingress does not start when the trusted Supervisor source is unknown."""
+    getaddrinfo = AsyncMock(side_effect=OSError("synthetic DNS failure"))
+    with (
+        patch.object(asyncio.get_running_loop(), "getaddrinfo", getaddrinfo),
+        pytest.raises(RuntimeError, match="Unable to resolve"),
+    ):
+        await _resolve_supervisor_ingress_addresses()
+
+
+@pytest.mark.asyncio
+async def test_ingress_proxy_address_resolution_fails_closed_without_ip() -> None:
+    """Non-IP resolver results cannot accidentally authorize Ingress traffic."""
+    getaddrinfo = AsyncMock(return_value=[(1, 1, 0, "", (7,))])
+    with (
+        patch.object(asyncio.get_running_loop(), "getaddrinfo", getaddrinfo),
+        pytest.raises(RuntimeError, match="without an IP address"),
+    ):
+        await _resolve_supervisor_ingress_addresses()
 
 
 def test_standalone_ui_uses_short_lived_cookie_session_and_csrf(

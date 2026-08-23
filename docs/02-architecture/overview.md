@@ -1,7 +1,7 @@
 ---
 title: Architektur
 status: accepted
-updated: 2026-08-22
+updated: 2026-08-23
 tags: [architecture, design]
 ---
 
@@ -11,12 +11,13 @@ tags: [architecture, design]
 
 ```mermaid
 flowchart LR
-    U[Home Assistant user] --> HA[Homelab Updates]
-    U --> HP[HA sidebar panel]
-    HP --> HA
+    U[Home Assistant user] --> HP[Homelab Updates operational panel]
+    U --> UI[Homelab Updates Backend Ingress]
+    HP --> HA[HACS custom integration]
     HA --> NB[Native Backend API]
     HA -. optional .-> SE[Semaphore Provider]
-    UI[Add-on Ingress UI] --> NB
+    UI --> APP[Home Assistant App]
+    APP --> NB
     NB --> DB[(SQLite)]
     NB --> AN[Ansible execution adapter]
     AN --> H[Managed Linux hosts]
@@ -26,6 +27,13 @@ Home Assistant besitzt weder Inventar noch Hostzugangsdaten. Das native Backend
 ist dieselbe Anwendung im Add-on und Standalone-Container. Es liefert
 normalisierten Status und nimmt absichtliche Commands an. Semaphore bleibt ein
 alternativer Legacy-Provider.
+
+Der empfohlene Native-Pfad besteht aus zwei unabhängig installierbaren
+Komponenten. Die HACS-Integration besitzt Config Flow, Geräte, Entities,
+Diagnostics und die operative **Homelab Updates**-Ansicht. Die Home Assistant App
+besitzt FastAPI, SQLite, Ansible/OpenSSH, SSH-Identität, persistente Jobs und die
+administrative **Homelab Updates Backend**-Ingress-Ansicht. Keine der beiden
+Komponenten ersetzt die andere.
 
 ## Schichten
 
@@ -99,6 +107,10 @@ Provider können dieselbe Grenze nutzen, ohne API, Queue oder Entities zu änder
 Das Add-on verpackt exakt denselben Backend-Kern. Es ergänzt Startskript,
 Optionsübersetzung und eine Ingress-Weboberfläche, erhält aber weder
 Docker-Socket noch Host-Netzwerk. Persistente Daten liegen unter `/data`.
+Der Ingress-Einstieg verwendet den Supervisor-Standard `/`; ein eigener
+`ingress_entry` wird nicht gesetzt. Root, Assets und Management-API akzeptieren
+im Ingress-Modus nur den Supervisor-Proxy. Die External API bleibt davon getrennt
+und Bearer-authentifiziert.
 
 ### Management UI Auth und Livezustand
 

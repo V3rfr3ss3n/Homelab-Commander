@@ -1,6 +1,8 @@
 """FastAPI composition root for the native backend."""
 
+import asyncio
 import secrets
+import socket
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Annotated
@@ -49,11 +51,30 @@ from .version import __version__
 _bearer = HTTPBearer(auto_error=False)
 
 
+async def _resolve_supervisor_ingress_addresses() -> frozenset[str]:
+    """Resolve the stable Supervisor alias without persisting an environment IP."""
+    try:
+        address_info = await asyncio.get_running_loop().getaddrinfo(
+            "supervisor",
+            None,
+            type=socket.SOCK_STREAM,
+        )
+    except OSError as err:
+        raise RuntimeError("Unable to resolve the Supervisor ingress proxy") from err
+    addresses = frozenset(
+        address for result in address_info if isinstance((address := result[4][0]), str)
+    )
+    if not addresses:
+        raise RuntimeError("Supervisor ingress proxy resolved without an IP address")
+    return addresses
+
+
 def create_app(
     settings: Settings | None = None,
     *,
     executor: AutomationExecutor | None = None,
     session_store: UiSessionStore | None = None,
+    ingress_proxy_addresses: frozenset[str] | None = None,
 ) -> FastAPI:
     """Build an isolated application instance for production or tests."""
     resolved = settings or Settings.from_env()
@@ -74,9 +95,13 @@ def create_app(
     )
     csrf_token = secrets.token_urlsafe(32)
     ui_sessions = session_store or UiSessionStore()
+    trusted_ingress_addresses = ingress_proxy_addresses or frozenset()
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        nonlocal trusted_ingress_addresses
+        if resolved.ingress_mode and ingress_proxy_addresses is None:
+            trusted_ingress_addresses = await _resolve_supervisor_ingress_addresses()
         await database.async_migrate()
         await keys.async_ensure()
         await jobs.async_start()
@@ -101,10 +126,26 @@ def create_app(
         if not secrets.compare_digest(credentials.credentials, resolved.api_token):
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Authentication failed")
 
+    async def authorize_ingress_source(request: Request) -> None:
+        if not resolved.ingress_mode:
+            return
+        if (
+            request.client is None
+            or request.client.host not in trusted_ingress_addresses
+        ):
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "Ingress access required",
+            )
+
     async def authorize_ui(
+        request: Request,
         session_id: Annotated[str | None, Cookie(alias=UI_SESSION_COOKIE)] = None,
     ) -> None:
-        if not resolved.ingress_mode and not ui_sessions.authenticate(session_id):
+        if resolved.ingress_mode:
+            await authorize_ingress_source(request)
+            return
+        if not ui_sessions.authenticate(session_id):
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "UI session expired")
 
     async def verify_csrf(
@@ -130,7 +171,11 @@ def create_app(
             ),
         )
 
-    @app.get("/", response_class=HTMLResponse)
+    @app.get(
+        "/",
+        response_class=HTMLResponse,
+        dependencies=[Depends(authorize_ingress_source)],
+    )
     async def user_interface() -> HTMLResponse:
         ingress = "true" if resolved.ingress_mode else "false"
         api_base = "ui-api/"
@@ -152,11 +197,19 @@ def create_app(
             },
         )
 
-    @app.get("/ui.js", include_in_schema=False)
+    @app.get(
+        "/ui.js",
+        include_in_schema=False,
+        dependencies=[Depends(authorize_ingress_source)],
+    )
     async def user_interface_javascript() -> Response:
         return Response(UI_JAVASCRIPT, media_type="application/javascript")
 
-    @app.get("/ui.css", include_in_schema=False)
+    @app.get(
+        "/ui.css",
+        include_in_schema=False,
+        dependencies=[Depends(authorize_ingress_source)],
+    )
     async def user_interface_stylesheet() -> Response:
         return Response(UI_STYLESHEET, media_type="text/css")
 

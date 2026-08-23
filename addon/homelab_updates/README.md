@@ -13,4 +13,5 @@ The app pulls the public, versioned AMD64/AArch64 image without registry
 credentials. Add
 `https://github.com/V3rfr3ss3n/Homelab-Commander` to the App Store repositories.
 
-See [the full operations guide](../../docs/04-operations/native-backend.md).
+See the
+[full public operations guide](https://github.com/V3rfr3ss3n/Homelab-Commander/blob/main/docs/04-operations/native-backend.md).

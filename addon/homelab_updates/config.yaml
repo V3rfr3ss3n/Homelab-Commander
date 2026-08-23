@@ -1,7 +1,8 @@
-name: Homelab Updates
-version: 0.2.0-dev.0
+name: Homelab Updates Backend
+version: 0.2.0-dev.1
 slug: homelab_updates
 description: Native host update backend and management UI for Homelab Updates
+url: https://github.com/V3rfr3ss3n/Homelab-Commander
 arch:
   - aarch64
   - amd64
@@ -12,7 +13,6 @@ boot: auto
 stage: experimental
 ingress: true
 ingress_port: 8099
-ingress_entry: /
 panel_icon: mdi:server-network
 panel_title: Homelab Updates Backend
 panel_admin: true

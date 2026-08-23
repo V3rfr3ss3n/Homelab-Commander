@@ -12,10 +12,10 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## In Arbeit
 
-- [ ] T-030 Public-Installation abschließen: Container-Workflow nach `main`
-  übernehmen, `0.2.0-dev.0` explizit veröffentlichen, alle zugehörigen GHCR-
-  Packages einmalig öffentlich schalten und anonymes Pull-/Runtime-Gate sowie
-  [[../04-operations/public-install-checklist|frische Installation]] bestätigen.
+- [ ] T-030 Public-Installation mit `0.2.0-dev.1` abschließen: App-Image nach
+  Merge explizit veröffentlichen, App aktualisieren und
+  [[../04-operations/public-install-checklist|frische Installation]] einschließlich
+  Ingress, interner Backendverbindung und HACS-Entities bestätigen.
 
 ## Als Nächstes
 
@@ -76,3 +76,8 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
   öffentlichen GitHub-Repository bestätigt
 - [x] T-030a öffentliche App-Lieferkette für AMD64/AArch64, anonymes GHCR-Gate,
   nutzerorientierte Installation, Branding-Vertrag und Release-Runbook umgesetzt
+- [x] T-030b öffentliche App `0.2.0-dev.0` real aus dem App Store installiert;
+  Image-Pull, Containerstart und Health-Endpunkt bestätigt
+- [x] T-031 Supervisor-Ingress-Root repariert, Management-Routen auf den
+  Supervisor-Proxy begrenzt, öffentliche App-Links korrigiert und Integration/
+  App-Verantwortungen sowie internen DNS-Pfad dokumentiert

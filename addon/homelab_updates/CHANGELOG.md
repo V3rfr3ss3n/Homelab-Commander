@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0-dev.1
+
+- Fixed the default Ingress entry so the Supervisor forwards `/` instead of `//`.
+- Restricted Ingress management routes to the Supervisor proxy while keeping the
+  external API Bearer-authenticated.
+- Replaced installed-App filesystem links with public GitHub documentation.
+
 ## 0.2.0-dev.0
 
 - Initial public development build of the native Homelab Updates backend.

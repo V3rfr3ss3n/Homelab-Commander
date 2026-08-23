@@ -2,7 +2,7 @@ services:
   homelab-updates:
     build:
       context: .
-    image: homelab-updates-backend:0.2.0-dev.0
+    image: homelab-updates-backend:0.2.0-dev.1
     restart: unless-stopped
     init: true
     read_only: true
