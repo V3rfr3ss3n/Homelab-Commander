@@ -25,6 +25,8 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ### Changed
 
+- Integration and App packages now use the refreshed Homelab Commander icon in
+  matching standard and HiDPI sizes.
 - Home Assistant App Ingress now uses the Supervisor default root instead of
   producing a double-slash request, and installed App documentation links to the
   public repository.
