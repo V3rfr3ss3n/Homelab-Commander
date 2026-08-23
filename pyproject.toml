@@ -21,7 +21,7 @@ dependencies = [
 homelab-updates-backend = "homelab_backend.__main__:main"
 
 [build-system]
-requires = ["hatchling==1.27.0"]
+requires = ["hatchling==1.32.0"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
@@ -31,13 +31,13 @@ packages = ["backend/homelab_backend"]
 dev = [
   "home-assistant-frontend==20260729.7",
   "homeassistant==2026.8.2",
-  "httpx2==2.9.1",
-  "mypy==1.18.2",
-  "pip-audit==2.9.0",
+  "httpx2==2.12.0",
+  "mypy==2.3.1",
+  "pip-audit==2.10.1",
   "playwright==1.62.0",
   "pytest-cov==7.1.0",
   "pytest-homeassistant-custom-component>=0.13.338",
-  "ruff==0.12.12",
+  "ruff==0.16.3",
 ]
 
 [tool.pytest.ini_options]
@@ -94,19 +94,27 @@ known-first-party = ["custom_components.homelab_updates"]
 [tool.ruff.lint.per-file-ignores]
 # FastAPI/HA hooks stay async; awaited comprehensions require lists; UI assets
 # intentionally preserve readable JavaScript/CSS lines inside Python strings.
-"backend/homelab_backend/app.py" = ["C409", "E501", "RUF029"]
-"backend/homelab_backend/ui.py" = ["E501"]
-"backend/tests/test_automation.py" = ["RUF029"]
-"custom_components/homelab_updates/__init__.py" = ["RUF029"]
-"custom_components/homelab_updates/adapters/native.py" = ["C409"]
-"custom_components/homelab_updates/binary_sensor.py" = ["RUF029"]
-"custom_components/homelab_updates/button.py" = ["RUF029"]
-"custom_components/homelab_updates/diagnostics.py" = ["RUF029"]
-"custom_components/homelab_updates/repairs.py" = ["RUF029"]
-"custom_components/homelab_updates/sensor.py" = ["RUF029"]
-"custom_components/homelab_updates/update.py" = ["RUF029"]
-"scripts/*.py" = ["T201"]
-"tests/conftest.py" = ["RUF029"]
+# Home Assistant requires integration lifecycle hooks in the package __init__.
+"backend/homelab_backend/app.py" = [
+  "line-too-long",
+  "unnecessary-literal-within-tuple-call",
+  "unused-async",
+]
+"backend/homelab_backend/ui.py" = ["line-too-long"]
+"backend/tests/test_automation.py" = ["unused-async"]
+"custom_components/homelab_updates/__init__.py" = [
+  "non-empty-init-module",
+  "unused-async",
+]
+"custom_components/homelab_updates/adapters/native.py" = ["unnecessary-literal-within-tuple-call"]
+"custom_components/homelab_updates/binary_sensor.py" = ["unused-async"]
+"custom_components/homelab_updates/button.py" = ["unused-async"]
+"custom_components/homelab_updates/diagnostics.py" = ["unused-async"]
+"custom_components/homelab_updates/repairs.py" = ["unused-async"]
+"custom_components/homelab_updates/sensor.py" = ["unused-async"]
+"custom_components/homelab_updates/update.py" = ["unused-async"]
+"scripts/*.py" = ["print"]
+"tests/conftest.py" = ["unused-async"]
 
 [tool.mypy]
 python_version = "3.14"

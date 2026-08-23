@@ -174,7 +174,7 @@ class NativeBackendClient:
                 if response.status < 200 or response.status >= 300:
                     raise CannotConnectError("The native backend returned an error")
                 return await _read_json(response)
-        except (AuthenticationError, BackendTaskError, InvalidStatusDataError):
+        except AuthenticationError, BackendTaskError, InvalidStatusDataError:
             raise
         except (TimeoutError, ClientError) as err:
             raise CannotConnectError("The native backend cannot be reached") from err

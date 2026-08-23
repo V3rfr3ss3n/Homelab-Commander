@@ -68,3 +68,5 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
   Idle-Zustand, damit Panel und Action-Buttons nicht auf `running` stehen bleiben
 - [x] T-028 öffentliche Hassfest-Verträge einschließlich kanonischer Manifest-
   Reihenfolge und Gitleaks-v3-Workflow für PR-/Push-Prüfungen korrigiert
+- [x] T-029 gruppierte Development-Dependency-Updates gegen Ruff `0.16`, Mypy
+  `2.3`, HTTPX2 `2.12` und Pip-Audit `2.10` kompatibel gemacht

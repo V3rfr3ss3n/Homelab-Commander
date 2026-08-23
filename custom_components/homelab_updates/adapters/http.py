@@ -319,7 +319,7 @@ class SemaphoreBackend:
                 if response.status < 200 or response.status >= 300:
                     raise CannotConnectError("The automation backend returned an error")
                 return await _read_json(response, MAX_STATUS_RESPONSE_BYTES)
-        except (AuthenticationError, InvalidProjectError, InvalidStatusDataError):
+        except AuthenticationError, InvalidProjectError, InvalidStatusDataError:
             raise
         except (TimeoutError, ClientError) as err:
             raise CannotConnectError(
