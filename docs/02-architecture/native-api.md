@@ -1,7 +1,7 @@
 ---
 title: Native API v1
 status: accepted
-updated: 2026-08-22
+updated: 2026-08-23
 tags: [architecture, api, backend]
 ---
 
@@ -44,6 +44,13 @@ verlangen zusätzlich `X-CSRF-Token`. Ingress verwendet dieselben Management-
 Routen ohne diese Session, weil Supervisor authentifiziert; CSRF bleibt aktiv.
 Bearer Header verleihen außerhalb von Ingress keinen Zugriff auf `/ui-api`, und
 UI-Cookies verleihen keinen Zugriff auf `/api/v1`.
+
+Die App verwendet den von Home Assistant vorgegebenen Ingress-Einstieg `/` und
+setzt deshalb keinen redundanten `ingress_entry`. HTML, Assets und `/ui-api`
+akzeptieren im Ingress-Modus nur Verbindungen von den beim Start über den stabilen
+DNS-Alias `supervisor` aufgelösten Proxy-Adressen. Die Quelle wird weder fest
+kodiert noch persistiert. Der öffentliche `/api/v1`-Vertrag bleibt davon getrennt
+und verlangt weiterhin den Bearer Token.
 
 ## Jobsemantik
 

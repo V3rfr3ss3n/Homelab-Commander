@@ -133,3 +133,10 @@ tags: [product, acceptance, release]
 29. Ein frischer, nicht bei GHCR angemeldeter Runner zieht den generischen App-
     Image-Tag und bestätigt ein Manifest für AMD64 und AArch64 sowie Healthcheck,
     benötigte Werkzeuge und unprivilegierte Laufzeit.
+30. Der Supervisor-Standard-Ingress öffnet den Backend-Root als `/`, nicht `//`.
+    HTML, Assets, UI-API, CSRF-Mutationen und Job-Deep-Links bleiben unter einem
+    verschachtelten Ingress-Prefix; Standalone funktioniert weiter am Root.
+31. Im Ingress-Modus können nur Requests vom Supervisor-Proxy die Management-UI
+    erreichen. Ein direkter Zugriff behält ausschließlich die separat mit Bearer
+    geschützte External API. Öffentliche App-Dokumente enthalten keine `/config/`-
+    oder Entwickler-Home-Pfade.

@@ -1268,7 +1268,7 @@ wheels = [
 
 [[package]]
 name = "home-assistant-homelab-updates"
-version = "0.2.0.dev0"
+version = "0.2.0.dev1"
 source = { editable = "." }
 dependencies = [
     { name = "ansible-core" },

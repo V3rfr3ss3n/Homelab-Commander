@@ -64,17 +64,63 @@ def test_secret_scan_uses_github_token_on_pull_requests_and_pushes() -> None:
 def test_addon_uses_ingress_without_privileged_host_access() -> None:
     """The app manifest exposes only the intended API and Ingress boundary."""
     config = yaml.safe_load((ROOT / "addon/homelab_updates/config.yaml").read_text())
+    assert config["name"] == "Homelab Updates Backend"
     assert config["ingress"] is True
     assert config["panel_admin"] is True
     assert config["panel_title"] == "Homelab Updates Backend"
     assert config["ingress_port"] == 8099
+    assert "ingress_entry" not in config
     assert config["ports"] == {"8099/tcp": None}
     assert config["image"] == "ghcr.io/v3rfr3ss3n/homelab-updates-backend"
-    assert config["version"] == "0.2.0-dev.0"
+    assert config["version"] == "0.2.0-dev.1"
+    assert config["url"] == "https://github.com/V3rfr3ss3n/Homelab-Commander"
     assert config["arch"] == ["aarch64", "amd64"]
     for forbidden in ("host_network", "privileged", "docker_api", "hassio_api"):
         assert forbidden not in config
     assert "map" not in config
+
+
+def test_public_installation_docs_have_only_public_navigation_links() -> None:
+    """Installed App documentation never resolves into Home Assistant files."""
+    public_documents = (
+        ROOT / "README.md",
+        ROOT / "addon/homelab_updates/DOCS.md",
+        ROOT / "addon/homelab_updates/README.md",
+    )
+    for document in public_documents:
+        content = document.read_text()
+        assert "/config/" not in content
+        assert "/" + "home/" not in content
+        assert "../../docs/" not in content
+    assert (
+        "https://github.com/V3rfr3ss3n/Homelab-Commander"
+        in (ROOT / "addon/homelab_updates/DOCS.md").read_text()
+    )
+
+
+def test_development_release_versions_stay_aligned() -> None:
+    """Integration, backend, App and publication use one release version."""
+    expected = "0.2.0-dev.1"
+    manifest = json.loads(
+        (ROOT / "custom_components/homelab_updates/manifest.json").read_text()
+    )
+    assert manifest["version"] == expected
+    assert (
+        f'VERSION: Final = "{expected}"'
+        in (ROOT / "custom_components/homelab_updates/const.py").read_text()
+    )
+    assert (
+        f'__version__ = "{expected}"'
+        in (ROOT / "backend/homelab_backend/version.py").read_text()
+    )
+    assert (
+        f"image: homelab-updates-backend:{expected}"
+        in (ROOT / "compose.yaml").read_text()
+    )
+    assert (
+        f"default: {expected}" in (ROOT / ".github/workflows/container.yml").read_text()
+    )
+    assert f"ARG BUILD_VERSION={expected}" in (ROOT / "Dockerfile").read_text()
 
 
 def test_packaged_branding_is_valid_and_consistent() -> None:

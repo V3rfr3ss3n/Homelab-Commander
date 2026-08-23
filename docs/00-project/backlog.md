@@ -26,9 +26,10 @@ und eine Privacy-Prüfung.
 
 ## Backends
 
-- [ ] stabile Supervisor-interne Backend-Adressierung oder ein sicherer
-  Verbindungs-Handoff bewerten, damit App-Nutzer Port `8099` nicht dauerhaft im
-  LAN veröffentlichen müssen
+- [ ] automatische Supervisor-interne App-Adressierung über einen begrenzten
+  Discovery-/Config-Flow-Handoff bewerten; bis dahin wird der installierte
+  `<repository-id>_homelab_updates`-Identifier manuell ermittelt und als interner
+  DNS-Name verwendet, ohne einen Repository-Hash fest zu codieren
 - [ ] kontrollierbares Job-Cancelling mit persistentem Zustand ergänzen
 - [ ] Custom-Task-Policy um Become, Timeout, Bestätigung und optionale
   Host-/Gruppenfreigaben erweitern

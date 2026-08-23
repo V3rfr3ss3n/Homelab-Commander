@@ -49,30 +49,30 @@ Ansible/OpenSSH und die unprivilegierte PID-1-UID `10001`. Nach Veröffentlichun
 prüft ein frischer Job ohne Registry-Anmeldung das Multi-Arch-Manifest, den
 anonymen Pull und denselben Laufzeitvertrag.
 
-## Erste öffentliche Development-Veröffentlichung
+## Öffentliche Development-Veröffentlichung
 
 Nach Merge der Pipeline auf `main`:
 
 1. In GitHub **Actions → Container → Run workflow** öffnen.
-2. Branch `main`, Version `0.2.0-dev.0` und `publish=true` wählen.
-3. Den Lauf bis zur Manifest-Veröffentlichung abwarten. Das anschließende anonyme
-   Gate darf beim allerersten Lauf zunächst an GitHubs Standard-Privatsichtbarkeit
-   scheitern.
-4. Auf der GitHub-Profilseite unter **Packages** jedes neu erzeugte zugehörige
+2. Branch `main`, Version `0.2.0-dev.1` und `publish=true` wählen.
+3. Den Lauf bis zur Manifest-Veröffentlichung und zum anonymen Gate abwarten.
+4. Nur bei der allerersten Package-Veröffentlichung: Auf der GitHub-Profilseite
+   unter **Packages** jedes neu erzeugte zugehörige
    Containerpaket öffnen. Für Architekturimages und generischen Manifest-Eintrag
    unter **Package settings → Danger Zone → Change visibility** jeweils
    **Public** wählen. Die öffentliche Sichtbarkeit kann nicht wieder auf privat
    zurückgestellt werden.
-5. Den fehlgeschlagenen Workflow erneut ausführen. Es werden keine Registry-
-   Credentials an Endnutzer verteilt.
+5. Falls Schritt 4 nötig war, den zuvor am anonymen Gate fehlgeschlagenen
+   Workflow erneut ausführen. Es werden keine Registry-Credentials an Endnutzer
+   verteilt.
 6. Das Ergebnis auf einem abgemeldeten beziehungsweise frischen Client prüfen:
 
    ```bash
    docker logout ghcr.io || true
    docker buildx imagetools inspect \
-     ghcr.io/v3rfr3ss3n/homelab-updates-backend:0.2.0-dev.0
+     ghcr.io/v3rfr3ss3n/homelab-updates-backend:0.2.0-dev.1
    docker pull \
-     ghcr.io/v3rfr3ss3n/homelab-updates-backend:0.2.0-dev.0
+     ghcr.io/v3rfr3ss3n/homelab-updates-backend:0.2.0-dev.1
    ```
 
 Erst ein grünes anonymes Gate und die frische Home-Assistant-Installation gelten

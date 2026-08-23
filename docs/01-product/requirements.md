@@ -142,6 +142,10 @@ tags: [product, requirements]
   exakt versioniertes Multi-Arch-Image für AMD64 und AArch64. Pull Requests und
   normale `main`-Pushes veröffentlichen nicht; Tags oder explizite manuelle
   Freigaben verwenden ausschließlich GitHubs kurzlebiges Workflow-Token.
+- **REQ-ADD-003 MUST:** Die App verwendet den unveränderten Supervisor-Standard
+  für den Ingress-Root. Im Ingress-Modus akzeptieren Root, UI-Assets und
+  Management-API nur den Supervisor-Proxy; `/api/v1` bleibt unabhängig davon
+  Bearer-authentifiziert.
 - **REQ-UI-001 MUST:** Die Management-UI funktioniert am Server-Root und unter
   einem beliebigen Ingress-Prefix; Assets und Requests verwenden relative URLs.
 - **REQ-UI-002 MUST:** Alle UI-Aktionen zeigen Loading, Erfolg oder einen
@@ -165,6 +169,9 @@ tags: [product, requirements]
 - **REQ-UI-007 MUST:** `#/jobs/<job-id>` öffnet im Standalone- und Ingress-Modus
   dieselbe routbare Jobansicht. Der Hash enthält nie Zugangsdaten; Log und
   Metadaten benötigen eine gültige UI-Session beziehungsweise Ingress-Auth.
+- **REQ-DOC-002 MUST:** Öffentliche Installationsdokumentation unterscheidet die
+  HACS-Integration **Homelab Updates** von der App **Homelab Updates Backend**,
+  erklärt ihre Verantwortungen und enthält keine lokalen Dateisystemlinks.
 
 ## Status-Payload `0.1`
 

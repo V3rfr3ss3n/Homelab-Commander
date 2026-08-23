@@ -25,12 +25,21 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ### Changed
 
+- Integration and App packages now use the refreshed Homelab Commander icon in
+  matching standard and HiDPI sizes.
+- Home Assistant App Ingress now uses the Supervisor default root instead of
+  producing a double-slash request, and installed App documentation links to the
+  public repository.
+- Native installation documentation now clearly separates the HACS integration
+  from the Homelab Updates Backend App and documents internal App DNS.
 - Restart buttons now use Home Assistant's restart device class and alert icon,
   are categorized as configuration actions, and are available only while the
   current status requires a reboot.
 
 ### Security
 
+- Ingress management routes accept direct traffic only from the Supervisor
+  proxy; `/api/v1` remains independently Bearer-authenticated.
 - Backend credentials are confined to config entry data and request headers.
 - Redirects and URL credentials, fragments, and queries are rejected.
 - Diagnostics expose aggregate health information and fully redact the API token.

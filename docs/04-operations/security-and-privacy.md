@@ -1,7 +1,7 @@
 ---
 title: Security und Privacy
 status: accepted
-updated: 2026-08-22
+updated: 2026-08-23
 tags: [operations, security, privacy]
 ---
 
@@ -85,6 +85,14 @@ Supervisor Ingress authentifiziert den UI-Zugriff; der Browser erhält dabei das
 API-Token nicht. Der Ingress-Modus darf nur innerhalb des Supervisor-Netzes
 aktiviert werden und wird vom Container-Entrypoint ausschließlich bei vorhandener
 `/data/options.json` gesetzt.
+
+Im Ingress-Modus löst das Backend den stabilen internen DNS-Alias `supervisor`
+beim Start auf. UI-Dokument, Assets und `/ui-api` akzeptieren ausschließlich
+direkte Verbindungen aus dieser aufgelösten Proxy-Adressmenge. Es wird keine
+deployment-spezifische Adresse gespeichert. Direkte Zugriffe über einen optional
+veröffentlichten Port erhalten keinen Ingress-Vertrauensstatus. Die External API
+`/api/v1` bleibt für Home Assistant Core und andere explizite Clients weiter
+ausschließlich durch den Bearer Token geschützt.
 
 Die External API `/api/v1` bleibt ausschließlich durch Bearer Token geschützt.
 Die Standalone-UI sendet das eingegebene Token einmalig an den Login-Endpunkt und

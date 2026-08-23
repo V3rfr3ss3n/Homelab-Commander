@@ -58,6 +58,9 @@ ergänzt öffentliche URL-/Codeowner-Prüfungen.
   einen realen Host, Paketupdate oder Reboot aus dem Quality Gate starten
 - Standalone UI: Login-Cookieflags, Token-Leakage, F5-Recovery, Ablauf,
   ungültige Session, Logout und CSRF; External Bearer und Ingress bleiben getrennt
+- App Ingress: Standard-Root wird als `/` weitergereicht, nie als `//`; Root,
+  Assets, UI-API, Deep Links und CSRF bleiben unter verschachteltem Prefix und
+  lehnen direkte Nicht-Supervisor-Quellen ab
 - Live UI: `queued → running → success/failed`, Hostrefresh, genau ein Poller,
   Stopp ohne aktive Jobs/bei Disconnect und Wiederaufnahme nach Reload
 - HA Panel: admin-only WebSocket-Commands, token-/logfreier Statusstream,

@@ -67,6 +67,7 @@ class _PrefixProxy:
     def __init__(self, app: Any, prefix: str) -> None:
         self._app = app
         self._prefix = prefix
+        self.forwarded_paths: list[str] = []
 
     async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
         if scope["type"] == "lifespan":
@@ -80,6 +81,8 @@ class _PrefixProxy:
         forwarded["root_path"] = f"{scope.get('root_path', '')}{self._prefix}"
         forwarded["path"] = path.removeprefix(self._prefix) or "/"
         forwarded["raw_path"] = forwarded["path"].encode()
+        forwarded["client"] = ("supervisor-proxy", 12345)
+        self.forwarded_paths.append(forwarded["path"])
         await self._app(forwarded, receive, send)
 
     @staticmethod
@@ -295,9 +298,11 @@ async def test_ingress_ui_keeps_assets_and_api_calls_under_prefix(
     app = create_app(
         Settings(data_dir=tmp_path, api_token=TOKEN, ingress_mode=True),
         executor=FakeExecutor(),
+        ingress_proxy_addresses=frozenset({"supervisor-proxy"}),
     )
+    proxy = _PrefixProxy(app, prefix)
     async with (
-        _live_server(_PrefixProxy(app, prefix)) as base_url,
+        _live_server(proxy) as base_url,
         async_playwright() as playwright,
     ):
         browser = await playwright.chromium.launch(headless=True)
@@ -309,6 +314,8 @@ async def test_ingress_ui_keeps_assets_and_api_calls_under_prefix(
 
         await page.goto(f"{base_url}{prefix}/")
         await _wait_for_message(page, "Connected")
+        assert proxy.forwarded_paths[0] == "/"
+        assert "//" not in proxy.forwarded_paths
         assert await page.locator("#token-field").is_hidden()
         assert await page.locator("#disconnect").is_hidden()
         assert (await page.locator("#key").inner_text()).startswith("ssh-ed25519 ")
