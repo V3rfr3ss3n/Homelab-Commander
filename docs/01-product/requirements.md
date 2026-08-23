@@ -1,7 +1,7 @@
 ---
 title: Produktanforderungen
 status: accepted
-updated: 2026-08-22
+updated: 2026-08-23
 tags: [product, requirements]
 ---
 
@@ -138,6 +138,10 @@ tags: [product, requirements]
   übernommen.
 - **REQ-ADD-001 MUST:** Das Add-on verwendet Home Assistant Ingress, läuft ohne
   Host-Netzwerk und ohne Docker-Socket und fordert keine unnötigen Privilegien.
+- **REQ-ADD-002 MUST:** Die App referenziert ein öffentlich und anonym pullbares,
+  exakt versioniertes Multi-Arch-Image für AMD64 und AArch64. Pull Requests und
+  normale `main`-Pushes veröffentlichen nicht; Tags oder explizite manuelle
+  Freigaben verwenden ausschließlich GitHubs kurzlebiges Workflow-Token.
 - **REQ-UI-001 MUST:** Die Management-UI funktioniert am Server-Root und unter
   einem beliebigen Ingress-Prefix; Assets und Requests verwenden relative URLs.
 - **REQ-UI-002 MUST:** Alle UI-Aktionen zeigen Loading, Erfolg oder einen

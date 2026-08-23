@@ -1,7 +1,7 @@
 ---
 title: Architecture Decision Records
 status: active
-updated: 2026-08-22
+updated: 2026-08-23
 tags: [architecture, adr, index]
 ---
 
@@ -16,6 +16,7 @@ tags: [architecture, adr, index]
 | [[0005-native-backend-boundary]] | accepted | Integration, Backend und Add-on als getrennte Komponenten |
 | [[0006-standalone-ui-session]] | accepted | Kurzlebige HttpOnly-Session nur für die Standalone Management UI |
 | [[0007-home-assistant-main-panel]] | accepted | Administratorgeschütztes Native-Panel über Home-Assistant-Auth |
+| [[0008-public-container-publishing]] | accepted | Versionierte öffentliche Multi-Arch-Images mit anonymem Gate |
 
 Neue ADRs verwenden [[../../templates/adr-template|die ADR-Vorlage]]. Akzeptierte
 ADRs werden nicht rückwirkend umgeschrieben; eine neue ADR ersetzt die alte und

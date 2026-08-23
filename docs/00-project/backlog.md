@@ -1,7 +1,7 @@
 ---
 title: Backlog
 status: active
-updated: 2026-08-22
+updated: 2026-08-23
 tags: [project, backlog]
 ---
 
@@ -26,6 +26,9 @@ und eine Privacy-Prüfung.
 
 ## Backends
 
+- [ ] stabile Supervisor-interne Backend-Adressierung oder ein sicherer
+  Verbindungs-Handoff bewerten, damit App-Nutzer Port `8099` nicht dauerhaft im
+  LAN veröffentlichen müssen
 - [ ] kontrollierbares Job-Cancelling mit persistentem Zustand ergänzen
 - [ ] Custom-Task-Policy um Become, Timeout, Bestätigung und optionale
   Host-/Gruppenfreigaben erweitern
@@ -47,6 +50,8 @@ und eine Privacy-Prüfung.
 
 ## Developer experience
 
+- [ ] Container-Signierung und Supply-Chain-Provenance bewerten; zusätzliche
+  `id-token`- oder Package-Rechte erst nach eigener Security-Entscheidung einführen
 - [ ] Devcontainer erst nach Messung des lokalen Setup-Aufwands
 - [ ] Mutation Testing für Parser und Task-Zustandsautomat
 - [ ] Architekturtests für Import-/Abhängigkeitsgrenzen

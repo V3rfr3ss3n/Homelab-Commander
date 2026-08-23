@@ -12,13 +12,15 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## In Arbeit
 
-- [ ] T-020a Container-Build und Healthcheck der UI-Änderung wiederholen,
-  sobald ein lokaler Docker-Daemon erreichbar ist. Compose-Validierung und alle
-  codebasierten Gates sind grün; Docker Desktop stellte keinen API-Socket bereit.
+- [ ] T-030 Public-Installation abschließen: Container-Workflow nach `main`
+  übernehmen, `0.2.0-dev.0` explizit veröffentlichen, alle zugehörigen GHCR-
+  Packages einmalig öffentlich schalten und anonymes Pull-/Runtime-Gate sowie
+  [[../04-operations/public-install-checklist|frische Installation]] bestätigen.
 
 ## Als Nächstes
 
-- [ ] T-017a Hassfest und HACS Action im öffentlichen GitHub-Repository bestätigen
+- [ ] T-020a Container-Build und Healthcheck auf AMD64/AArch64 durch den neuen
+  PR-Workflow bestätigen. Lokal ist weiterhin kein Docker-Daemon erreichbar.
 - [ ] T-017b isolierte manuelle Installation aus dem Releaseartefakt durchführen
 - [ ] T-018 Home-Assistant-Patch mit gefixter `cryptography`-Version übernehmen
   und SE-2026-001 spätestens am 2026-09-15 entfernen
@@ -70,3 +72,7 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
   Reihenfolge und Gitleaks-v3-Workflow für PR-/Push-Prüfungen korrigiert
 - [x] T-029 gruppierte Development-Dependency-Updates gegen Ruff `0.16`, Mypy
   `2.3`, HTTPX2 `2.12` und Pip-Audit `2.10` kompatibel gemacht
+- [x] T-017a HACS, Hassfest, Quality, CodeQL, Container und Secret Scan im
+  öffentlichen GitHub-Repository bestätigt
+- [x] T-030a öffentliche App-Lieferkette für AMD64/AArch64, anonymes GHCR-Gate,
+  nutzerorientierte Installation, Branding-Vertrag und Release-Runbook umgesetzt

@@ -22,6 +22,7 @@ ergänzt öffentliche URL-/Codeowner-Prüfungen.
 | Coverage | Coverage.py | mindestens 95 % Lines **und** 95 % Branches, unabhängig geprüft |
 | HA validation | Hassfest | Manifest, Services, Übersetzungen und Struktur gültig |
 | HACS | HACS Action | Repository als Integration valide |
+| Container | HA Builder + Runtime-Skript | AMD64/AArch64 bauen; bei Publication anonymes Manifest/Pull und Laufzeitvertrag grün |
 | Supply chain | Audit-Tool | keine ungeklärte bekannte Schwachstelle oder unzulässige Lizenz |
 | Secrets | Gitleaks-artiger Scan | keine Secrets in Arbeitsbaum oder Git-Historie |
 | Privacy | Projektpattern | keine reale Infrastruktur oder persönlichen Daten |
@@ -62,6 +63,8 @@ ergänzt öffentliche URL-/Codeowner-Prüfungen.
 - HA Panel: admin-only WebSocket-Commands, token-/logfreier Statusstream,
   expliziter Logabruf, sichere Textdarstellung, Backend-Link und globale
   Native-Hostprüfung im echten Browser
+- Container: AMD64/AArch64, versionierte Labels, Port/Volume/Healthcheck,
+  Ansible/OpenSSH und PID 1 nach Privilege Drop als UID `10001`
 
 ## Dependency Policy
 

@@ -7,6 +7,10 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ### Added
 
+- Public versioned AMD64/AArch64 app-image workflow with anonymous manifest,
+  pull, health, tooling and non-root runtime verification.
+- User-first HACS and Home Assistant App installation guide, release checklist,
+  GHCR publication runbook and explicit branding replacement guide.
 - Local 256 px and 512 px Home Assistant brand icons.
 - Actionable reboot-required repair notification with an explicit confirmation
   flow.
