@@ -224,7 +224,8 @@ async def test_standalone_ui_buttons_work_and_errors_are_visible(
         await page.locator("#connect").click()
         await _wait_for_message(page, "Connected")
         assert (
-            await page.locator("#jobs")
+            await page
+            .locator("#jobs")
             .get_by_text("Check updates failed during APT cache refresh")
             .is_visible()
         )
@@ -576,7 +577,8 @@ async def test_job_polling_tracks_terminal_states_and_refreshes_hosts(
         await page.locator('[data-action="test_connection"]').click()
         await _wait_for_message(page, "test connection queued")
         await (
-            page.locator("#jobs")
+            page
+            .locator("#jobs")
             .get_by_text("Non-interactive sudo is not available", exact=True)
             .wait_for()
         )
@@ -716,7 +718,8 @@ async def test_expired_and_invalid_sessions_return_to_safe_login_state(
         clock.now = 11
         await page.locator("#connect").click()
         await (
-            page.locator("#connection-label")
+            page
+            .locator("#connection-label")
             .filter(has_text="Not connected")
             .wait_for()
         )

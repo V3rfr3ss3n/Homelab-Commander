@@ -144,8 +144,10 @@ def test_debian_apt_provider_parses_updates_and_never_requests_reboot() -> None:
         ("WARNING: apt has no stable CLI\nListing...\n", 0, 0),
         ("package-a/stable 2 amd64 [upgradable from: 1]\n", 1, 0),
         (
-            "package-a/stable 2 amd64 [upgradable from: 1]\n"
-            "package-b/stable-security 3 amd64 [upgradable from: 2]\n",
+            (
+                "package-a/stable 2 amd64 [upgradable from: 1]\n"
+                "package-b/stable-security 3 amd64 [upgradable from: 2]\n"
+            ),
             2,
             1,
         ),

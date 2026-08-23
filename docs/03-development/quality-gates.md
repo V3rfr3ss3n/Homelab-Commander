@@ -1,7 +1,7 @@
 ---
 title: Quality Gates
 status: accepted
-updated: 2026-08-22
+updated: 2026-08-23
 tags: [development, quality, ci, testing]
 ---
 
@@ -109,6 +109,12 @@ Eine Ausnahme ist nur über eine dokumentierte, zeitlich begrenzte Entscheidung 
 Owner, Risiko, Kompensation und Ablaufdatum zulässig. Coverage wird nicht durch
 `# pragma: no cover` erhöht, außer nach begründeter Review einer technisch nicht
 erreichbaren Zeile.
+
+Ruff-Suppressionen verwenden ausgeschriebene Rule-Namen. Die Preview-Regel
+`non-empty-init-module` ist ausschließlich für
+`custom_components/homelab_updates/__init__.py` ausgenommen, weil Home Assistant
+dort die Lifecycle-Hooks und `CONFIG_SCHEMA` lädt. Alle übrigen neuen Preview-
+Regeln bleiben aktiv.
 
 ## Referenzziel
 

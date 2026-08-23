@@ -135,7 +135,8 @@ def create_app(
         ingress = "true" if resolved.ingress_mode else "false"
         api_base = "ui-api/"
         html = (
-            UI_HTML.replace("__CSRF_TOKEN__", csrf_token)
+            UI_HTML
+            .replace("__CSRF_TOKEN__", csrf_token)
             .replace("__INGRESS_MODE__", ingress)
             .replace("__API_BASE__", api_base)
         )

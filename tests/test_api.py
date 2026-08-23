@@ -554,7 +554,7 @@ async def test_native_client_lists_jobs_and_rejects_invalid_target(
     assert tasks[0].error_code == "synthetic"
     assert tasks[0].host_name == "Node 01"
     assert tasks[0].exit_code == 2
-    assert tasks[0].duration == 2.0
+    assert tasks[0].duration == pytest.approx(2.0)
     assert tasks[0].log_available
     assert tasks[0].job_url == f"{NATIVE_URL}/#/jobs/{JOB_ID}"
     with pytest.raises(BackendTaskError):

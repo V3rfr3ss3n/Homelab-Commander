@@ -345,8 +345,10 @@ def _classify_failure(default: str, output: str) -> str:
             "failed to find a suitable python interpreter",
             "no python interpreters found",
             "python interpreter was not found",
-            "the module failed to execute correctly, you probably need to set "
-            "the interpreter",
+            (
+                "the module failed to execute correctly, you probably need to set "
+                "the interpreter"
+            ),
             "python: not found",
             "python3: not found",
         )
