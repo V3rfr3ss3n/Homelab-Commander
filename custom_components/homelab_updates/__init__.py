@@ -1,4 +1,4 @@
-"""Home Assistant lifecycle for Homelab Updates."""
+"""Home Assistant lifecycle for Homelab Commander."""
 
 from dataclasses import dataclass
 from datetime import timedelta
@@ -27,6 +27,7 @@ from .const import (
     CONF_UPDATE_TEMPLATE_ID,
     CONF_VERIFY_SSL,
     DOMAIN,
+    NAME,
     PLATFORMS,
 )
 from .coordinator import (
@@ -81,7 +82,7 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
 async def async_setup_entry(
     hass: HomeAssistant, entry: HomelabUpdatesConfigEntry
 ) -> bool:
-    """Set up Homelab Updates from a config entry."""
+    """Set up Homelab Commander from a config entry."""
     session = async_get_clientsession(hass)
     verify_ssl = bool(entry.data[CONF_VERIFY_SSL])
     backend_type = str(entry.data.get(CONF_BACKEND_TYPE, BACKEND_SEMAPHORE))
@@ -186,15 +187,20 @@ async def async_unload_entry(
 async def async_migrate_entry(
     hass: HomeAssistant, entry: HomelabUpdatesConfigEntry
 ) -> bool:
-    """Mark pre-provider entries as the compatible Semaphore backend."""
-    if entry.version > 2:
+    """Migrate persisted data without changing its technical identity."""
+    if entry.version > 3:
         return False
-    if entry.version < 2:
-        data = {**entry.data, CONF_BACKEND_TYPE: BACKEND_SEMAPHORE}
+    if entry.version < 3:
+        data = dict(entry.data)
+        if entry.version < 2:
+            data.setdefault(CONF_BACKEND_TYPE, BACKEND_SEMAPHORE)
         hass.config_entries.async_update_entry(
             entry,
             data=data,
-            version=2,
+            title=(
+                NAME if data.get(CONF_BACKEND_TYPE) == BACKEND_NATIVE else entry.title
+            ),
+            version=3,
             minor_version=1,
         )
     return True

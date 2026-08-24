@@ -1,4 +1,4 @@
-"""Constants for Homelab Updates."""
+"""Constants for Homelab Commander."""
 
 from datetime import timedelta
 from typing import Final
@@ -6,8 +6,8 @@ from typing import Final
 from homeassistant.const import Platform
 
 DOMAIN: Final = "homelab_updates"
-NAME: Final = "Homelab Updates"
-VERSION: Final = "0.2.0-dev.1"
+NAME: Final = "Homelab Commander"
+VERSION: Final = "0.3.0-dev.0"
 
 PLATFORMS: Final = (
     Platform.UPDATE,
@@ -29,6 +29,14 @@ CONF_REBOOT_TEMPLATE_ID: Final = "reboot_template_id"
 CONF_EXPORT_TEMPLATE_ID: Final = "export_template_id"
 CONF_POLL_INTERVAL: Final = "poll_interval"
 CONF_VERIFY_SSL: Final = "verify_ssl"
+CONF_NATIVE_CONNECTION: Final = "native_connection"
+
+NATIVE_CONNECTION_LOCAL: Final = "local_app"
+NATIVE_CONNECTION_REMOTE: Final = "remote"
+
+NATIVE_APP_SLUG: Final = "homelab_updates"
+NATIVE_APP_REPOSITORY: Final = "https://github.com/V3rfr3ss3n/Homelab-Commander"
+NATIVE_APP_PORT: Final = 8099
 
 DEFAULT_CHECK_TEMPLATE_ID: Final = 1
 DEFAULT_UPDATE_TEMPLATE_ID: Final = 2

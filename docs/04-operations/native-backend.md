@@ -22,7 +22,7 @@ Konfigurationszugriff. `/tmp` ist flüchtig. Backups müssen `/data` schützen.
 
 Nach der dokumentierten Veröffentlichung zieht die öffentliche App den exakt
 versionierten generischen Multi-Arch-Tag
-`ghcr.io/v3rfr3ss3n/homelab-updates-backend:0.2.0-dev.1`; Endnutzer benötigen
+`ghcr.io/v3rfr3ss3n/homelab-updates-backend:0.3.0-dev.0`; Endnutzer benötigen
 keine Registry-Anmeldung. Der optionale Hostport ist ausschließlich nötig, wenn
 die Home-Assistant-Integration keinen anderen stabilen Netzwerkweg zur REST-API
 hat. Ingress selbst verwendet ihn ohne externe Veröffentlichung.
@@ -30,25 +30,16 @@ hat. Ingress selbst verwendet ihn ohne externe Veröffentlichung.
 ### Verbindung von Home Assistant Core zur App
 
 Home Assistant OS und Supervised verbinden Core und Apps über ein internes
-Netzwerk. Der vollständige App-Identifier hat das Format
-`<repository-id>_homelab_updates`; der Repositoryteil wird installationsabhängig
-aus der Repository-URL erzeugt. Er ist mit `ha addons list` in einem Home-
-Assistant-Terminal sichtbar. Als DNS-Name werden Unterstriche durch Bindestriche
-ersetzt:
+Netzwerk. Der Native Config Flow erkennt die laufende lokale **Homelab Commander
+Backend** App über Supervisor-Metadaten, bildet den internen DNS-Namen und prüft
+den Health-Endpunkt automatisch. Nutzer geben weder einen App-Identifier noch
+Port `8099` oder eine interne URL ein; der API-Token bleibt weiterhin Pflicht.
+Supervisor-Ingress-URLs sind Browser-Proxypfade und keine Backend-API-URLs.
 
-`http://<repository-id>-homelab-updates:8099`
-
-Diese URL kann im Native Config Flow zusammen mit demselben API-Token verwendet
-werden, ohne Port `8099` auf dem Host zu veröffentlichen. Ein Identifier aus einer
-anderen Installation darf nicht übernommen oder im Repository festgeschrieben
-werden. Supervisor-Ingress-URLs sind Browser-Proxypfade und keine Backend-API-
-URLs.
-
-Automatische Auflösung dieses Identifiers würde Zugriff auf Supervisor-
-Metadaten oder einen eigenen Discovery-Handoff benötigen. Das ist nicht Teil
-dieses Bugfixes und bleibt ein expliziter Backlogpunkt. Falls internes DNS in
-einer Installation nicht verfügbar ist, bleibt ein bewusst auf das vertrauens-
-würdige LAN begrenztes Port-Mapping der dokumentierte Fallback.
+Als fortgeschrittener Fallback für Container/Core, Standalone oder Remote-Apps
+kann der Nutzer **Remote / standalone backend** wählen und eine von Home
+Assistant erreichbare URL konfigurieren. Ein bewusst auf ein vertrauenswürdiges
+LAN begrenztes Port-Mapping bleibt hierfür zulässig.
 
 ### Standalone Quick Start
 
@@ -87,7 +78,7 @@ zunächst **Not connected**; nach dem Verbinden wird der gewünschte Job geladen
 ### Home Assistant Hauptansicht
 
 Mit einem geladenen Native-Config-Entry erscheint für Administratoren
-**Homelab Updates** direkt in Home Assistants Seitenleiste. Diese Hauptansicht
+**Homelab Commander** direkt in Home Assistants Seitenleiste. Diese Hauptansicht
 zeigt Backendstatus, Hosts, laufende/wartende Jobs, den letzten Job und den
 historisch letzten Fehler. **Hosts prüfen** startet echte Check-Jobs für alle
 verwalteten Hosts. Die normalen Coordinator-Polls laufen automatisch und haben
@@ -95,10 +86,10 @@ deshalb keinen zusätzlichen Aktualisieren-Button.
 
 **Log öffnen** lädt den redigierten Backendlog nur bei Bedarf über Home Assistants
 authentifizierte Verbindung. **Backend verwalten** öffnet die konfigurierte
-Backend-Basis-URL in einem neuen Tab. Diese URL muss aus dem Browser erreichbar
-sein; eine interne App-URL ist dafür ungeeignet. Beim Home-Assistant-App-Betrieb
-öffnet der separate Seitenleisteneintrag **Homelab Updates Backend** stattdessen
-die Supervisor-Ingress-Verwaltung.
+Backend-App über ihre Home-Assistant-Route im aktuellen Tab, wenn sie lokal
+erkannt wurde. Das entspricht **Benutzeroberfläche öffnen** auf der App-Seite.
+Nur bei einem explizit externen Remote-Backend öffnet der Button dessen
+browsererreichbare Basis-URL in einem neuen Tab.
 
 ## Konfiguration
 

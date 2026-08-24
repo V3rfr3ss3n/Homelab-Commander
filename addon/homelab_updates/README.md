@@ -1,8 +1,8 @@
-# Homelab Updates app
+# Homelab Commander Backend App
 
 This Home Assistant app runs the same native backend image as the standalone
-Docker deployment. Open its **Homelab Updates Backend** Ingress panel to manage
-hosts and custom tasks; the integration's **Homelab Updates** panel remains the
+Docker deployment. Open its **Homelab Commander Backend** Ingress panel to manage
+hosts and custom tasks; the integration's **Homelab Commander** panel remains the
 operational Home Assistant overview.
 
 Configure a random API token with at least 32 characters before first start.

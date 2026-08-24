@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for helping build Homelab Updates. The project is designed for public
+Thank you for helping build Homelab Commander. The project is designed for public
 collaboration and treats maintainability, privacy, and predictable Home Assistant
 behavior as product features.
 

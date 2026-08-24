@@ -1,12 +1,14 @@
 # Changelog
 
-All notable changes to Homelab Updates will be documented in this file. The
+All notable changes to Homelab Commander will be documented in this file. The
 format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ## [Unreleased]
 
 ### Added
 
+- Automatic local Homelab Commander Backend discovery on Home Assistant OS and
+  Supervised, with health/token validation and an unchanged remote fallback.
 - Public versioned AMD64/AArch64 app-image workflow with anonymous manifest,
   pull, health, tooling and non-root runtime verification.
 - User-first HACS and Home Assistant App installation guide, release checklist,
@@ -25,13 +27,17 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ### Changed
 
+- User-visible product identity is now **Homelab Commander** while domain, App
+  slug, module, API and persisted entity/config identities remain compatible.
+- **Manage backend** opens a discovered local App through Home Assistant Ingress
+  in the current tab; explicitly remote backends keep their external link.
 - Integration and App packages now use the refreshed Homelab Commander icon in
   matching standard and HiDPI sizes.
 - Home Assistant App Ingress now uses the Supervisor default root instead of
   producing a double-slash request, and installed App documentation links to the
   public repository.
 - Native installation documentation now clearly separates the HACS integration
-  from the Homelab Updates Backend App and documents internal App DNS.
+  from the Homelab Commander Backend App and documents automatic local discovery.
 - Restart buttons now use Home Assistant's restart device class and alert icon,
   are categorized as configuration actions, and are available only while the
   current status requires a reboot.

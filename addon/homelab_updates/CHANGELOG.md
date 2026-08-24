@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0-dev.0
+
+- Renamed the visible product and App to Homelab Commander.
+- Added integration-side discovery of the installed local App through Supervisor.
+- Kept the existing `homelab_updates` App slug and persistent data compatible.
+
 ## 0.2.0-dev.1
 
 - Updated the App Store icon and logo to the refreshed Homelab Commander brand.

@@ -13,11 +13,11 @@ RUN uv sync --frozen --no-dev --no-editable \
 
 FROM python:3.14.7-slim-bookworm@sha256:23c59390fc717bf09f9336908199a0ae75d9c4264bf296123f94ad772fea3b52
 
-ARG BUILD_VERSION=0.2.0-dev.1
+ARG BUILD_VERSION=0.3.0-dev.0
 ARG BUILD_ARCH=amd64
 
-LABEL io.hass.name="Homelab Updates Backend" \
-      io.hass.description="Native operations backend for Homelab Updates" \
+LABEL io.hass.name="Homelab Commander Backend" \
+      io.hass.description="Native operations backend for Homelab Commander" \
       io.hass.type="app" \
       io.hass.version="${BUILD_VERSION}" \
       io.hass.arch="${BUILD_ARCH}" \

@@ -12,10 +12,9 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## In Arbeit
 
-- [ ] T-030 Public-Installation mit `0.2.0-dev.1` abschließen: App-Image nach
-  Merge explizit veröffentlichen, App aktualisieren und
-  [[../04-operations/public-install-checklist|frische Installation]] einschließlich
-  Ingress, interner Backendverbindung und HACS-Entities bestätigen.
+- [ ] T-032 Den Release Candidate `0.3.0-dev.0` nach Merge öffentlich bauen und
+  die [[../04-operations/public-install-checklist|frische Installation]] mit
+  automatischer lokaler App-Erkennung bestätigen.
 
 ## Als Nächstes
 
@@ -81,3 +80,5 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 - [x] T-031 Supervisor-Ingress-Root repariert, Management-Routen auf den
   Supervisor-Proxy begrenzt, öffentliche App-Links korrigiert und Integration/
   App-Verantwortungen sowie internen DNS-Pfad dokumentiert
+- [x] T-032a Homelab-Commander-Branding und optionale Supervisor-App-Erkennung
+  mit sicherem Remote-Fallback implementiert

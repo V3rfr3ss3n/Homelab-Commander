@@ -1,4 +1,4 @@
-"""Native Homelab Updates operations backend."""
+"""Native Homelab Commander operations backend."""
 
 from .app import create_app
 from .version import __version__

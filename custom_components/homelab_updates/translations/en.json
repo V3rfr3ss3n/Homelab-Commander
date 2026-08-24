@@ -18,18 +18,19 @@
         "data": {
           "api_token": "API token",
           "backend_url": "Native backend URL",
+          "native_connection": "Connection",
           "poll_interval": "Poll interval in seconds",
           "verify_ssl": "Verify TLS certificates"
         },
-        "description": "Connect to the native Homelab Updates backend.",
-        "title": "Native backend"
+        "description": "Connect to {backend_name} ({backend_version}, {backend_state}). Its internal address is managed automatically.",
+        "title": "Homelab Commander Backend"
       },
       "reauth_confirm": {
         "data": {
           "api_token": "API token"
         },
         "description": "Enter a new API token for the automation backend.",
-        "title": "Reauthenticate Homelab Updates"
+        "title": "Reauthenticate Homelab Commander"
       },
       "reconfigure": {
         "data": {
@@ -45,7 +46,7 @@
           "verify_ssl": "Verify TLS certificates"
         },
         "description": "Update service endpoints, templates, and polling behavior.",
-        "title": "Reconfigure Homelab Updates"
+        "title": "Reconfigure Homelab Commander"
       },
       "semaphore": {
         "data": {
@@ -68,7 +69,7 @@
           "backend_type": "Backend type"
         },
         "description": "Choose the backend that manages your homelab hosts.",
-        "title": "Set up Homelab Updates"
+        "title": "Set up Homelab Commander"
       }
     }
   },
@@ -167,5 +168,5 @@
       "title": "Reboot required for {host}"
     }
   },
-  "title": "Homelab Updates"
+  "title": "Homelab Commander"
 }

@@ -18,18 +18,19 @@
         "data": {
           "api_token": "API-Token",
           "backend_url": "URL des nativen Backends",
+          "native_connection": "Verbindung",
           "poll_interval": "Abfrageintervall in Sekunden",
           "verify_ssl": "TLS-Zertifikate überprüfen"
         },
-        "description": "Verbinde Home Assistant mit dem nativen Homelab-Updates-Backend.",
-        "title": "Natives Backend"
+        "description": "Verbinde Home Assistant mit {backend_name} ({backend_version}, {backend_state}). Die interne Adresse wird automatisch verwaltet.",
+        "title": "Homelab Commander Backend"
       },
       "reauth_confirm": {
         "data": {
           "api_token": "API-Token"
         },
         "description": "Gib ein neues API-Token für das Automatisierungsbackend ein.",
-        "title": "Homelab Updates erneut authentifizieren"
+        "title": "Homelab Commander erneut authentifizieren"
       },
       "reconfigure": {
         "data": {
@@ -45,7 +46,7 @@
           "verify_ssl": "TLS-Zertifikate überprüfen"
         },
         "description": "Ändere Endpunkte, Templates und Abfrageverhalten.",
-        "title": "Homelab Updates neu konfigurieren"
+        "title": "Homelab Commander neu konfigurieren"
       },
       "semaphore": {
         "data": {
@@ -68,7 +69,7 @@
           "backend_type": "Backend-Typ"
         },
         "description": "Wähle das Backend, das deine Homelab-Hosts verwaltet.",
-        "title": "Homelab Updates einrichten"
+        "title": "Homelab Commander einrichten"
       }
     }
   },
@@ -167,5 +168,5 @@
       "title": "Neustart für {host} erforderlich"
     }
   },
-  "title": "Homelab Updates"
+  "title": "Homelab Commander"
 }

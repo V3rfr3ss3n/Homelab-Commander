@@ -11,8 +11,8 @@ tags: [architecture, design]
 
 ```mermaid
 flowchart LR
-    U[Home Assistant user] --> HP[Homelab Updates operational panel]
-    U --> UI[Homelab Updates Backend Ingress]
+    U[Home Assistant user] --> HP[Homelab Commander operational panel]
+    U --> UI[Homelab Commander Backend Ingress]
     HP --> HA[HACS custom integration]
     HA --> NB[Native Backend API]
     HA -. optional .-> SE[Semaphore Provider]
@@ -30,9 +30,9 @@ alternativer Legacy-Provider.
 
 Der empfohlene Native-Pfad besteht aus zwei unabhängig installierbaren
 Komponenten. Die HACS-Integration besitzt Config Flow, Geräte, Entities,
-Diagnostics und die operative **Homelab Updates**-Ansicht. Die Home Assistant App
+Diagnostics und die operative **Homelab Commander**-Ansicht. Die Home Assistant App
 besitzt FastAPI, SQLite, Ansible/OpenSSH, SSH-Identität, persistente Jobs und die
-administrative **Homelab Updates Backend**-Ingress-Ansicht. Keine der beiden
+administrative **Homelab Commander Backend**-Ingress-Ansicht. Keine der beiden
 Komponenten ersetzt die andere.
 
 ## Schichten
@@ -78,6 +78,14 @@ getrenntem Status-Export. Alle implementieren dieselben Provider-Protocols oder
 deklarieren optionale Capabilities.
 
 ### Native Backend
+
+On Home Assistant OS/Supervised, the native config flow optionally discovers the
+local App through the managed Supervisor client. It matches the stable App slug
+and repository identity, derives the internal DNS endpoint from Supervisor's
+identifier, then validates the health endpoint and the user-entered API token.
+The optional `hassio` after-dependency keeps Container, Core/dev, standalone and
+remote deployments on the manual URL flow. Existing remote configuration is not
+rewritten by discovery. See [[adr/0009-supervisor-native-backend-discovery]].
 
 Der Backend-Kern trennt API, Application Services, Domainmodelle, Persistenz und
 Execution Adapter. SQLite speichert Hosts, Jobs und Custom Tasks. Ein begrenzter

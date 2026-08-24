@@ -24,6 +24,7 @@ def test_home_assistant_public_metadata_and_translation_contract() -> None:
     assert list(manifest) == [
         "domain",
         "name",
+        "after_dependencies",
         "codeowners",
         "config_flow",
         "dependencies",
@@ -35,6 +36,7 @@ def test_home_assistant_public_metadata_and_translation_contract() -> None:
         "version",
     ]
     assert "http" in manifest["dependencies"]
+    assert manifest["after_dependencies"] == ["hassio"]
     assert manifest["documentation"].endswith("/V3rfr3ss3n/Homelab-Commander")
     assert manifest["issue_tracker"].endswith("/V3rfr3ss3n/Homelab-Commander/issues")
 
@@ -64,15 +66,15 @@ def test_secret_scan_uses_github_token_on_pull_requests_and_pushes() -> None:
 def test_addon_uses_ingress_without_privileged_host_access() -> None:
     """The app manifest exposes only the intended API and Ingress boundary."""
     config = yaml.safe_load((ROOT / "addon/homelab_updates/config.yaml").read_text())
-    assert config["name"] == "Homelab Updates Backend"
+    assert config["name"] == "Homelab Commander Backend"
     assert config["ingress"] is True
     assert config["panel_admin"] is True
-    assert config["panel_title"] == "Homelab Updates Backend"
+    assert config["panel_title"] == "Homelab Commander Backend"
     assert config["ingress_port"] == 8099
     assert "ingress_entry" not in config
     assert config["ports"] == {"8099/tcp": None}
     assert config["image"] == "ghcr.io/v3rfr3ss3n/homelab-updates-backend"
-    assert config["version"] == "0.2.0-dev.1"
+    assert config["version"] == "0.3.0-dev.0"
     assert config["url"] == "https://github.com/V3rfr3ss3n/Homelab-Commander"
     assert config["arch"] == ["aarch64", "amd64"]
     for forbidden in ("host_network", "privileged", "docker_api", "hassio_api"):
@@ -100,7 +102,7 @@ def test_public_installation_docs_have_only_public_navigation_links() -> None:
 
 def test_development_release_versions_stay_aligned() -> None:
     """Integration, backend, App and publication use one release version."""
-    expected = "0.2.0-dev.1"
+    expected = "0.3.0-dev.0"
     manifest = json.loads(
         (ROOT / "custom_components/homelab_updates/manifest.json").read_text()
     )
@@ -144,7 +146,7 @@ def test_public_app_repository_metadata_is_complete() -> None:
     """The App Store entry links to its public project and has release notes."""
     repository = yaml.safe_load((ROOT / "repository.yaml").read_text())
     assert repository == {
-        "name": "Homelab Updates",
+        "name": "Homelab Commander",
         "url": "https://github.com/V3rfr3ss3n/Homelab-Commander",
         "maintainer": "V3rfr3ss3n",
     }
