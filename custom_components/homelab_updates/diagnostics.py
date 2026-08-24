@@ -1,4 +1,4 @@
-"""Privacy-preserving diagnostics for Homelab Updates."""
+"""Privacy-preserving diagnostics for Homelab Commander."""
 
 from typing import Any
 

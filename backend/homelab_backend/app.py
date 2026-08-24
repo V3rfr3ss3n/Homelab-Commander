@@ -111,7 +111,7 @@ def create_app(
             await jobs.async_stop()
 
     app = FastAPI(
-        title="Homelab Updates Backend",
+        title="Homelab Commander Backend",
         version=__version__,
         lifespan=lifespan,
         docs_url="/api/docs",
@@ -160,7 +160,7 @@ def create_app(
 
     def info_response() -> InfoResponse:
         return InfoResponse(
-            name="Homelab Updates Backend",
+            name="Homelab Commander Backend",
             version=__version__,
             api_version="v1",
             capabilities=(

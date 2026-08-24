@@ -1,6 +1,6 @@
 const TEXT = {
   de: {
-    title: "Homelab Updates",
+    title: "Homelab Commander",
     subtitle: "Zentrale Übersicht für Hosts, Jobs und Backend-Zustand",
     online: "Online",
     offline: "Offline",
@@ -39,7 +39,7 @@ const TEXT = {
     loading: "Ansicht wird geladen…",
   },
   en: {
-    title: "Homelab Updates",
+    title: "Homelab Commander",
     subtitle: "Central overview for hosts, jobs, and backend health",
     online: "Online",
     offline: "Offline",
@@ -270,7 +270,14 @@ class HomelabUpdatesPanel extends HTMLElement {
     check.addEventListener("click", () => this._checkHosts(check));
     const actions = [status, check];
     if (this._config.management_url) {
-      actions.push(create("a", {className: "link", text: this._text.management, href: this._config.management_url, target: "_blank", rel: "noopener noreferrer"}));
+      const localApp = this._config.management_url.startsWith("/app/");
+      actions.push(create("a", {
+        className: "link",
+        text: this._text.management,
+        href: this._config.management_url,
+        target: localApp ? "" : "_blank",
+        rel: localApp ? "" : "noopener noreferrer",
+      }));
     }
     const pageChildren = [
       create("header", {className: "hero"}, [

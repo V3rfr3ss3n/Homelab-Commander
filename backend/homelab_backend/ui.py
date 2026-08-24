@@ -3,9 +3,9 @@
 UI_HTML = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
 <meta name="csrf-token" content="__CSRF_TOKEN__"><meta name="api-base" content="__API_BASE__">
-<meta name="ingress-mode" content="__INGRESS_MODE__"><title>Homelab Updates</title>
+<meta name="ingress-mode" content="__INGRESS_MODE__"><title>Homelab Commander</title>
 <link rel="stylesheet" href="./ui.css"><script src="./ui.js" defer></script></head>
-<body><main><h1>Homelab Updates</h1><div class="sub">Native backend management</div>
+<body><main><h1>Homelab Commander</h1><div class="sub">Homelab management backend</div>
 <div id="connection-state" class="connection-state"><strong id="connection-label">Not connected</strong><span id="connection-hint">Enter your API token to load backend data.</span></div>
 <form id="connect-form"><label id="token-field">API token<input id="token" type="password" autocomplete="off" minlength="32" required></label><button id="connect" type="submit">Connect</button><button id="disconnect" type="button" hidden>Disconnect</button></form>
 <p id="message" role="status" aria-live="polite"></p>

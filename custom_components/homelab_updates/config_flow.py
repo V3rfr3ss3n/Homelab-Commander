@@ -1,4 +1,4 @@
-"""UI configuration flows for Homelab Updates providers."""
+"""UI configuration flows for Homelab Commander providers."""
 
 import logging
 from collections.abc import Mapping
@@ -16,6 +16,7 @@ from .const import (
     CONF_BACKEND_URL,
     CONF_CHECK_TEMPLATE_ID,
     CONF_EXPORT_TEMPLATE_ID,
+    CONF_NATIVE_CONNECTION,
     CONF_POLL_INTERVAL,
     CONF_PROJECT_ID,
     CONF_REBOOT_TEMPLATE_ID,
@@ -31,6 +32,9 @@ from .const import (
     DOMAIN,
     MAX_POLL_INTERVAL,
     MIN_POLL_INTERVAL,
+    NAME,
+    NATIVE_CONNECTION_LOCAL,
+    NATIVE_CONNECTION_REMOTE,
 )
 from .domain import Command
 from .exceptions import (
@@ -40,6 +44,7 @@ from .exceptions import (
     InvalidStatusDataError,
     InvalidUrlError,
 )
+from .supervisor import async_discover_native_backend
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,9 +53,9 @@ type FlowResult = config_entries.ConfigFlowResult
 
 
 class HomelabUpdatesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Configure a native or legacy Homelab Updates provider."""
+    """Configure a native or legacy Homelab Commander provider."""
 
-    VERSION = 2
+    VERSION = 3
     MINOR_VERSION = 1
 
     async def async_step_user(
@@ -90,9 +95,50 @@ class HomelabUpdatesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_native(
         self, user_input: Mapping[str, object] | None = None
     ) -> FlowResult:
-        """Configure the native backend."""
+        """Configure the discovered local App or a remote native backend."""
+        if user_input is not None and CONF_BACKEND_URL in user_input:
+            return await self.async_step_native_remote(user_input)
+
+        discovered = getattr(self, "_discovered_native_backend", None)
+        if discovered is None:
+            discovered = await async_discover_native_backend(self.hass)
+            self._discovered_native_backend = discovered
+
+        if discovered is not None and discovered.is_running:
+            if (
+                user_input is not None
+                and user_input.get(CONF_NATIVE_CONNECTION) == NATIVE_CONNECTION_REMOTE
+            ):
+                return await self.async_step_native_remote()
+            return await self._async_provider_step(
+                BACKEND_NATIVE,
+                "native",
+                user_input,
+                _native_discovered_schema(user_input),
+                data_overrides={CONF_BACKEND_URL: discovered.url},
+                description_placeholders={
+                    "backend_name": discovered.name,
+                    "backend_state": discovered.state.value,
+                    "backend_version": discovered.version or "unknown",
+                },
+            )
+
+        return await self.async_step_native_remote(user_input)
+
+    async def async_step_native_remote(
+        self, user_input: Mapping[str, object] | None = None
+    ) -> FlowResult:
+        """Configure a manually reachable native backend."""
         return await self._async_provider_step(
-            BACKEND_NATIVE, "native", user_input, _native_schema(user_input)
+            BACKEND_NATIVE,
+            "native",
+            user_input,
+            _native_schema(user_input),
+            description_placeholders={
+                "backend_name": "Remote / standalone backend",
+                "backend_state": "manual connection",
+                "backend_version": "unknown version",
+            },
         )
 
     async def async_step_semaphore(
@@ -112,10 +158,17 @@ class HomelabUpdatesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         step_id: str,
         user_input: Mapping[str, object] | None,
         schema: vol.Schema,
+        *,
+        data_overrides: Mapping[str, object] | None = None,
+        description_placeholders: Mapping[str, str] | None = None,
     ) -> FlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
-            candidate = {**user_input, CONF_BACKEND_TYPE: backend_type}
+            candidate = {
+                **user_input,
+                **(data_overrides or {}),
+                CONF_BACKEND_TYPE: backend_type,
+            }
             try:
                 data = await self._async_validate_and_normalize(candidate)
             except Exception as err:  # Payloads are never included in UI errors.
@@ -126,7 +179,12 @@ class HomelabUpdatesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 await self.async_set_unique_id(_unique_id(data))
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(title=_entry_title(data), data=data)
-        return self.async_show_form(step_id=step_id, data_schema=schema, errors=errors)
+        return self.async_show_form(
+            step_id=step_id,
+            data_schema=schema,
+            errors=errors,
+            description_placeholders=description_placeholders,
+        )
 
     async def async_step_reauth(self, entry_data: Mapping[str, object]) -> FlowResult:
         """Start reauthentication for an existing entry."""
@@ -261,6 +319,33 @@ def _native_schema(
     return vol.Schema(schema)
 
 
+def _native_discovered_schema(
+    defaults: Mapping[str, object] | None, *, include_token: bool = True
+) -> vol.Schema:
+    """Collect credentials for a local App without exposing its internal URL."""
+    values = defaults or {}
+    schema: dict[vol.Marker, object] = {
+        vol.Required(
+            CONF_NATIVE_CONNECTION,
+            default=values.get(CONF_NATIVE_CONNECTION, NATIVE_CONNECTION_LOCAL),
+        ): vol.In({
+            NATIVE_CONNECTION_LOCAL: "Use installed Home Assistant App",
+            NATIVE_CONNECTION_REMOTE: "Remote / standalone backend",
+        }),
+        vol.Required(
+            CONF_POLL_INTERVAL,
+            default=values.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
+        ): vol.All(
+            vol.Coerce(int),
+            vol.Range(min=MIN_POLL_INTERVAL, max=MAX_POLL_INTERVAL),
+        ),
+        vol.Required(CONF_VERIFY_SSL, default=values.get(CONF_VERIFY_SSL, True)): bool,
+    }
+    if include_token:
+        schema[vol.Optional(CONF_API_TOKEN, default="")] = str
+    return vol.Schema(schema)
+
+
 def _semaphore_schema(
     defaults: Mapping[str, object] | None, *, include_token: bool = True
 ) -> vol.Schema:
@@ -358,14 +443,12 @@ def _unique_id(data: Mapping[str, str | int | bool]) -> str:
 
 
 def _entry_title(data: Mapping[str, str | int | bool]) -> str:
+    if data[CONF_BACKEND_TYPE] == BACKEND_NATIVE:
+        return NAME
+
     from yarl import URL
 
-    url_key = (
-        CONF_BACKEND_URL
-        if data[CONF_BACKEND_TYPE] == BACKEND_NATIVE
-        else CONF_SEMAPHORE_URL
-    )
-    return URL(str(data[url_key])).host or "Homelab Updates"
+    return URL(str(data[CONF_SEMAPHORE_URL])).host or NAME
 
 
 def _flow_error(err: Exception) -> str:

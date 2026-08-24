@@ -1,8 +1,9 @@
 """Authenticated Home Assistant panel boundary tests."""
 
 from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
+from aiohasupervisor.models.addons import AddonState
 from homeassistant.components import frontend
 from homeassistant.const import CONF_API_TOKEN
 from homeassistant.core import HomeAssistant
@@ -19,6 +20,7 @@ from custom_components.homelab_updates.const import (
 )
 from custom_components.homelab_updates.domain import BackendTask, Command, TaskPhase
 from custom_components.homelab_updates.panel import PANEL_URL_PATH
+from custom_components.homelab_updates.supervisor import DiscoveredNativeBackend
 
 from .conftest import API_TOKEN
 from .test_api import (
@@ -94,6 +96,35 @@ async def test_panel_moves_to_next_loaded_native_entry_on_unload(
     assert replacement.config["entry_id"] == second.entry_id
     assert replacement.config["management_url"] == second_url
     assert second.runtime_data.panel_registered is True
+
+
+async def test_local_app_management_link_uses_home_assistant_app_route(
+    hass: HomeAssistant,
+    aioclient_mock: object,
+) -> None:
+    """The panel opens local App Ingress instead of browser-invisible DNS."""
+    slug = "synthetic_repository_homelab_updates"
+    backend_url = "http://synthetic-repository-homelab-updates:8099"
+    discovered = DiscoveredNativeBackend(
+        name="Homelab Commander Backend",
+        slug=slug,
+        version="0.3.0-dev.0",
+        state=AddonState.STARTED,
+        url=backend_url,
+    )
+
+    with patch(
+        "custom_components.homelab_updates.panel.async_discover_native_backend",
+        AsyncMock(return_value=discovered),
+    ):
+        await _setup_native_entry(
+            hass,
+            aioclient_mock,
+            backend_url=backend_url,
+        )
+
+    panel = hass.data[frontend.DATA_PANELS][PANEL_URL_PATH]
+    assert panel.config["management_url"] == f"/app/{slug}"
 
 
 async def test_admin_panel_supports_an_empty_job_history(

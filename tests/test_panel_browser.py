@@ -68,7 +68,7 @@ def _snapshot() -> dict[str, object]:
     }
 
 
-def _panel_harness() -> Starlette:
+def _panel_harness(management_url: str = MANAGEMENT_URL) -> Starlette:
     snapshot = json.dumps(_snapshot())
     html = f"""<!doctype html>
 <html><body>
@@ -80,7 +80,7 @@ def _panel_harness() -> Starlette:
   document.body.append(panel);
   panel.panel = {{config: {{
     entry_id: "{ENTRY_ID}",
-    management_url: "{MANAGEMENT_URL}",
+    management_url: "{management_url}",
   }}}};
   panel.hass = {{
     language: "de",
@@ -124,7 +124,7 @@ async def test_panel_renders_main_view_and_loads_logs_on_demand(
 
         await page.goto(base_url)
         panel = page.locator("homelab-updates-panel")
-        await panel.get_by_role("heading", name="Homelab Updates").wait_for()
+        await panel.get_by_role("heading", name="Homelab Commander").wait_for()
         text = await panel.locator(".page").inner_text()
         assert "Online" in text
         assert "Hosts\n1" in text
@@ -133,6 +133,7 @@ async def test_panel_renders_main_view_and_loads_logs_on_demand(
         assert "synthetic_failure" in text
         manage = panel.get_by_role("link", name="Backend verwalten")
         assert await manage.get_attribute("href") == MANAGEMENT_URL
+        assert await manage.get_attribute("target") == "_blank"
 
         await panel.get_by_role("button", name="Log öffnen").first.click()
         log = panel.locator("pre")
@@ -150,4 +151,27 @@ async def test_panel_renders_main_view_and_loads_logs_on_demand(
         assert await page.evaluate("sessionStorage.length") == 0
         assert "synthetic-test-token" not in await page.content()
         assert errors == []
+        await browser.close()
+
+
+@pytest.mark.asyncio
+async def test_panel_opens_local_app_route_in_same_home_assistant_tab(
+    socket_enabled: None,
+) -> None:
+    """A discovered App follows the same local route as Home Assistant's UI button."""
+    app_route = "/app/synthetic_repository_homelab_updates"
+    async with (
+        _live_server(_panel_harness(app_route)) as base_url,
+        async_playwright() as api,
+    ):
+        browser = await api.chromium.launch(headless=True)
+        page = await browser.new_page()
+        await page.goto(base_url)
+        panel = page.locator("homelab-updates-panel")
+        manage = panel.get_by_role("link", name="Backend verwalten")
+        await manage.wait_for()
+
+        assert await manage.get_attribute("href") == app_route
+        assert await manage.get_attribute("target") is None
+        assert await manage.get_attribute("rel") is None
         await browser.close()

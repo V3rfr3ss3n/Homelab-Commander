@@ -175,7 +175,7 @@ async def test_reboot_and_global_buttons_use_expected_targets(
     await hass.services.async_call(
         BUTTON_DOMAIN,
         SERVICE_PRESS,
-        {ATTR_ENTITY_ID: "button.homelab_updates_check_all_hosts"},
+        {ATTR_ENTITY_ID: "button.homelab_commander_check_all_hosts"},
         blocking=True,
     )
     await hass.async_block_till_done()

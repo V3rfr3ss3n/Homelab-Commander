@@ -30,6 +30,7 @@ from .const import (
     VERSION,
 )
 from .domain import BackendTask, Command, HostStatus, TaskPhase
+from .supervisor import async_discover_native_backend
 
 if TYPE_CHECKING:
     from . import HomelabUpdatesConfigEntry
@@ -61,6 +62,12 @@ async def async_register_panel(
         CONF_BACKEND_TYPE
     ) != BACKEND_NATIVE or frontend.async_panel_exists(hass, PANEL_URL_PATH):
         return False
+    management_url = str(entry.data[CONF_BACKEND_URL])
+    discovered = await async_discover_native_backend(hass)
+    if discovered is not None and management_url.rstrip("/") == discovered.url.rstrip(
+        "/"
+    ):
+        management_url = discovered.frontend_url
     await panel_custom.async_register_panel(
         hass,
         frontend_url_path=PANEL_URL_PATH,
@@ -70,7 +77,7 @@ async def async_register_panel(
         module_url=PANEL_MODULE_URL,
         config={
             "entry_id": entry.entry_id,
-            "management_url": str(entry.data[CONF_BACKEND_URL]),
+            "management_url": management_url,
         },
         require_admin=True,
         config_panel_domain=DOMAIN,
@@ -109,7 +116,7 @@ def _native_entry(hass: HomeAssistant, entry_id: str) -> HomelabUpdatesConfigEnt
         or entry.state is not ConfigEntryState.LOADED
         or entry.data.get(CONF_BACKEND_TYPE) != BACKEND_NATIVE
     ):
-        raise HomeAssistantError("The native Homelab Updates entry is unavailable")
+        raise HomeAssistantError("The native Homelab Commander entry is unavailable")
     return cast("HomelabUpdatesConfigEntry", entry)
 
 

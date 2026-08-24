@@ -36,6 +36,13 @@ def _native_client(session: ClientSession) -> NativeBackendClient:
     return NativeBackendClient(session, NATIVE_URL, API_TOKEN)
 
 
+def _native_health_response(aioclient_mock: object) -> None:
+    """Register the required native health endpoint response."""
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/health", json={"status": "ok"}
+    )
+
+
 def _native_host_payload(**overrides: object) -> dict[str, object]:
     payload: dict[str, object] = {
         "id": HOST_ID,
@@ -477,6 +484,7 @@ async def test_native_client_validates_and_parses_hosts(
     aiohttp_client_session: ClientSession,
 ) -> None:
     """The native provider normalizes UUID hosts and accepts never-checked hosts."""
+    _native_health_response(aioclient_mock)
     aioclient_mock.get(  # type: ignore[attr-defined]
         f"{NATIVE_URL}/api/v1/info", json={"api_version": "v1"}
     )
@@ -490,6 +498,19 @@ async def test_native_client_validates_and_parses_hosts(
     hosts = await client.async_get_hosts()
     assert hosts[HOST_ID].hostname == "Node 01"
     assert hosts[HOST_ID].checked_at is None
+
+
+async def test_native_client_rejects_unhealthy_backend(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+) -> None:
+    """Health must succeed before the token and API version are accepted."""
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/health", json={"status": "unhealthy"}
+    )
+
+    with pytest.raises(InvalidStatusDataError):
+        await _native_client(aiohttp_client_session).async_validate()
 
 
 async def test_native_client_actions_and_batch_tracking(
@@ -622,6 +643,7 @@ async def test_native_client_authentication_errors(
     status: int,
 ) -> None:
     """Native authentication failures use the common reauth category."""
+    _native_health_response(aioclient_mock)
     aioclient_mock.get(  # type: ignore[attr-defined]
         f"{NATIVE_URL}/api/v1/info", status=status
     )
@@ -635,6 +657,7 @@ async def test_native_client_rejects_incompatible_and_non_list_responses(
 ) -> None:
     """Every native collection and compatibility boundary fails closed."""
     client = _native_client(aiohttp_client_session)
+    _native_health_response(aioclient_mock)
     aioclient_mock.get(  # type: ignore[attr-defined]
         f"{NATIVE_URL}/api/v1/info", json={"api_version": "v2"}
     )
@@ -761,6 +784,7 @@ async def test_native_client_rejects_http_and_payload_failures(
 ) -> None:
     """HTTP, JSON, and response-size failures expose no backend body."""
     client = _native_client(aiohttp_client_session)
+    _native_health_response(aioclient_mock)
     aioclient_mock.get(  # type: ignore[attr-defined]
         f"{NATIVE_URL}/api/v1/info", status=500, content=b"sensitive body"
     )
@@ -768,6 +792,7 @@ async def test_native_client_rejects_http_and_payload_failures(
         await client.async_validate()
     aioclient_mock.clear_requests()  # type: ignore[attr-defined]
 
+    _native_health_response(aioclient_mock)
     aioclient_mock.get(  # type: ignore[attr-defined]
         f"{NATIVE_URL}/api/v1/info", content=b"not-json"
     )
@@ -775,6 +800,7 @@ async def test_native_client_rejects_http_and_payload_failures(
         await client.async_validate()
     aioclient_mock.clear_requests()  # type: ignore[attr-defined]
 
+    _native_health_response(aioclient_mock)
     aioclient_mock.get(  # type: ignore[attr-defined]
         f"{NATIVE_URL}/api/v1/info", content=b"0" * (2 * 1024 * 1024 + 1)
     )
@@ -811,6 +837,7 @@ async def test_native_client_maps_connection_errors(
     aiohttp_client_session: ClientSession,
 ) -> None:
     """Transport exceptions map to the provider-neutral connection error."""
+    _native_health_response(aioclient_mock)
     aioclient_mock.get(  # type: ignore[attr-defined]
         f"{NATIVE_URL}/api/v1/info", exc=ClientConnectionError()
     )

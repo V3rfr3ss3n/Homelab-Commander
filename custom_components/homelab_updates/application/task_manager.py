@@ -88,7 +88,7 @@ class TaskManager:
         self._states[key] = started
         tracker = self._hass.async_create_task(
             self._async_track(key, started.task_id),
-            f"Track Homelab Updates task {started.task_id}",
+            f"Track Homelab Commander task {started.task_id}",
         )
         self._tasks[key] = tracker
         tracker.add_done_callback(
@@ -111,7 +111,7 @@ class TaskManager:
         self._states[key] = started
         tracker = self._hass.async_create_task(
             self._async_track(key, started.task_id),
-            f"Track Homelab Updates task {started.task_id}",
+            f"Track Homelab Commander task {started.task_id}",
         )
         self._tasks[key] = tracker
         tracker.add_done_callback(

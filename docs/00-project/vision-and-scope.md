@@ -9,7 +9,7 @@ tags: [project, vision, scope]
 
 ## Vision
 
-Homelab Updates wird eine erweiterbare Home-Assistant-Integrationsplattform für
+Homelab Commander wird eine erweiterbare Home-Assistant-Integrationsplattform für
 lokale Homelab-Betriebsaufgaben. Der erste vertikale Funktionsumfang macht den
 Updatezustand von Linux-Systemen sichtbar und stößt kontrollierte Updates oder
 Reboots über ein externes Automatisierungsbackend an.

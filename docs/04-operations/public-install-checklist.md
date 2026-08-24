@@ -24,17 +24,17 @@ reales Zielsystem oder startet Update beziehungsweise Reboot.
 ## Frische Installation
 
 - [ ] Repository als HACS Custom Repository hinzufügen.
-- [ ] **Homelab Updates** Integration installieren und Home Assistant neu starten.
+- [ ] **Homelab Commander** Integration installieren und Home Assistant neu starten.
 - [ ] Dasselbe Repository im App Store hinzufügen.
 - [ ] App-Karte, Icon, Dokumentation und Konfigurationsschema prüfen.
-- [ ] **Homelab Updates Backend** App ohne Registry-Credentials installieren.
+- [ ] **Homelab Commander Backend** App ohne Registry-Credentials installieren.
 - [ ] Zufälligen Testtoken konfigurieren und App starten.
 - [ ] Ingress-Seite und öffentliche SSH-Key-Anzeige öffnen.
-- [ ] Zuerst den generierten internen App-DNS-Namen aus dem installierten
-      Identifier prüfen und das Port-Mapping deaktiviert lassen.
+- [ ] Die laufende lokale App wird im Native Config Flow automatisch erkannt;
+      weder Identifier noch Port oder URL werden eingegeben.
 - [ ] Nur wenn internes DNS nicht funktioniert, den Backend-Port im isolierten
       Testnetz als dokumentierten Fallback freigeben.
-- [ ] Native Integration mit Backend-URL und demselben Token einrichten.
+- [ ] Native Integration mit demselben Token einrichten.
 - [ ] Backendzustand, Hauptpanel und Backend-Ingress-Eintrag prüfen.
 
 ## Sichere Funktionsprüfung

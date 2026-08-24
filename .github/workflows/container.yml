@@ -10,7 +10,7 @@ on:
       version:
         description: Image version; must match the app version when publishing
         required: true
-        default: 0.2.0-dev.1
+        default: 0.3.0-dev.0
         type: string
       publish:
         description: Publish the versioned image to GHCR
@@ -133,8 +133,8 @@ jobs:
           image-tags: ${{ needs.policy.outputs.version }}
           labels: |
             io.hass.type=app
-            io.hass.name=Homelab Updates Backend
-            io.hass.description=Native operations backend for Homelab Updates
+            io.hass.name=Homelab Commander Backend
+            io.hass.description=Native operations backend for Homelab Commander
           load: "true"
           push: "false"
           version: ${{ needs.policy.outputs.version }}
@@ -174,8 +174,8 @@ jobs:
           image-tags: ${{ needs.policy.outputs.version }}
           labels: |
             io.hass.type=app
-            io.hass.name=Homelab Updates Backend
-            io.hass.description=Native operations backend for Homelab Updates
+            io.hass.name=Homelab Commander Backend
+            io.hass.description=Native operations backend for Homelab Commander
           push: "true"
           version: ${{ needs.policy.outputs.version }}
 

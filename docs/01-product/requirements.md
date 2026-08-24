@@ -22,6 +22,13 @@ tags: [product, requirements]
 - **REQ-CFG-005 MUST:** Reauthentication und Reconfigure sind in der UI möglich.
 - **REQ-CFG-006 MUST:** HTTP ist für lokale Netze erlaubt; HTTPS und selektive
   SSL-Verifikation werden unterstützt. Es gibt keine globale SSL-Abschaltung.
+- **REQ-CFG-007 MUST:** Auf Home Assistant OS/Supervised erkennt der Native Flow
+  eine laufende kompatible lokale App über Supervisor-Metadaten, verwaltet ihre
+  interne URL selbst und validiert Health sowie den Nutzer-Token. Ohne passende
+  App bleibt der manuelle Remote-/Standalone-Flow verfügbar.
+- **REQ-CFG-008 MUST:** Für einen erkannten lokalen Backend-App-Eintrag öffnet
+  **Backend verwalten** die zugehörige Home-Assistant-App-/Ingress-Route im
+  aktuellen Tab. Nur explizit externe Remote-Backends verwenden einen neuen Tab.
 
 ## Hoststatus und Geräte
 
@@ -170,7 +177,7 @@ tags: [product, requirements]
   dieselbe routbare Jobansicht. Der Hash enthält nie Zugangsdaten; Log und
   Metadaten benötigen eine gültige UI-Session beziehungsweise Ingress-Auth.
 - **REQ-DOC-002 MUST:** Öffentliche Installationsdokumentation unterscheidet die
-  HACS-Integration **Homelab Updates** von der App **Homelab Updates Backend**,
+  HACS-Integration **Homelab Commander** von der App **Homelab Commander Backend**,
   erklärt ihre Verantwortungen und enthält keine lokalen Dateisystemlinks.
 
 ## Status-Payload `0.1`

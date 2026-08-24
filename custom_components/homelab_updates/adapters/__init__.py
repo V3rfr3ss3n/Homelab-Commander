@@ -1,4 +1,4 @@
-"""Infrastructure adapters for Homelab Updates."""
+"""Infrastructure adapters for Homelab Commander."""
 
 from .http import (
     HttpStatusProvider,

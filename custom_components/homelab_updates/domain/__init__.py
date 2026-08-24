@@ -1,4 +1,4 @@
-"""Domain models for Homelab Updates."""
+"""Domain models for Homelab Commander."""
 
 from .models import (
     BackendJobLog,

@@ -5,7 +5,7 @@ updated: 2026-08-23
 tags: [project, index]
 ---
 
-# Homelab Updates – Wissensspeicher
+# Homelab Commander – Wissensspeicher
 
 Dieser Ordner ist zugleich technische Projektdokumentation und Obsidian Vault.
 Er enthält nur veröffentlichbare Informationen. Lokale Infrastrukturwerte gehören

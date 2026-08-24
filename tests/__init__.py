@@ -1,1 +1,1 @@
-"""Tests for Homelab Updates."""
+"""Tests for Homelab Commander."""

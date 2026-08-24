@@ -117,7 +117,7 @@ tags: [product, acceptance, release]
 24. Ein Native-Hub zeigt nur **Hosts prüfen** als globale manuelle Aktion; ein
     Semaphore-Hub behält **Hosts prüfen** und **Status aktualisieren**, weil dort
     zwei getrennte Templates angesprochen werden.
-25. Native registriert für Administratoren **Homelab Updates** in der
+25. Native registriert für Administratoren **Homelab Commander** in der
     Home-Assistant-Seitenleiste. Die Hauptansicht zeigt Onlinezustand, Hosts,
     Queuezählung, letzten Job und letzten fehlgeschlagenen Job.
 26. **Log öffnen** lädt einen begrenzten redigierten Joblog erst auf Klick über

@@ -3,6 +3,7 @@
 from unittest.mock import AsyncMock, patch
 
 from homeassistant.components import frontend
+from homeassistant.const import CONF_API_TOKEN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
@@ -86,7 +87,7 @@ async def test_setup_creates_devices_and_entities(
     assert len(devices) == 2
     assert {device.name for device in devices} == {
         "example-node",
-        "Homelab Updates",
+        "Homelab Commander",
     }
     assert not frontend.async_panel_exists(hass, PANEL_URL_PATH)
 
@@ -206,12 +207,40 @@ async def test_version_one_entry_migrates_to_semaphore_provider(
 
     assert await async_migrate_entry(hass, mock_entry)  # type: ignore[arg-type]
 
-    assert mock_entry.version == 2
+    assert mock_entry.version == 3
     assert mock_entry.minor_version == 1
     assert mock_entry.data == {
         **original,
         CONF_BACKEND_TYPE: BACKEND_SEMAPHORE,
     }
+
+
+async def test_native_entry_migration_keeps_identity_and_updates_visible_title(
+    hass: HomeAssistant,
+) -> None:
+    """The product rename does not alter a persisted native backend URL or ID."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="legacy native title",
+        data={
+            CONF_BACKEND_TYPE: BACKEND_NATIVE,
+            CONF_BACKEND_URL: "https://backend.example.invalid",
+            CONF_API_TOKEN: "synthetic-native-token",
+            CONF_POLL_INTERVAL: 300,
+            CONF_VERIFY_SSL: True,
+        },
+        unique_id="native|https://backend.example.invalid",
+        version=2,
+        minor_version=1,
+    )
+    entry.add_to_hass(hass)
+
+    assert await async_migrate_entry(hass, entry)  # type: ignore[arg-type]
+
+    assert entry.version == 3
+    assert entry.title == "Homelab Commander"
+    assert entry.unique_id == "native|https://backend.example.invalid"
+    assert entry.data[CONF_BACKEND_URL] == "https://backend.example.invalid"
 
 
 async def test_native_setup_creates_job_and_health_entities(
@@ -275,7 +304,7 @@ async def test_native_setup_creates_job_and_health_entities(
 
     assert frontend.async_panel_exists(hass, PANEL_URL_PATH)
     panel = hass.data[frontend.DATA_PANELS][PANEL_URL_PATH].to_response()
-    assert panel["title"] == "Homelab Updates"
+    assert panel["title"] == "Homelab Commander"
     assert panel["require_admin"] is True
     assert panel["config"]["entry_id"] == entry.entry_id  # type: ignore[index]
     assert panel["config"]["management_url"] == NATIVE_URL  # type: ignore[index]
@@ -344,12 +373,14 @@ async def test_native_job_entities_separate_current_success_from_old_failure(
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
 
-    connectivity = hass.states.get("binary_sensor.homelab_updates_backend_connectivity")
+    connectivity = hass.states.get(
+        "binary_sensor.homelab_commander_backend_connectivity"
+    )
     assert connectivity is not None
     assert connectivity.state == "on"
     assert connectivity.attributes["device_class"] == "connectivity"
-    latest = hass.states.get("sensor.homelab_updates_last_job")
-    historical = hass.states.get("sensor.homelab_updates_last_failed_job")
+    latest = hass.states.get("sensor.homelab_commander_last_job")
+    historical = hass.states.get("sensor.homelab_commander_last_failed_job")
     host_latest = hass.states.get("sensor.node_01_last_job")
     host_historical = hass.states.get("sensor.node_01_last_failed_job")
     assert latest is not None
@@ -362,7 +393,7 @@ async def test_native_job_entities_separate_current_success_from_old_failure(
     assert historical.attributes["job_id"] == failed_id
     assert historical.attributes["error_code"] == "invalid_ansible_output"
     assert historical.attributes["finished_at"] == "2026-01-15T17:53:00+00:00"
-    last_type = hass.states.get("sensor.homelab_updates_last_job_type")
+    last_type = hass.states.get("sensor.homelab_commander_last_job_type")
     assert last_type is not None
     assert last_type.state == "check_updates"
     assert "output" not in latest.attributes

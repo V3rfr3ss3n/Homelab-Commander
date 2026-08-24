@@ -1,4 +1,4 @@
-"""Shared synthetic fixtures for Homelab Updates tests."""
+"""Shared synthetic fixtures for Homelab Commander tests."""
 
 from datetime import UTC, datetime
 from typing import Any

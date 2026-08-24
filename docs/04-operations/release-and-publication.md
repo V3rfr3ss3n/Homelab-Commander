@@ -54,7 +54,7 @@ anonymen Pull und denselben Laufzeitvertrag.
 Nach Merge der Pipeline auf `main`:
 
 1. In GitHub **Actions → Container → Run workflow** öffnen.
-2. Branch `main`, Version `0.2.0-dev.1` und `publish=true` wählen.
+2. Branch `main`, Version `0.3.0-dev.0` und `publish=true` wählen.
 3. Den Lauf bis zur Manifest-Veröffentlichung und zum anonymen Gate abwarten.
 4. Nur bei der allerersten Package-Veröffentlichung: Auf der GitHub-Profilseite
    unter **Packages** jedes neu erzeugte zugehörige
@@ -70,9 +70,9 @@ Nach Merge der Pipeline auf `main`:
    ```bash
    docker logout ghcr.io || true
    docker buildx imagetools inspect \
-     ghcr.io/v3rfr3ss3n/homelab-updates-backend:0.2.0-dev.1
+     ghcr.io/v3rfr3ss3n/homelab-updates-backend:0.3.0-dev.0
    docker pull \
-     ghcr.io/v3rfr3ss3n/homelab-updates-backend:0.2.0-dev.1
+     ghcr.io/v3rfr3ss3n/homelab-updates-backend:0.3.0-dev.0
    ```
 
 Erst ein grünes anonymes Gate und die frische Home-Assistant-Installation gelten

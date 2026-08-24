@@ -4,6 +4,8 @@ from collections.abc import Mapping
 from unittest.mock import AsyncMock, patch
 
 import pytest
+import voluptuous as vol
+from aiohasupervisor.models.addons import AddonState
 from homeassistant import config_entries
 from homeassistant.const import CONF_API_TOKEN
 from homeassistant.core import HomeAssistant
@@ -16,9 +18,11 @@ from custom_components.homelab_updates.const import (
     BACKEND_SEMAPHORE,
     CONF_BACKEND_TYPE,
     CONF_BACKEND_URL,
+    CONF_NATIVE_CONNECTION,
     CONF_POLL_INTERVAL,
     CONF_SEMAPHORE_URL,
     DOMAIN,
+    NATIVE_CONNECTION_REMOTE,
 )
 from custom_components.homelab_updates.exceptions import (
     AuthenticationError,
@@ -26,6 +30,7 @@ from custom_components.homelab_updates.exceptions import (
     InvalidProjectError,
     InvalidStatusDataError,
 )
+from custom_components.homelab_updates.supervisor import DiscoveredNativeBackend
 
 
 def _validation_patches(
@@ -34,7 +39,10 @@ def _validation_patches(
 ) -> tuple[patch, patch]:
     return (
         patch(
-            "custom_components.homelab_updates.config_flow.SemaphoreClient.async_validate",
+            (
+                "custom_components.homelab_updates.config_flow."
+                "SemaphoreClient.async_validate"
+            ),
             AsyncMock(side_effect=semaphore_error),
         ),
         patch(
@@ -79,7 +87,10 @@ async def test_successful_native_config_flow(hass: HomeAssistant) -> None:
         "verify_ssl": True,
     }
     with patch(
-        "custom_components.homelab_updates.config_flow.NativeBackendClient.async_validate",
+        (
+            "custom_components.homelab_updates.config_flow."
+            "NativeBackendClient.async_validate"
+        ),
         AsyncMock(),
     ):
         result = await hass.config_entries.flow.async_init(
@@ -98,7 +109,124 @@ async def test_successful_native_config_flow(hass: HomeAssistant) -> None:
         CONF_BACKEND_TYPE: BACKEND_NATIVE,
         CONF_BACKEND_URL: "https://backend.example.invalid",
     }
-    assert result["title"] == "backend.example.invalid"
+    assert result["title"] == "Homelab Commander"
+
+
+def _schema_keys(result: Mapping[str, object]) -> set[str]:
+    """Return field names from a Home Assistant flow schema."""
+    schema = result["data_schema"]
+    assert isinstance(schema, vol.Schema)
+    return {str(marker.schema) for marker in schema.schema}
+
+
+async def test_native_config_flow_uses_discovered_local_app(
+    hass: HomeAssistant,
+) -> None:
+    """A running local App hides its implementation-only internal URL."""
+    discovered = DiscoveredNativeBackend(
+        name="Homelab Commander Backend",
+        slug="synthetic_repository_homelab_updates",
+        version="0.3.0-dev.0",
+        state=AddonState.STARTED,
+        url="http://synthetic-repository-homelab-updates:8099",
+    )
+    with (
+        patch(
+            (
+                "custom_components.homelab_updates.config_flow."
+                "async_discover_native_backend"
+            ),
+            AsyncMock(return_value=discovered),
+        ),
+        patch(
+            (
+                "custom_components.homelab_updates.config_flow."
+                "NativeBackendClient.async_validate"
+            ),
+            AsyncMock(),
+        ),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": config_entries.SOURCE_USER},
+            data={CONF_BACKEND_TYPE: BACKEND_NATIVE},
+        )
+        assert result["step_id"] == "native"
+        assert CONF_BACKEND_URL not in _schema_keys(result)
+        assert CONF_NATIVE_CONNECTION in _schema_keys(result)
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {
+                CONF_NATIVE_CONNECTION: "local_app",
+                CONF_API_TOKEN: "synthetic-native-token",
+                CONF_POLL_INTERVAL: 300,
+                "verify_ssl": True,
+            },
+        )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"][CONF_BACKEND_URL] == discovered.url
+    assert CONF_NATIVE_CONNECTION not in result["data"]
+
+
+async def test_native_config_flow_offers_remote_fallback_when_requested(
+    hass: HomeAssistant,
+) -> None:
+    """A detected App never removes the remote and standalone option."""
+    discovered = DiscoveredNativeBackend(
+        name="Homelab Commander Backend",
+        slug="synthetic_repository_homelab_updates",
+        version="0.3.0-dev.0",
+        state=AddonState.STARTED,
+        url="http://synthetic-repository-homelab-updates:8099",
+    )
+    with patch(
+        ("custom_components.homelab_updates.config_flow.async_discover_native_backend"),
+        AsyncMock(return_value=discovered),
+    ):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": config_entries.SOURCE_USER},
+            data={CONF_BACKEND_TYPE: BACKEND_NATIVE},
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_NATIVE_CONNECTION: NATIVE_CONNECTION_REMOTE},
+        )
+
+    assert result["step_id"] == "native"
+    assert CONF_BACKEND_URL in _schema_keys(result)
+
+
+async def test_existing_remote_native_reconfigure_keeps_manual_url(
+    hass: HomeAssistant,
+) -> None:
+    """Discovery never overwrites an existing remote backend configuration."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Homelab Commander",
+        data={
+            CONF_BACKEND_TYPE: BACKEND_NATIVE,
+            CONF_BACKEND_URL: "https://backend.example.invalid",
+            CONF_API_TOKEN: "synthetic-native-token",
+            CONF_POLL_INTERVAL: 300,
+            "verify_ssl": True,
+        },
+        version=3,
+        minor_version=1,
+    )
+    entry.add_to_hass(hass)
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={
+            "source": config_entries.SOURCE_RECONFIGURE,
+            "entry_id": entry.entry_id,
+        },
+    )
+
+    assert result["step_id"] == "reconfigure"
+    assert CONF_BACKEND_URL in _schema_keys(result)
+    assert entry.data[CONF_BACKEND_URL] == "https://backend.example.invalid"
 
 
 @pytest.mark.parametrize(

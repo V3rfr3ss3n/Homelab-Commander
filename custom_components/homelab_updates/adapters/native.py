@@ -1,4 +1,4 @@
-"""HTTP adapter for the native Homelab Updates backend API."""
+"""HTTP adapter for the native Homelab Commander backend API."""
 
 import json
 from collections.abc import Mapping
@@ -48,6 +48,11 @@ class NativeBackendClient:
 
     async def async_validate(self) -> None:
         """Validate authentication and API compatibility."""
+        health = await self._async_request_json("GET", "/api/v1/health")
+        if not isinstance(health, dict) or health.get("status") != "ok":
+            raise InvalidStatusDataError(
+                "The native backend health response is invalid"
+            )
         payload = await self._async_request_json("GET", "/api/v1/info")
         if not isinstance(payload, dict) or payload.get("api_version") != "v1":
             raise InvalidStatusDataError("The native backend API is incompatible")
