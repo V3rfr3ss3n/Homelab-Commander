@@ -1,4 +1,4 @@
-FROM python:3.14.7-slim-bookworm@sha256:23c59390fc717bf09f9336908199a0ae75d9c4264bf296123f94ad772fea3b52 AS builder
+FROM python:3.14.7-slim-bookworm@sha256:416f0db2a2b561945630cef9877a7ea0581b27449eb9fd9df42f03e1b74b5b63 AS builder
 
 ENV PIP_ROOT_USER_ACTION=ignore \
     UV_COMPILE_BYTECODE=1 \
@@ -11,7 +11,7 @@ COPY backend ./backend
 RUN uv sync --frozen --no-dev --no-editable \
     && uv pip install --python /app/.venv/bin/python cryptography==50.0.0
 
-FROM python:3.14.7-slim-bookworm@sha256:23c59390fc717bf09f9336908199a0ae75d9c4264bf296123f94ad772fea3b52
+FROM python:3.14.7-slim-bookworm@sha256:416f0db2a2b561945630cef9877a7ea0581b27449eb9fd9df42f03e1b74b5b63
 
 ARG BUILD_VERSION=0.3.0-dev.0
 ARG BUILD_ARCH=amd64
