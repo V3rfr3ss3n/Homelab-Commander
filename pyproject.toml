@@ -13,7 +13,7 @@ classifiers = [
 ]
 dependencies = [
   "ansible-core==2.21.3",
-  "fastapi==0.141.1",
+  "fastapi==0.159.0",
   "uvicorn==0.52.4",
 ]
 
