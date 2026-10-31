@@ -67,3 +67,22 @@ The Wiki publication is a manual use of the existing authorized GitLab API, not 
 new production dependency or automatic publication service. Exact remote content,
 page inventory and rendered navigation are verified after publication. The published
 revision marker identifies the snapshot independently of later MR bookkeeping.
+
+## Publication result
+
+Published source revision: `04b9623eea2e`. All 27 expected remote page slugs were
+listed and every page was read back with exact content equality against the
+prepared publication payload. All 26 distinct internal navigation targets exist.
+The existing GitHub mirror served the exact source commit, so revision-pinned
+source/reference links do not depend on an unmerged branch name.
+
+The public Wiki home returned HTTP 200. Its server-rendered custom sidebar linked
+all 26 content pages to the correct project Wiki slugs; each target matched the
+verified API inventory. GitLab's page body is dynamically rendered. The Wiki API
+accepted `render_html=true` but did not return HTML, and Browser discovery found
+no available connection, so a visual/click-through browser check was unavailable.
+This limitation is recorded rather than claiming an interactive UI test.
+
+The source-publication pipeline 357/job 398 independently confirmed all 287 tests,
+98.18% line coverage, 95.32% branch coverage, strict types and local link checks.
+It again stopped only at the expired SE-2026-001 check. The MR remains Draft.

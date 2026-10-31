@@ -7,6 +7,10 @@ tags: [review, workflow, documentation, quality]
 
 # Workflow modernization review
 
+Follow-up: the owner subsequently provisioned Make and authorized the English
+Wiki publication. Current results superseding the initial runner/Wiki blockers
+are recorded in [the English Wiki follow-up](2026-10-31-english-wiki-review.md).
+
 ## Scope and evidence
 
 T-034 modernizes the existing agent/development workflow. Runtime APIs, storage,

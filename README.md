@@ -79,6 +79,7 @@ the Python module remains `homelab_updates`, and the native API remains
 Start with the [documentation index](docs/README.md) for task-specific reading,
 [contributing guide](CONTRIBUTING.md) and
 [development workflow](docs/03-development/workflow.md). GitLab leads development;
-GitHub provides public source and installation artifacts. The [English Wiki guide](docs/wiki/home.md) is organized into User Guide, Product,
+GitHub provides public source and installation artifacts. The
+[English Wiki guide](docs/wiki/home.md) is organized into User Guide, Product,
 Technical and Maintenance sections. Its versioned sources are published to the
 GitLab Wiki; see [documentation ownership](docs/03-development/documentation.md).
