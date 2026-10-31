@@ -103,6 +103,14 @@ project minimum, causing a source build without a compiler. CI now explicitly
 selects the supported Python 3.14 series, matching the existing GitHub job; the
 project's minimum version and lockfile remain unchanged.
 
+The next real run successfully verified uv, installed the frozen environment and
+Chromium, then failed because `make` is not installed on the shell runner. This is
+an environment blocker: no host packages, runner configuration or privileges were
+changed. A final preflight now checks Python, Make, Git and OpenSSH before expensive
+downloads. The owner must provision the documented runner prerequisites or provide
+an existing suitable container executor before GitLab can run the gate. The
+functional tests passing locally do not substitute for this independent CI run.
+
 ## Remaining release/merge gates
 
 The complete local gate is **red**, so T-033/T-034 remain open and the MR is a

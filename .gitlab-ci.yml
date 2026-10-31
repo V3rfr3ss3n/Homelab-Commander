@@ -32,6 +32,10 @@ quality:
         apt-get install --no-install-recommends -y make git openssh-client
       fi
     - |
+      for tool in python3 make git ssh-keygen; do
+        command -v "$tool" >/dev/null || { echo "Required runner tool missing: $tool"; exit 1; }
+      done
+    - |
       python3 - <<'PYTHON'
       import hashlib
       import io

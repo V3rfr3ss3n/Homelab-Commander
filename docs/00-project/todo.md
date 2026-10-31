@@ -42,6 +42,11 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## Blocker und offene Festlegungen
 
+- GitLabs vorhandener Shell-Runner enthält kein `make`. Die neue MR-Pipeline
+  erreicht nach erfolgreichem uv-/Lock-/Chromium-Setup deshalb nicht den Quality
+  Gate. Runner-Voraussetzungen bereitstellen oder geeigneten Container-Executor
+  verwenden; keine Systempakete/Privilegien aus dem MR heraus ändern.
+
 - SE-2026-001 ist seit 2026-09-16 abgelaufen; `make audit` bleibt blockiert.
   T-018 darf nicht durch Verlängerung der Ausnahme oder Abschalten des Gates
   ersetzt werden. Aktueller Prüfstand siehe
