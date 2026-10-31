@@ -1,7 +1,7 @@
 ---
 title: Risikoregister
 status: active
-updated: 2026-08-20
+updated: 2026-10-31
 tags: [review, risk, project]
 ---
 

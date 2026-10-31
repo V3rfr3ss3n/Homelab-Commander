@@ -18,9 +18,9 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## Modernisierung zur Review
 
-- [ ] T-034 Agentenregeln bedarfsgerecht verkürzen, GitLab-Workflow dokumentieren,
-  bestehende Checks für schnelle Iteration kombinieren und Wiki-Navigation sicher
-  vorbereiten. Abnahme: Sicherheits-/Kompatibilitätsregeln und Coverage unverändert,
+- [x] T-034 Agentenregeln bedarfsgerecht verkürzen, GitLab-Workflow dokumentieren,
+  bestehende Checks für schnelle Iteration kombinieren und englisches Wiki
+  veröffentlichen. Abnahme: Sicherheits-/Kompatibilitätsregeln und Coverage unverändert,
   Navigation in GitLab/GitHub/Obsidian, reviewbarer MR und vollständiger Prüfstand.
   Englisches Wiki mit User Guide, Product, Technical und Maintenance vom Owner
   freigegeben; versionierte Quellen und Veröffentlichung siehe
@@ -28,13 +28,13 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## Als Nächstes
 
-- [ ] T-033 Offline-Prüfung interner Markdown-/Obsidian-Dateilinks als
+- [x] T-033 Offline-Prüfung interner Markdown-/Obsidian-Dateilinks als
   `make docs` in den Quality Gate aufnehmen. Implementierung und Regressionstests
-  liegen vor; Abschluss erst nach vollständigem grünen Gate. Abnahme: fehlende
+  liegen vor; vollständiger lokaler und CI-Gate grün. Abnahme: fehlende
   und ignorierte Ziele schlagen fehl, Codebeispiele werden übersprungen,
   relative Links und Dateinamen mit Versionsnummern funktionieren.
-- [ ] T-020a Container-Build und Healthcheck auf AMD64/AArch64 durch den neuen
-  PR-Workflow bestätigen. Lokal ist weiterhin kein Docker-Daemon erreichbar.
+- [x] T-020a Container-Build und Healthcheck auf AMD64/AArch64 durch den
+  vorhandenen GitHub-Workflow mit `publish=false` bestätigt.
 - [ ] T-017b isolierte manuelle Installation aus dem Releaseartefakt durchführen
 - [x] T-018 Security-Lock auf HA 2026.10.4 aktualisiert, cryptography 50.0.1,
   Entwicklungs-Pillow 13.0.0 nach ADR-0010; SE-2026-001 und Advisory-Ignores entfernt.
@@ -46,7 +46,8 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 - Dependency-Blocker und Runner-Voraussetzungen sind lokal behoben; vollständiger
   `make release-check` mit 301 Tests, 98,20 % Lines und 95,37 % Branches bestanden.
-  Unabhängige CI-/Container-/HA-Validatoren vor Merge bestätigen. Aktueller Nachweis:
+  GitLab, GitHub Quality/Secret Scan, HACS, Hassfest und beide Container-
+  Architekturen sind bestätigt; Freigabe bleibt beim Owner. Aktueller Nachweis:
   [Dependency-Review](../05-reviews/2026-10-31-dependency-remediation-review.md).
 
 - Die Semaphore-Kompatibilitätsmatrix bleibt bis zu isolierten Tests mit

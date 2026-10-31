@@ -1,6 +1,6 @@
 ---
 title: Dependency remediation and Wiki maintenance review
-status: draft
+status: active
 updated: 2026-10-31
 tags: [review, dependencies, security, wiki, quality]
 ---
@@ -99,3 +99,27 @@ The Wiki was updated from reviewed revision `04b9623` to security baseline
 `7b44f24`: all 27 remote contents were compared before writes and read back after.
 A full-path API title preserves nested page slugs; the maintenance guide now records
 that requirement. The final compatibility text is published with its source revision.
+
+## Final validation and handoff
+
+Final integration code revision `e2452cf` passed GitLab pipeline 364 and all four
+applicable re-run GitHub validators:
+
+- [Quality](https://github.com/V3rfr3ss3n/Homelab-Commander/actions/runs/41212024170)
+- [Secret Scan](https://github.com/V3rfr3ss3n/Homelab-Commander/actions/runs/41212026159)
+- [Hassfest](https://github.com/V3rfr3ss3n/Homelab-Commander/actions/runs/41212028113)
+- [HACS](https://github.com/V3rfr3ss3n/Homelab-Commander/actions/runs/41212030109)
+
+The unchanged backend/lock/Dockerfile passed the earlier
+[AMD64/AArch64 container validation](https://github.com/V3rfr3ss3n/Homelab-Commander/actions/runs/41210991145).
+No redundant container rebuild was needed for subsequent integration-only fallbacks.
+All 27 Wiki pages were compared and read back exactly at revision `e2452cf`; nested
+paths remain intact. The Wiki maintenance guide and AGENTS agree on source ownership
+and the duty to maintain/publish relevant pages. No unexpected remote edits existed.
+
+The final follow-up commit updates only these review/TODO records. GitLab reruns the
+full gate on that handoff commit before the MR is marked ready; no skip flag is used.
+There are no unresolved dependency findings or active security exceptions. The
+maintained Pillow replacement and its test scope remain an explicit limitation,
+not an advisory waiver. Release publication and fresh live installation remain
+separate post-merge work; neither was performed or claimed by this MR.
