@@ -1,4 +1,4 @@
-FROM python:3.14.7-slim-bookworm@sha256:416f0db2a2b561945630cef9877a7ea0581b27449eb9fd9df42f03e1b74b5b63 AS builder
+FROM python:3.15.0-slim-bookworm@sha256:0e019bbdfb5d9874cb2389f1c2884b64aa2ac97c99960b5bc521cef978c0617d AS builder
 
 ENV PIP_ROOT_USER_ACTION=ignore \
     UV_COMPILE_BYTECODE=1 \
@@ -10,7 +10,7 @@ COPY pyproject.toml uv.lock README.md ./
 COPY backend ./backend
 RUN uv sync --frozen --no-dev --no-editable
 
-FROM python:3.14.7-slim-bookworm@sha256:416f0db2a2b561945630cef9877a7ea0581b27449eb9fd9df42f03e1b74b5b63
+FROM python:3.15.0-slim-bookworm@sha256:0e019bbdfb5d9874cb2389f1c2884b64aa2ac97c99960b5bc521cef978c0617d
 
 ARG BUILD_VERSION=0.3.0-dev.0
 ARG BUILD_ARCH=amd64
