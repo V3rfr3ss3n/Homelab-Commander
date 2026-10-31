@@ -89,10 +89,16 @@ fixtures and public upstream references were added.
 
 The first MR pipeline failed before the gate: the existing runner uses a shell
 executor and cannot run `apt-get`. The configuration was corrected to bootstrap
-uv in an isolated workspace venv, with no system-package installation on shell
-runners. Only disposable root containers install OS packages. Shell-runner
+uv from official SHA-256-pinned archives in an isolated workspace directory,
+with no system-package installation on shell runners. A second attempt revealed
+missing `ensurepip`/venv support; the archive bootstrap removes that prerequisite.
+Only disposable root containers install OS packages. Shell-runner
 prerequisites are documented in the quality guide. The failed initial pipeline
 is retained as evidence; a valid YAML/dry-run did not prove executor compatibility.
+The exact final archive bootstrap was executed in an isolated temporary directory:
+SHA-256 verification passed and the installed binary reported uv 0.13.6 on AMD64.
+The AArch64 hash was read from the same official release metadata; execution on
+AArch64 is not claimed.
 
 ## Remaining release/merge gates
 

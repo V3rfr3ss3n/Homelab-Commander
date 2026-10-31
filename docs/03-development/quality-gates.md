@@ -26,10 +26,10 @@ ergänzt öffentliche URL-/Codeowner-Prüfungen.
 
 GitLab verwendet `.gitlab-ci.yml` für denselben `make quality`-Aufruf mit
 Lockfile, Chromium und synthetischen Tests. MR-Pipelines und `main` werden
-geprüft; Feature-Pushes erzeugen keinen zusätzlichen zweiten Lauf. uv wird in einer
-isolierten Umgebung im CI-Arbeitsverzeichnis installiert. Shell-Runner benötigen
-Python mit venv, Make, Git, OpenSSH und Chromium-Systembibliotheken vorab; der Job
-installiert dort keine Betriebssystempakete. Nur ein privilegierter Wegwerf-
+geprüft; Feature-Pushes erzeugen keinen zusätzlichen zweiten Lauf. uv wird in einem
+isolierten Verzeichnis aus dem offiziellen, SHA-256-geprüften Releasearchiv
+installiert. Shell-Runner benötigen Python ab 3.12, Make, Git, OpenSSH und
+Chromium-Systembibliotheken vorab; der Job installiert dort keine Betriebssystempakete. Nur ein privilegierter Wegwerf-
 Container installiert diese Pakete selbst. GitHub behält
 seine bestehenden Hassfest-, HACS-, Container- und Secret-Scan-Workflows. Diese
 separaten Gates sind kein Bestandteil von `make quality` und müssen vor einer
