@@ -1,0 +1,32 @@
+# Reuse the local gate; public distribution remains in the existing GitHub flows.
+image: python:3.14.7-slim-bookworm@sha256:416f0db2a2b561945630cef9877a7ea0581b27449eb9fd9df42f03e1b74b5b63
+
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - when: never
+
+stages: [validate]
+
+variables:
+  UV_CACHE_DIR: .cache/uv
+  UV_LINK_MODE: copy
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+quality:
+  stage: validate
+  timeout: 30m
+  interruptible: true
+  cache:
+    key:
+      files: [uv.lock]
+    paths: [.cache/uv]
+  before_script:
+    - apt-get update
+    - apt-get install --no-install-recommends -y make git openssh-client
+    - python -m pip install --no-cache-dir uv==0.13.6
+    - uv sync --locked
+    - uv run playwright install --with-deps chromium
+  script:
+    - make quality

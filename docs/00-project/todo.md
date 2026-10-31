@@ -1,7 +1,7 @@
 ---
 title: TODO
 status: active
-updated: 2026-08-23
+updated: 2026-10-31
 tags: [project, todo]
 ---
 
@@ -16,8 +16,22 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
   die [[../04-operations/public-install-checklist|frische Installation]] mit
   automatischer lokaler App-Erkennung bestätigen.
 
+## Modernisierung zur Review
+
+- [ ] T-034 Agentenregeln bedarfsgerecht verkürzen, GitLab-Workflow dokumentieren,
+  bestehende Checks für schnelle Iteration kombinieren und Wiki-Navigation sicher
+  vorbereiten. Abnahme: Sicherheits-/Kompatibilitätsregeln und Coverage unverändert,
+  Navigation in GitLab/GitHub/Obsidian, reviewbarer MR und vollständiger Prüfstand.
+  Externe Wiki-Migration nur nach Freigabe; siehe
+  [Dokumentationshoheit](../03-development/documentation.md).
+
 ## Als Nächstes
 
+- [ ] T-033 Offline-Prüfung interner Markdown-/Obsidian-Dateilinks als
+  `make docs` in den Quality Gate aufnehmen. Implementierung und Regressionstests
+  liegen vor; Abschluss erst nach vollständigem grünen Gate. Abnahme: fehlende
+  und ignorierte Ziele schlagen fehl, Codebeispiele werden übersprungen,
+  relative Links und Dateinamen mit Versionsnummern funktionieren.
 - [ ] T-020a Container-Build und Healthcheck auf AMD64/AArch64 durch den neuen
   PR-Workflow bestätigen. Lokal ist weiterhin kein Docker-Daemon erreichbar.
 - [ ] T-017b isolierte manuelle Installation aus dem Releaseartefakt durchführen
@@ -28,6 +42,12 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## Blocker und offene Festlegungen
 
+- SE-2026-001 ist seit 2026-09-16 abgelaufen; `make audit` bleibt blockiert.
+  T-018 darf nicht durch Verlängerung der Ausnahme oder Abschalten des Gates
+  ersetzt werden. Aktueller Prüfstand siehe
+  [[../05-reviews/2026-10-30-documentation-link-gate-review]]. Der aktuelle Lauf
+  meldet zusätzliche Dependency-Funde; siehe
+  [Modernisierungsreview](../05-reviews/2026-10-31-workflow-modernization-review.md).
 - Die Semaphore-Kompatibilitätsmatrix bleibt bis zu isolierten Tests mit
   synthetischen Response-Fixtures bewusst vorläufig.
 

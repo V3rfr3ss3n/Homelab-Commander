@@ -7,6 +7,8 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ### Added
 
+- Offline documentation file-link checks for Markdown and relative Obsidian
+  links through `make docs`, included in the local and CI quality gate.
 - Automatic local Homelab Commander Backend discovery on Home Assistant OS and
   Supervised, with health/token validation and an unchanged remote fallback.
 - Public versioned AMD64/AArch64 app-image workflow with anonymous manifest,
@@ -26,6 +28,14 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 - HACS metadata, CI quality gates, security scanning, and public documentation.
 
 ### Changed
+
+- Compact, task-based agent instructions shared by Codex and OpenCode, with
+  preserved safety rules and current Homelab Commander component boundaries.
+- Task-oriented Markdown documentation navigation and an explicit Wiki migration
+  inventory that preserves the Obsidian vault and repository source of truth.
+- GitLab/GitHub quality jobs pin uv `0.13.6` instead of older audited tooling.
+- `make quality-fast` reuses existing checks for iteration; GitLab MR/main CI runs
+  the complete quality gate without lowering coverage or publishing artifacts.
 
 - User-visible product identity is now **Homelab Commander** while domain, App
   slug, module, API and persisted entity/config identities remain compatible.

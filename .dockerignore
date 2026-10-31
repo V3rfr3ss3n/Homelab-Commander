@@ -10,5 +10,10 @@ backend/tests
 custom_components
 docs
 tests
+private
+dev/local
 **/__pycache__
 *.pyc
+
+# Local dependency cache (also used by GitLab CI)
+.cache/

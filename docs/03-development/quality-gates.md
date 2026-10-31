@@ -1,7 +1,7 @@
 ---
 title: Quality Gates
 status: accepted
-updated: 2026-08-23
+updated: 2026-10-31
 tags: [development, quality, ci, testing]
 ---
 
@@ -10,6 +10,27 @@ tags: [development, quality, ci, testing]
 Ein Merge oder Release ist nur bei vollständig grünem Gate erlaubt. `make quality`
 ist die kanonische Schnittstelle für lokale Runs und CI. `make release-check`
 ergänzt öffentliche URL-/Codeowner-Prüfungen.
+
+## Lokal gezielt arbeiten, vollständig freigeben
+
+- `make quality-fast` kombiniert die bestehenden Format-, Lint-, Typ-, Link- und
+  Privacy-Prüfungen ohne Tests oder Dependency-Audit. Es ist eine Iterationshilfe,
+  kein Merge-Gate.
+- Verhalten gezielt prüfen: `uv run pytest tests/test_doc_links.py --no-cov`
+  beziehungsweise den betroffenen Testpfad wählen. Diese Ergebnisse dürfen nicht
+  als vollständige Coverage-Abnahme ausgegeben werden.
+- Vor Merge bleibt `make quality` vollständig erforderlich. Keine automatische
+  Pfadfilterung entfernt Tests, Audit oder die getrennten 95-%-Schwellen.
+- `make release-check` enthält bereits `quality`; nicht beide nacheinander auf
+  unverändertem Stand ausführen. Nach relevanten Änderungen erneut validieren.
+
+GitLab verwendet `.gitlab-ci.yml` für denselben `make quality`-Aufruf mit
+Lockfile, Chromium und synthetischen Tests. MR-Pipelines und `main` werden
+geprüft; Feature-Pushes erzeugen keinen zusätzlichen zweiten Lauf. GitHub behält
+seine bestehenden Hassfest-, HACS-, Container- und Secret-Scan-Workflows. Diese
+separaten Gates sind kein Bestandteil von `make quality` und müssen vor einer
+Veröffentlichung ebenfalls bestätigt sein. Die GitLab-Konfiguration veröffentlicht
+keine Images, ändert keine Rechte und konfiguriert keinen Mirror.
 
 ## Gate-Stufen
 
@@ -26,7 +47,16 @@ ergänzt öffentliche URL-/Codeowner-Prüfungen.
 | Supply chain | Audit-Tool | keine ungeklärte bekannte Schwachstelle oder unzulässige Lizenz |
 | Secrets | Gitleaks-artiger Scan | keine Secrets in Arbeitsbaum oder Git-Historie |
 | Privacy | Projektpattern | keine reale Infrastruktur oder persönlichen Daten |
-| Docs | Markdown/Links | keine kaputten internen Links; öffentliche Anleitung aktuell |
+| Docs | `make docs` | lokale Dateiziele in Markdown und Obsidian vorhanden; öffentliche Anleitung aktuell |
+
+`make docs` prüft ohne Netzwerkzugriff relative Markdown-Links, Bilder,
+Referenzdefinitionen und relative Obsidian-Wikilinks. Es berücksichtigt getrackte
+und neue, nicht ignorierte Dateien; ignorierte lokale Dateien gelten nicht als
+veröffentlichbare Linkziele. Codebeispiele in Backticks oder Fences werden
+übersprungen. Bei Wikilinks wird eine fehlende `.md`-Endung ergänzt, auch bei
+Versionsnummern im Dateinamen. Externe URLs, Überschriftenanker, unaufgelöste
+Referenzverwendungen und Obsidian-Vault-Suche nach bloßen Dateinamen werden nicht
+validiert. Dokumentlinks verwenden deshalb explizite relative Pfade.
 
 ## Testpyramide
 

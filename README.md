@@ -73,3 +73,12 @@ The user-facing product is **Homelab Commander**. Existing installations remain
 compatible: the Home Assistant domain and App slug are still `homelab_updates`,
 the Python module remains `homelab_updates`, and the native API remains
 `/api/v1`. Do not use those technical identifiers as a product name.
+
+## Development and documentation
+
+Start with the [documentation index](docs/README.md) for task-specific reading,
+[contributing guide](CONTRIBUTING.md) and
+[development workflow](docs/03-development/workflow.md). GitLab leads development;
+GitHub provides public source and installation artifacts. Repository documentation
+remains the maintained source while Wiki navigation is prepared; see
+[documentation ownership and migration](docs/03-development/documentation.md).

@@ -6,12 +6,24 @@ behavior as product features.
 
 ## Before starting
 
-1. Read [AGENTS.md](AGENTS.md) and the [documentation index](docs/README.md).
-2. Check the [current TODO](docs/00-project/todo.md) and
-   [backlog](docs/00-project/backlog.md).
-3. Discuss changes to public behavior or architecture before implementing them.
+1. Read [AGENTS.md](AGENTS.md), then use the [documentation index](docs/README.md)
+   to load only the context relevant to your task.
+2. Check the [current TODO](docs/00-project/todo.md) or
+   [backlog](docs/00-project/backlog.md) when selecting work.
+3. Read the relevant ADRs for architecture changes and security documentation for
+   changes to trust boundaries. See the [workflow](docs/03-development/workflow.md).
 
-## Pull requests
+## Local feedback
+
+Use `make quality-fast` for existing static/documentation checks and
+`uv run pytest <test-path> --no-cov` for focused regression tests. Neither replaces
+`make quality`, the independent CI validators, or `make release-check` for releases.
+
+## Merge requests and pull requests
+
+GitLab is the development source; use the existing configured remote and access.
+GitHub distributes the public source and installation artifacts. Do not configure
+another mirror, publish documentation or change visibility as part of a routine MR.
 
 A pull request should be narrowly scoped, explain the user impact, include tests,
 and update relevant documentation. It must pass the quality gate documented in

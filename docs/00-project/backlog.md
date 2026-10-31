@@ -1,7 +1,7 @@
 ---
 title: Backlog
 status: active
-updated: 2026-08-23
+updated: 2026-10-31
 tags: [project, backlog]
 ---
 
@@ -51,12 +51,18 @@ und eine Privacy-Prüfung.
 
 ## Developer experience
 
+- [ ] Wiki-First-Übernahme nach Bestätigung von Ziel, Sichtbarkeit und alleiniger
+  Pflegequelle freigeben; vorbereitete Navigation und Inventar siehe
+  [Dokumentation und Wiki](../03-development/documentation.md). Keine neue
+  Synchronisation oder Rechteänderung ohne ausdrückliche Freigabe.
+
 - [ ] Container-Signierung und Supply-Chain-Provenance bewerten; zusätzliche
   `id-token`- oder Package-Rechte erst nach eigener Security-Entscheidung einführen
 - [ ] Devcontainer erst nach Messung des lokalen Setup-Aufwands
 - [ ] Mutation Testing für Parser und Task-Zustandsautomat
 - [ ] Architekturtests für Import-/Abhängigkeitsgrenzen
-- [ ] automatisierte Dokument-Linkprüfung
+- [ ] automatisierte Dokument-Linkprüfung: als T-033 ins [[todo|TODO]] übernommen;
+  Abschluss nach vollständigem Quality Gate
 
 ## Abgelehnt oder zurückgestellt
 
