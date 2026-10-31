@@ -1,7 +1,7 @@
 ---
 title: Architecture Decision Records
 status: active
-updated: 2026-08-23
+updated: 2026-10-31
 tags: [architecture, adr, index]
 ---
 
@@ -18,6 +18,7 @@ tags: [architecture, adr, index]
 | [[0007-home-assistant-main-panel]] | accepted | Administratorgeschütztes Native-Panel über Home-Assistant-Auth |
 | [[0008-public-container-publishing]] | accepted | Versionierte öffentliche Multi-Arch-Images mit anonymem Gate |
 | [[0009-supervisor-native-backend-discovery]] | accepted | Lokale App-Erkennung über Supervisor mit Remote-Fallback |
+| [[0010-secure-test-dependency-replacements]] | accepted | Gezielter, geprüfter Pillow-Sicherheitsersatz nur im Entwicklungsgraph |
 
 Neue ADRs verwenden [[../../templates/adr-template|die ADR-Vorlage]]. Akzeptierte
 ADRs werden nicht rückwirkend umgeschrieben; eine neue ADR ersetzt die alte und

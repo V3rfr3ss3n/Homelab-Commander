@@ -1,7 +1,7 @@
 ---
 title: Technische Grundlage
 status: accepted
-updated: 2026-08-21
+updated: 2026-10-31
 tags: [development, technical, dependencies]
 ---
 
@@ -10,15 +10,15 @@ tags: [development, technical, dependencies]
 ## Stack
 
 - Python `>=3.14.2`; CI verwendet Python 3.14
-- Home Assistant `2026.8.2` in der gesperrten Entwicklungsumgebung;
+- Home Assistant `2026.10.4` in der gesperrten Entwicklungsumgebung;
   veröffentlichte Mindestversion `2026.8.0`
 - Home Assistant Custom Integration unter
   `custom_components/homelab_updates/`
-- FastAPI `0.141.1`, Uvicorn `0.51.0` und SQLite im nativen Backend
-- ansible-core `2.21.2` als agentenloser Execution Adapter
-- cryptography `48.0.1` für den persistenten ED25519-Key
+- FastAPI `0.141.1`, Uvicorn `0.52.4` und SQLite im nativen Backend
+- ansible-core `2.21.3` als agentenloser Execution Adapter
+- cryptography `50.0.1` transitiv; persistenter ED25519-Key über OpenSSH
 - Home Assistants gemeinsame aiohttp-Session; keine eigene langlebige Session
-- `pytest-homeassistant-custom-component 0.13.356` aus `uv.lock` für isolierte
+- `pytest-homeassistant-custom-component 0.13.375` aus `uv.lock` für isolierte
   Integrationstests
 - Ruff für Formatierung und Linting
 - Mypy im Strict Mode
@@ -26,7 +26,10 @@ tags: [development, technical, dependencies]
 - Hassfest und HACS Action als repository-spezifische Validatoren
 
 `pyproject.toml` definiert direkte Toolanforderungen, `uv.lock` sperrt den
-vollständigen Abhängigkeitsgraph. CI installiert ausschließlich mit
+vollständigen Abhängigkeitsgraph. Der Entwicklungsgraph ersetzt ausschließlich
+Pillow durch den gefixten Pin `13.0.0` nach
+[ADR-0010](../02-architecture/adr/0010-secure-test-dependency-replacements.md).
+Pillow und HA sind keine Backend-Produktionsabhängigkeiten. CI installiert ausschließlich mit
 `uv sync --locked`.
 
 ## Quellstruktur
@@ -85,5 +88,4 @@ Transitivabhängigkeiten, bekannte Schwachstellen und Alternative geprüft.
 
 ## Noch festzulegen
 
-- öffentliche GitHub-Repository- und Support-URLs
 - endgültige Semaphore-Kompatibilitätsmatrix nach isolierten Adaptertests

@@ -1,7 +1,7 @@
 ---
 title: Risikoregister
 status: active
-updated: 2026-08-20
+updated: 2026-10-31
 tags: [review, risk, project]
 ---
 
@@ -19,7 +19,7 @@ tags: [review, risk, project]
 | R-08 | HACS-Release ist nicht reproduzierbar | mittel | hoch | gepinnte CI, Artefaktprüfung, isolierte Installation | offen |
 | R-09 | Statuspayload wird zu groß/malicious | niedrig | hoch | Response-/Hostgrenzen und striktes Parsing festlegen | offen |
 | R-10 | SSL-Option führt zu unsicherem Dauerbetrieb | mittel | mittel | sicherer Default, Warntext, keine globale Abschaltung | offen |
-| R-11 | Home-Assistant-Teststack pinnt verwundbare Transitivdependency | mittel | mittel | [[security-exceptions|SE-2026-001]], Dependabot, Ablauf 2026-09-15 | offen |
+| R-11 | Home-Assistant-Teststack pinnt verwundbare Transitivdependency | mittel | mittel | Aktualisierter Lock, ungefilterter Audit, [ADR-0010](../02-architecture/adr/0010-secure-test-dependency-replacements.md), SE-2026-001 behoben | behoben 2026-10-31; Ersatzpin bei HA-Updates prüfen |
 
 Wahrscheinlichkeit und Wirkung werden bei jedem Milestone überprüft. Ein neues
 hohes Risiko wird nicht nur hier eingetragen, sondern erhält ein konkretes TODO.

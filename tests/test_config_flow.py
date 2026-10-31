@@ -4,7 +4,6 @@ from collections.abc import Mapping
 from unittest.mock import AsyncMock, patch
 
 import pytest
-import voluptuous as vol
 from aiohasupervisor.models.addons import AddonState
 from homeassistant import config_entries
 from homeassistant.const import CONF_API_TOKEN
@@ -30,6 +29,7 @@ from custom_components.homelab_updates.exceptions import (
     InvalidProjectError,
     InvalidStatusDataError,
 )
+from custom_components.homelab_updates.schema import schema as vol
 from custom_components.homelab_updates.supervisor import DiscoveredNativeBackend
 
 

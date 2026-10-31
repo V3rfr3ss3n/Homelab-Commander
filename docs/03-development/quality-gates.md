@@ -1,7 +1,7 @@
 ---
 title: Quality Gates
 status: accepted
-updated: 2026-08-23
+updated: 2026-10-31
 tags: [development, quality, ci, testing]
 ---
 
@@ -10,6 +10,32 @@ tags: [development, quality, ci, testing]
 Ein Merge oder Release ist nur bei vollständig grünem Gate erlaubt. `make quality`
 ist die kanonische Schnittstelle für lokale Runs und CI. `make release-check`
 ergänzt öffentliche URL-/Codeowner-Prüfungen.
+
+## Lokal gezielt arbeiten, vollständig freigeben
+
+- `make quality-fast` kombiniert die bestehenden Format-, Lint-, Typ-, Link- und
+  Privacy-Prüfungen ohne Tests oder Dependency-Audit. Es ist eine Iterationshilfe,
+  kein Merge-Gate.
+- Verhalten gezielt prüfen: `uv run pytest tests/test_doc_links.py --no-cov`
+  beziehungsweise den betroffenen Testpfad wählen. Diese Ergebnisse dürfen nicht
+  als vollständige Coverage-Abnahme ausgegeben werden.
+- Vor Merge bleibt `make quality` vollständig erforderlich. Keine automatische
+  Pfadfilterung entfernt Tests, Audit oder die getrennten 95-%-Schwellen.
+- `make release-check` enthält bereits `quality`; nicht beide nacheinander auf
+  unverändertem Stand ausführen. Nach relevanten Änderungen erneut validieren.
+
+GitLab verwendet `.gitlab-ci.yml` für denselben `make quality`-Aufruf mit
+Lockfile, Chromium und synthetischen Tests. MR-Pipelines und `main` werden
+geprüft; Feature-Pushes erzeugen keinen zusätzlichen zweiten Lauf. uv wird in einem
+isolierten Verzeichnis aus dem offiziellen, SHA-256-geprüften Releasearchiv
+installiert. Shell-Runner benötigen Python ab 3.12, Make, Git, OpenSSH und
+Chromium-Systembibliotheken vorab; der Job installiert dort keine
+Betriebssystempakete. Nur ein als Root laufender Wegwerf-Container installiert
+diese Pakete selbst. GitHub behält
+seine bestehenden Hassfest-, HACS-, Container- und Secret-Scan-Workflows. Diese
+separaten Gates sind kein Bestandteil von `make quality` und müssen vor einer
+Veröffentlichung ebenfalls bestätigt sein. Die GitLab-Konfiguration veröffentlicht
+keine Images, ändert keine Rechte und konfiguriert keinen Mirror.
 
 ## Gate-Stufen
 
@@ -26,7 +52,16 @@ ergänzt öffentliche URL-/Codeowner-Prüfungen.
 | Supply chain | Audit-Tool | keine ungeklärte bekannte Schwachstelle oder unzulässige Lizenz |
 | Secrets | Gitleaks-artiger Scan | keine Secrets in Arbeitsbaum oder Git-Historie |
 | Privacy | Projektpattern | keine reale Infrastruktur oder persönlichen Daten |
-| Docs | Markdown/Links | keine kaputten internen Links; öffentliche Anleitung aktuell |
+| Docs | `make docs` | lokale Dateiziele in Markdown und Obsidian vorhanden; öffentliche Anleitung aktuell |
+
+`make docs` prüft ohne Netzwerkzugriff relative Markdown-Links, Bilder,
+Referenzdefinitionen und relative Obsidian-Wikilinks. Es berücksichtigt getrackte
+und neue, nicht ignorierte Dateien; ignorierte lokale Dateien gelten nicht als
+veröffentlichbare Linkziele. Codebeispiele in Backticks oder Fences werden
+übersprungen. Bei Wikilinks wird eine fehlende `.md`-Endung ergänzt, auch bei
+Versionsnummern im Dateinamen. Externe URLs, Überschriftenanker, unaufgelöste
+Referenzverwendungen und Obsidian-Vault-Suche nach bloßen Dateinamen werden nicht
+validiert. Dokumentlinks verwenden deshalb explizite relative Pfade.
 
 ## Testpyramide
 
@@ -86,9 +121,14 @@ ergänzt öffentliche URL-/Codeowner-Prüfungen.
 - OpenSSH erzeugt und liest den persistenten ED25519-Schlüssel über feste
   Argumentlisten; dadurch ist keine zusätzliche Kryptografie-Runtime nötig.
 
-`ansible-core` zieht transitiv `cryptography` ein. Der gemeinsame Entwicklungslock
-bleibt wegen Home Assistant vorübergehend auf `48.0.1`; der Produktionscontainer
-überschreibt diesen transitiven Stand reproduzierbar mit `50.0.0`.
+`ansible-core` zieht transitiv `cryptography` ein. Der gemeinsame Lock verwendet
+`50.0.1` für Entwicklung und Produktion; der Container führt keine nachträgliche
+Installation außerhalb des Locks aus. Der HA-Teststack ist auf `2026.10.4` und
+seine Frontend-/Testplugin-Versionen aktualisiert. Der Entwicklungsgraph ersetzt
+HA's verwundbaren Pillow-Pin durch `13.0.0`; Pillow ist im Produktionsgraph nicht
+enthalten. Begründung, Kompatibilitätsprüfung und Rückbaukriterium stehen in
+[ADR-0010](../02-architecture/adr/0010-secure-test-dependency-replacements.md).
+`make audit` verwendet keine Advisory-Ignores; SE-2026-001 ist behoben.
 
 SQLite, Queue-Steuerung und Prozessausführung nutzen die Python-Standardbibliothek.
 Dadurch entsteht für Persistenz und Worker keine zusätzliche Runtime-Abhängigkeit.

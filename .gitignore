@@ -34,3 +34,6 @@ dev/local/
 .obsidian/
 docs/.obsidian/
 docs/vHomeLab/
+
+# Local dependency cache (also used by GitLab CI)
+.cache/

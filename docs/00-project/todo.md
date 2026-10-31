@@ -1,7 +1,7 @@
 ---
 title: TODO
 status: active
-updated: 2026-08-23
+updated: 2026-10-31
 tags: [project, todo]
 ---
 
@@ -16,17 +16,39 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
   die [[../04-operations/public-install-checklist|frische Installation]] mit
   automatischer lokaler App-Erkennung bestätigen.
 
+## Modernisierung zur Review
+
+- [x] T-034 Agentenregeln bedarfsgerecht verkürzen, GitLab-Workflow dokumentieren,
+  bestehende Checks für schnelle Iteration kombinieren und englisches Wiki
+  veröffentlichen. Abnahme: Sicherheits-/Kompatibilitätsregeln und Coverage unverändert,
+  Navigation in GitLab/GitHub/Obsidian, reviewbarer MR und vollständiger Prüfstand.
+  Englisches Wiki mit User Guide, Product, Technical und Maintenance vom Owner
+  freigegeben; versionierte Quellen und Veröffentlichung siehe
+  [Dokumentationshoheit](../03-development/documentation.md).
+
 ## Als Nächstes
 
-- [ ] T-020a Container-Build und Healthcheck auf AMD64/AArch64 durch den neuen
-  PR-Workflow bestätigen. Lokal ist weiterhin kein Docker-Daemon erreichbar.
+- [x] T-033 Offline-Prüfung interner Markdown-/Obsidian-Dateilinks als
+  `make docs` in den Quality Gate aufnehmen. Implementierung und Regressionstests
+  liegen vor; vollständiger lokaler und CI-Gate grün. Abnahme: fehlende
+  und ignorierte Ziele schlagen fehl, Codebeispiele werden übersprungen,
+  relative Links und Dateinamen mit Versionsnummern funktionieren.
+- [x] T-020a Container-Build und Healthcheck auf AMD64/AArch64 durch den
+  vorhandenen GitHub-Workflow mit `publish=false` bestätigt.
 - [ ] T-017b isolierte manuelle Installation aus dem Releaseartefakt durchführen
-- [ ] T-018 Home-Assistant-Patch mit gefixter `cryptography`-Version übernehmen
-  und SE-2026-001 spätestens am 2026-09-15 entfernen
+- [x] T-018 Security-Lock auf HA 2026.10.4 aktualisiert, cryptography 50.0.1,
+  Entwicklungs-Pillow 13.0.0 nach ADR-0010; SE-2026-001 und Advisory-Ignores entfernt.
+  Vollständiger lokaler Gate einschließlich ungefiltertem Audit bestanden.
 - [ ] T-017 vollständige Abnahme, Privacy Audit und Release Candidate nach
   Abschluss der `0.2`-Entwicklung
 
 ## Blocker und offene Festlegungen
+
+- Dependency-Blocker und Runner-Voraussetzungen sind lokal behoben; vollständiger
+  `make release-check` mit 301 Tests, 98,20 % Lines und 95,37 % Branches bestanden.
+  GitLab, GitHub Quality/Secret Scan, HACS, Hassfest und beide Container-
+  Architekturen sind bestätigt; Freigabe bleibt beim Owner. Aktueller Nachweis:
+  [Dependency-Review](../05-reviews/2026-10-31-dependency-remediation-review.md).
 
 - Die Semaphore-Kompatibilitätsmatrix bleibt bis zu isolierten Tests mit
   synthetischen Response-Fixtures bewusst vorläufig.

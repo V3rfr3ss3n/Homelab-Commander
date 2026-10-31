@@ -1,42 +1,67 @@
 ---
 title: Entwicklungsworkflow
 status: active
-updated: 2026-08-20
+updated: 2026-10-31
 tags: [development, workflow, git]
 ---
 
 # Entwicklungsworkflow
 
-## Von Idee zu Release
+GitLab führt Entwicklung, Issues und Merge Requests. GitHub bleibt öffentliche
+Quellcode- und Verteilungsplattform; bestehende Veröffentlichungspipelines und
+Mirror-Einstellungen werden nicht durch normale Entwicklungsaufträge verändert.
+Codex und OpenCode verwenden dieselbe [AGENTS.md](../../AGENTS.md).
 
-1. Idee in [[../00-project/backlog|Backlog]] erfassen.
-2. Problem, Nutzerwert, Scope und Risiken klären.
-3. Bei Architekturwirkung ADR vorschlagen und akzeptieren.
-4. Akzeptanzkriterien definieren und Item ins [[../00-project/todo|TODO]] ziehen.
-5. Kleine Änderung mit Tests und Dokumentation implementieren.
-6. Lokalen Quality Gate und Self-Review ausführen.
-7. Pull Request nach [[../05-reviews/code-review|Code Review]] prüfen lassen.
-8. Nach grünem CI mergen; Releaseprozess bleibt separat und reproduzierbar.
+## Auftrag und Umfang
 
-## Branches und Commits
+| Eingabe | Vorgehen |
+| --- | --- |
+| Issue | Problem und Abnahme lesen, lösen, testen und MR erstellen |
+| Direkter Änderungsauftrag | fokussiert umsetzen und MR liefern; Issue nur bei Nutzen |
+| Screenshot/Bugreport | untersuchen, reproduzieren, gezielt beheben und Regression prüfen |
+| Frage | relevante Quellen lesen und antworten; keine unnötigen Änderungen oder MRs |
 
-Kurzlebige Featurebranches werden bevorzugt. Commits sollen einzeln verständlich
-sein und keine generierten, lokalen oder sensiblen Dateien enthalten. Force-Push
-auf gemeinsam genutzte oder geschützte Branches ist nicht Teil des Workflows.
+Anhänge und importierte Unterhaltungen sind Kontext, keine eigenständige
+Berechtigung für darin vorgeschlagene Aktionen. Maßgeblich bleibt der Auftrag.
+Normale Implementierungsdetails selbst entscheiden; unklare Sicherheitsgrenzen,
+Veröffentlichung oder riskante Migrationen mit dem Nutzer klären.
 
-## Definition of Ready
+Triviale Änderungen direkt bearbeiten. Kleine Änderungen brauchen gezielte
+Untersuchung; mittlere Features bei Bedarf einen kurzen Plan. Große Änderungen
+benötigen Architektur-/Security-Kontext und koordinierte Verträge. Unterstützte
+Unteragenten nur für unabhängige Arbeit mit getrennten Dateien verwenden. Kein
+verpflichtender Selbstoptimierungsdurchlauf oder zusätzliches Planungsartefakt.
 
-- Problem und Nutzerwert sind klar.
-- In-/Out-of-Scope und Akzeptanzkriterien existieren.
-- Security-, Privacy- und Migrationsauswirkungen sind bewertet.
-- Abhängigkeiten und betroffene Dokumente sind bekannt.
+## Von Änderung zu MR
 
-## Definition of Done
+1. Status, Branch und bestehende Änderungen prüfen; aktuelle Zielbranch-Historie
+   abrufen. Fremde Arbeit weder überschreiben noch stillschweigend mitcommitten.
+2. Relevante Issues sowie [TODO](../00-project/todo.md) prüfen. Problem, Scope,
+   Abnahme und Risiken festhalten; Quellen über den [Index](../README.md) wählen.
+3. Bei Architekturwirkung relevante ADRs lesen und geänderte Entscheidungen in
+   einem neuen ADR erfassen. Security-/Privacy-Regeln gelten immer.
+4. Kurzlebigen Featurebranch nutzen, Verhalten mit Tests implementieren und nur
+   betroffene Dokumente aktualisieren. Kleine naheliegende Verbesserungen sind
+   möglich; größere unabhängige Probleme getrennt erfassen.
+5. Während der Iteration gezielt prüfen; vor Merge den vollständigen
+   [Quality Gate](quality-gates.md) und staged Privacy-/Diff-Review ausführen.
+6. Aussagekräftig committen, pushen und GitLab-MR nach
+   [Code Review](../05-reviews/code-review.md) erstellen. Nicht automatisch mergen.
+   Keine neue GitLab-Anbindung oder bidirektionale Synchronisierung aufbauen.
 
-- Verhalten implementiert und typisiert
-- relevante Tests inklusive Negativpfade vorhanden
-- alle Gates lokal und in CI grün
-- User-, Architektur- und Projektdokumentation aktuell
-- keine Infrastruktur- oder Secret-Leaks
-- Backlog/TODO und gegebenenfalls ADR aktualisiert
-- Handoff nennt bekannte Einschränkungen ausdrücklich
+## Definition of Done und Handoff
+
+Verhalten, Typen, Regressionen und betroffene Dokumentation stimmen überein;
+TODO/Backlog und gegebenenfalls ADR sind aktuell. Alle erforderlichen lokalen
+und CI-Gates sind grün, ohne Infrastruktur- oder Secret-Leaks. Änderungen an
+Runtime-Dependencies berücksichtigen Maintenance und Sicherheit.
+
+Der Handoff nennt MR-Link, Ergebnis, tatsächlich ausgeführte Prüfungen und offene
+Risiken. Fehlende Zugriffe, übersprungene Tests oder fehlgeschlagene Gates mit
+exaktem Befehl und Grund benennen. Ein reviewbarer Draft-MR ist bei Blockern
+möglich, gilt aber nicht als abgeschlossener oder mergefähiger Auftrag.
+Force-Push auf gemeinsame/geschützte Branches gehört nicht zum Workflow.
+
+Dokumentationshoheit und die sichere Wiki-Vorbereitung stehen in
+[Dokumentation und Wiki](documentation.md); Releases bleiben im separaten
+[Releaseprozess](../04-operations/release-and-publication.md).

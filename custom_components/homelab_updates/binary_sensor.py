@@ -1,9 +1,6 @@
 """Binary sensor platform for host reboot requirements."""
 
-from homeassistant.components.binary_sensor import (
-    BinarySensorDeviceClass,
-    BinarySensorEntity,
-)
+from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -11,6 +8,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from . import HomelabUpdatesConfigEntry
 from .const import DOMAIN, NAME
 from .coordinator import BackendJobsCoordinator, HomelabUpdatesCoordinator
+from .device_classes import BinarySensorDeviceClass
 from .entity import HomelabUpdatesEntity, async_setup_dynamic_host_entities
 
 
