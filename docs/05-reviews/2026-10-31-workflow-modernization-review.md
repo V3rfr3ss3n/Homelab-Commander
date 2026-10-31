@@ -85,6 +85,15 @@ uv pin changed. `git diff --check` passed; staged changes and new files were
 reviewed for secrets, infrastructure values and personal paths. Only synthetic
 fixtures and public upstream references were added.
 
+## Actual MR pipeline
+
+The first MR pipeline failed before the gate: the existing runner uses a shell
+executor and cannot run `apt-get`. The configuration was corrected to bootstrap
+uv in an isolated workspace venv, with no system-package installation on shell
+runners. Only disposable root containers install OS packages. Shell-runner
+prerequisites are documented in the quality guide. The failed initial pipeline
+is retained as evidence; a valid YAML/dry-run did not prove executor compatibility.
+
 ## Remaining release/merge gates
 
 The complete local gate is **red**, so T-033/T-034 remain open and the MR is a

@@ -23,10 +23,22 @@ quality:
       files: [uv.lock]
     paths: [.cache/uv]
   before_script:
-    - apt-get update
-    - apt-get install --no-install-recommends -y make git openssh-client
-    - python -m pip install --no-cache-dir uv==0.13.6
+    # Only disposable containers may install OS packages. Shell runners must
+    # already provide Python/venv, make, git, OpenSSH and Chromium libraries.
+    - |
+      if [ "${CI_DISPOSABLE_ENVIRONMENT:-false}" = "true" ] && [ "$(id -u)" = "0" ]; then
+        apt-get update
+        apt-get install --no-install-recommends -y make git openssh-client
+      fi
+    - python3 -m venv .cache/ci-tools
+    - .cache/ci-tools/bin/python -m pip install --no-cache-dir uv==0.13.6
+    - export PATH="$CI_PROJECT_DIR/.cache/ci-tools/bin:$PATH"
     - uv sync --locked
-    - uv run playwright install --with-deps chromium
+    - |
+      if [ "${CI_DISPOSABLE_ENVIRONMENT:-false}" = "true" ] && [ "$(id -u)" = "0" ]; then
+        uv run playwright install --with-deps chromium
+      else
+        uv run playwright install chromium
+      fi
   script:
     - make quality
