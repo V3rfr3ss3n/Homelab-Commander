@@ -11,6 +11,13 @@ This public-safe documentation is also an Obsidian vault. Read the section relev
 to your task; agents start with [AGENTS.md](../AGENTS.md). Relative Markdown links
 work in GitLab, GitHub and Obsidian without a renderer plugin.
 
+## English Wiki guide
+
+Start with [the Wiki home](wiki/home.md): [User Guide](wiki/user-guide/index.md),
+[Product](wiki/product/index.md), [Technical](wiki/technical/index.md) and
+[Maintenance](wiki/maintenance/index.md). These are the versioned English sources
+for the GitLab Wiki. Detailed normative records and the original vault remain here.
+
 ## Install and operate
 
 | Task | Start here |

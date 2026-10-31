@@ -7,6 +7,9 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ### Added
 
+- English Wiki documentation with User Guide, Product, Technical and Maintenance
+  sections, nested guides, a custom sidebar and versioned publication sources.
+
 - Offline documentation file-link checks for Markdown and relative Obsidian
   links through `make docs`, included in the local and CI quality gate.
 - Automatic local Homelab Commander Backend discovery on Home Assistant OS and

@@ -22,7 +22,8 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
   bestehende Checks für schnelle Iteration kombinieren und Wiki-Navigation sicher
   vorbereiten. Abnahme: Sicherheits-/Kompatibilitätsregeln und Coverage unverändert,
   Navigation in GitLab/GitHub/Obsidian, reviewbarer MR und vollständiger Prüfstand.
-  Externe Wiki-Migration nur nach Freigabe; siehe
+  Englisches Wiki mit User Guide, Product, Technical und Maintenance vom Owner
+  freigegeben; versionierte Quellen und Veröffentlichung siehe
   [Dokumentationshoheit](../03-development/documentation.md).
 
 ## Als Nächstes
@@ -42,10 +43,10 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## Blocker und offene Festlegungen
 
-- GitLabs vorhandener Shell-Runner enthält kein `make`. Die neue MR-Pipeline
-  erreicht nach erfolgreichem uv-/Lock-/Chromium-Setup deshalb nicht den Quality
-  Gate. Runner-Voraussetzungen bereitstellen oder geeigneten Container-Executor
-  verwenden; keine Systempakete/Privilegien aus dem MR heraus ändern.
+- Runner-Voraussetzungen sind bestätigt: Nach Installation von `make` bestand
+  Job 396 alle 287 Tests mit 98,18 % Lines und 95,32 % Branches. Er scheiterte
+  anschließend ausschließlich am Ablauf von SE-2026-001; `make` ist kein aktueller
+  Blocker mehr. Die notwendige Dependency-Remediation bleibt offen.
 
 - SE-2026-001 ist seit 2026-09-16 abgelaufen; `make audit` bleibt blockiert.
   T-018 darf nicht durch Verlängerung der Ausnahme oder Abschalten des Gates

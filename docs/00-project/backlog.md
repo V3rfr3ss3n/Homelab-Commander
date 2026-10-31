@@ -51,10 +51,9 @@ und eine Privacy-Prüfung.
 
 ## Developer experience
 
-- [ ] Wiki-First-Übernahme nach Bestätigung von Ziel, Sichtbarkeit und alleiniger
-  Pflegequelle freigeben; vorbereitete Navigation und Inventar siehe
-  [Dokumentation und Wiki](../03-development/documentation.md). Keine neue
-  Synchronisation oder Rechteänderung ohne ausdrückliche Freigabe.
+- [x] Englische Wiki-Navigation mit User Guide, Product, Technical und Maintenance
+  vom Owner freigegeben und als T-034 umgesetzt; versionierte Quellen bleiben
+  die Pflegebasis. Siehe [Dokumentation und Wiki](../03-development/documentation.md).
 
 - [ ] Container-Signierung und Supply-Chain-Provenance bewerten; zusätzliche
   `id-token`- oder Package-Rechte erst nach eigener Security-Entscheidung einführen

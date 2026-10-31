@@ -1,74 +1,79 @@
 ---
-title: Dokumentation und Wiki
+title: Documentation and Wiki ownership
 status: active
 updated: 2026-10-31
 tags: [development, documentation, wiki, obsidian]
 ---
 
-# Dokumentation und Wiki
+# Documentation and Wiki ownership
 
-## Fakten und aktuelle Hoheit
+## Current decision
 
-Prüfstand 2026-10-31: Das verbundene GitLab-Projekt ist öffentlich, das Wiki ist
-aktiviert und enthält laut API keine Seiten. Es gibt einen aktivierten Push-Mirror;
-sein gemeldeter Status ist `finished`. Zieladressen und Infrastrukturmetadaten
-werden nicht in diese Dokumentation übernommen. Eine erfolgreiche vollständige
-Synchronisierung oder gesondert geschützte Wiki-Bereiche sind damit nicht belegt.
+The owner explicitly authorized an English GitLab Wiki with Technical, Product and
+User sections and additional sections where useful. The initial publication contains
+26 English content pages plus a custom sidebar. Maintenance is the fourth section.
+The project remains public; no visibility, permissions or mirror settings are changed.
 
-GitLab enthält bisher keine eigene CI-Konfiguration und die Pipeline-API meldete
-keine Läufe. Diese Änderung ergänzt nur den vorhandenen `make quality`-Vertrag als
-MR-/Hauptbranch-Job; GitHub-Validatoren und Veröffentlichungsregeln bleiben bestehen.
+The English sources live in [docs/wiki](../wiki/home.md) and are the only editable
+maintenance source for these published pages. GitLab is the Wiki reading surface;
+its pages are published snapshots, not a second independently maintained master.
+The [publication guide](../wiki/maintenance/documentation.md) explains link mapping,
+source revisions, review and update responsibilities. No automatic publishing
+pipeline or bidirectional synchronization has been introduced.
 
-Bis zu einer ausdrücklich freigegebenen und verifizierten Migration bleiben
-`README.md`, `CONTRIBUTING.md`, `docs/` und ADRs die versionierte Quelle der Wahrheit.
-Der [Index](../README.md) bietet GitLab-/GitHub-/Obsidian-kompatible Navigation.
-Es werden keine Inhalte entfernt, Wiki-Seiten veröffentlicht, Rechte geändert
-oder weitere Synchronisationsprozesse aktiviert.
+## Authority and compatibility
 
-## Inventory and history
+Existing requirements, accepted ADRs, security rules and reproducible development
+instructions remain versioned beside code. Wiki sections provide English guides and
+link these normative references. The practical User Guide is maintained in English;
+internal detailed records and historical reviews are not silently translated or
+rewritten. Update both an affected normative contract and its explanatory guide
+when behavior changes, rather than copying whole records between locations.
 
-| Bereich | Inhalt und Pflege |
+The original Obsidian vault, frontmatter and relative links remain intact. Wiki
+publication maps local file links to page slugs and repository references to an
+exact source commit. Do not replace local links with installation-specific URLs.
+No historical content or ADR is deleted as part of publication.
+
+## Inventory
+
+| Source | Responsibility |
 | --- | --- |
-| Root README, CONTRIBUTING, SECURITY, CHANGELOG | öffentliche Installation, Mitarbeit, Security-Kontakt und Änderungen |
-| `00-project/` | Vision, Roadmap, aktuelles TODO und Backlog |
-| `01-product/` | Anforderungen und Abnahme |
-| `02-architecture/` | Architektur, REST-Vertrag, ADR-Index und neun vorhandene ADRs; Entscheidungshistorie erhalten |
-| `03-development/` | Code-Regeln, Qualität, Workflow, Foundation, Branding und Dokumentationshoheit |
-| `04-operations/` | Backendbetrieb, Migration, Installation, Release und Privacy |
-| `05-reviews/` | laufende Review-/Risiko-/Ausnahmeregister und datierte Prüfnachweise |
-| `templates/`, Glossar, Referenzen | wiederverwendbare Vorlagen und Nachschlagewissen |
+| Root README, CONTRIBUTING, SECURITY, CHANGELOG | Public introduction, collaboration, reporting and release history |
+| `wiki/user-guide/` | English installation, authentication, hosts, operations, tasks, recovery, troubleshooting and FAQ |
+| `wiki/product/` | English purpose, supported domain behavior, acceptance and roadmap context |
+| `wiki/technical/` | English component architecture, HA, API, execution, persistence, security and development |
+| `wiki/maintenance/` | English contribution, documentation ownership and release process |
+| `00-project/` | Detailed vision, roadmap, active TODO and backlog |
+| `01-product/` | Normative requirements and acceptance |
+| `02-architecture/` | Detailed architecture, REST contract and preserved ADR history |
+| `03-development/` | Code rules, quality gates, workflow, foundation and branding |
+| `04-operations/` | Detailed backend operations, migration, installation, release and privacy |
+| `05-reviews/` | Dated evidence and ongoing risk/security registers |
+| `templates/`, glossary, references | Reusable templates and supporting knowledge |
 
-Datierten Reviewdateien liegt ein bestimmter Code-/Prüfstand zugrunde. Sie sind
-historische Evidenz, auch wenn älteres Frontmatter `active` sagt. Aktuelle Regeln
-kommen aus Security, ADRs und den im Index verlinkten Fachdokumenten. Historische
-Ergebnisse nie als heutigen Teststatus ausgeben. Neue Nachweise separat datieren.
+Dated reviews describe a particular revision and verification point. They do not
+prove current CI or release success. Read the current TODO/security records for
+active blockers, and preserve earlier findings as history.
 
-## Sichere Wiki-Übernahme: vorbereitet, nicht aktiviert
+## Privacy and publication boundary
 
-Ziel ist Wiki-First-Navigation ohne konkurrierende gepflegte Textkopien. Die
-konkrete Übernahme bleibt offen, bis folgende Bedingungen erfüllt sind:
+All sections are public-safe. A technical section is not a private area and a
+folder name is not an authorization boundary. Real deployment information remains
+outside all versioned project documentation, including private Wiki locations.
+Separately permissioned organizational documents require an independent access
+boundary; no such private area is created by this publication.
 
-1. Projektowner bestätigt Ziel, Sichtbarkeit, Leserechte und veröffentlichbaren
-   Umfang anhand tatsächlicher GitLab-Berechtigungen. Ein Unterordner `internal`
-   schützt nichts; vertrauliche Organisationsinformationen benötigen einen
-   separat berechtigten Bereich außerhalb dieses öffentlichen Projektwissens.
-2. Öffentliche Nutzerthemen und technische Projektdokumentation getrennt
-   navigieren. Beide bleiben frei von echten Infrastrukturwerten, auch in einem
-   privaten Wiki. Repository-regelnde Dateien und reproduzierbare Build-/Test-
-   Anweisungen bleiben beim Code.
-3. Vorhandene Inhalte inventarisieren und gegen das freigegebene Ziel abgleichen.
-   ADRs mit Nummern/Historie, Frontmatter und relative Obsidian-Links erhalten.
-   Auf dem hier leeren Wiki ist noch kein Abgleich oder Import erfolgt.
-4. Zunächst eine freigegebene Wiki-Startseite mit Links auf die kanonischen
-   versionierten Dokumente einrichten und ihre Navigation/Leserechte prüfen.
-   Vollständige Inhaltsmigration nur mit festgelegter alleiniger Pflegequelle,
-   Rückweg und geprüftem Markdown-/Obsidian-Linkmapping.
-5. Erst nach erfolgreichem Abgleich README-Verweise umstellen; Quellen niemals
-   vor erfolgreicher Migration entfernen. Externe Wiki-Links und Sichtbarkeit
-   separat prüfen: `make docs` validiert nur lokale Dateiziele.
-6. Keine weitere Veröffentlichung oder bidirektionale Synchronisation aktivieren.
-   Eine spätere öffentliche Übernahme verwendet ausschließlich freigegebene,
-   geprüfte Inhalte und den bestehenden GitLab-geführten Mechanismus.
+Before publishing, review source content, run local link/privacy checks and inspect
+existing remote pages. Preserve unexpected remote changes rather than overwriting
+them. Publish only the reviewed files, verify inventory/content and rendered links,
+and record the source revision. Do not change access rights or enable another
+mirror as part of a documentation update.
 
-Die neue Navigation ist sofort nutzbar. Die externe Migration ist eine offene
-Freigabeentscheidung; sie wird nicht als abgeschlossen dargestellt.
+## Historical assessment
+
+The initial 2026-10-31 API inspection found an enabled but empty Wiki on the public
+project. A pre-existing push mirror reported `finished`; no additional mirror was
+configured. GitLab had no previous pipeline runs; the MR introduced `make quality`
+using existing tools. These were initial findings, not current claims that the
+Wiki is empty or that no CI has since run.
