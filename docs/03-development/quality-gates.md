@@ -98,9 +98,9 @@ validiert. Dokumentlinks verwenden deshalb explizite relative Pfade.
   lehnen direkte Nicht-Supervisor-Quellen ab
 - Live UI: `queued → running → success/failed`, Hostrefresh, genau ein Poller,
   Stopp ohne aktive Jobs/bei Disconnect und Wiederaufnahme nach Reload
-- HA Panel: admin-only WebSocket-Commands, token-/logfreier Statusstream,
-  expliziter Logabruf, sichere Textdarstellung, Backend-Link und globale
-  Native-Hostprüfung im echten Browser
+- HA sidebar: direkte Same-Tab-Navigation zur lokalen App beziehungsweise Remote-
+  UI, Zurück ohne Redirectschleife, keine implizite Aktion oder Tokenweitergabe;
+  bestehende admin-only WebSocket-Commands und token-/logfreier Statusstream
 - Container: AMD64/AArch64, versionierte Labels, Port/Volume/Healthcheck,
   Ansible/OpenSSH und PID 1 nach Privilege Drop als UID `10001`
 

@@ -19,6 +19,7 @@ tags: [architecture, adr, index]
 | [[0008-public-container-publishing]] | accepted | Versionierte öffentliche Multi-Arch-Images mit anonymem Gate |
 | [[0009-supervisor-native-backend-discovery]] | accepted | Lokale App-Erkennung über Supervisor mit Remote-Fallback |
 | [[0010-secure-test-dependency-replacements]] | accepted | Gezielter, geprüfter Pillow-Sicherheitsersatz nur im Entwicklungsgraph |
+| [[0011-direct-backend-sidebar]] | accepted | Direkter Backend-UI-Einstieg aus der HA-Seitenleiste |
 
 Neue ADRs verwenden [[../../templates/adr-template|die ADR-Vorlage]]. Akzeptierte
 ADRs werden nicht rückwirkend umgeschrieben; eine neue ADR ersetzt die alte und

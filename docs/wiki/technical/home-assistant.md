@@ -37,10 +37,12 @@ requests status refresh on success.
 
 ## Native panel
 
-The administrator-only panel uses HA's authenticated WebSocket connection, not a
-browser copy of the backend token. Status subscriptions carry compact host/job
-metadata. Logs are fetched explicitly by a separate admin-only command and rendered
-as text. Neither browser storage nor recorder/diagnostics receives full job output.
+The administrator-only `/homelab-updates` panel opens the backend management UI
+immediately using same-tab replacement navigation. Local Apps use `/app/<identifier>`
+for Supervisor Ingress; remote backends use their configured URL and UI session.
+The panel neither subscribes to status nor starts actions, and does not forward the
+integration token. Existing admin-only WebSocket commands remain compatible.
+Neither browser storage nor recorder/diagnostics receives full job output.
 With multiple native entries, the first loaded owns the global panel; unloading it
 hands ownership to another loaded native entry.
 
@@ -49,7 +51,7 @@ hands ownership to another loaded native entry.
 Optional Supervisor metadata discovery matches both App slug and repository identity,
 derives the internal endpoint and validates health/token. Missing or incompatible
 local Apps retain manual remote setup. Existing remote entries are not rewritten.
-A discovered local **Manage backend** link uses the HA App route in the same tab.
+The sidebar opens a discovered local App through the HA App route in the same tab.
 
 Legacy entries migrate without changing established entity identities. Provider
 JSON stays in adapters. See [ADR-0009](../../02-architecture/adr/0009-supervisor-native-backend-discovery.md)

@@ -32,9 +32,11 @@ Status remains usable when only a separate command backend fails. Invalid extern
 payloads become safe errors; unknown additive data does not crash entities. Setup,
 reload and unload leave no duplicate listeners or tasks.
 
-The native HA panel and its WebSocket commands require administrator access.
-Regular status streams contain compact metadata, not credentials or job output.
-A separate authenticated action retrieves a bounded redacted log on demand.
+The native HA sidebar entry opens the backend UI directly and requires
+administrator access. Local Apps use Supervisor Ingress; remote backends use their
+own UI login in the same tab. The integration never forwards its stored token.
+Existing admin-only WebSocket commands retain compact status streams and explicit,
+bounded redacted log retrieval for compatibility.
 
 ## Acceptance evidence
 

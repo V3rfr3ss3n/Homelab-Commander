@@ -14,7 +14,8 @@ into a privileged execution engine.
 
 ## Component responsibilities
 
-HA provides configuration, devices, entities, diagnostics and the operational panel.
+HA provides configuration, devices, entities, diagnostics and the direct backend
+UI entry.
 The native backend owns inventory, SSH identity, SQLite persistence and execution.
 The App packages that backend for Supervisor/Ingress; standalone Docker runs the
 same application. Semaphore remains an optional legacy provider.
@@ -24,7 +25,7 @@ same application. Semaphore remains an optional legacy provider.
 - Dynamic Linux host status and native update/reboot controls.
 - Native asynchronous jobs, explicit log inspection and custom tasks.
 - UI configuration, reauthentication, reconfiguration and provider migration.
-- Administrative backend UI and administrator-only HA operational panel.
+- Administrative backend UI and administrator-only HA sidebar entry.
 - Built-in Debian/Ubuntu APT checks and controlled maintenance operations.
 
 ## Deliberate limits

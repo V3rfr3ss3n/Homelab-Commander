@@ -14,10 +14,12 @@ entities expose system updates, available/security update counts, distribution,
 kernel, last check and reboot-required state. Native job/health metadata adds
 backend connectivity, queue state, latest job and latest failed job.
 
-The native operational sidebar panel is administrator-only. It displays hosts
-and jobs; **Manage backend** opens the separate administrative interface. A
-discovered local App opens through HA's App route in the current tab; an explicitly
-remote backend opens its browser-reachable URL separately.
+Select **Homelab Commander** in HA's sidebar to open the backend management UI
+directly in the current tab. There is no intermediate host/job overview. The sidebar
+entry is administrator-only. A discovered local App opens through HA's App route
+and Supervisor Ingress, keeping the HA navigation available. A remote backend opens
+its configured browser-reachable URL and uses its own UI login; use Back to return
+to HA. The integration does not forward its stored API token to the browser.
 
 ## Deliberate operations
 

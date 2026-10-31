@@ -11,9 +11,10 @@ tags: [architecture, design]
 
 ```mermaid
 flowchart LR
-    U[Home Assistant user] --> HP[Homelab Commander operational panel]
+    U[Home Assistant user] --> HP[Homelab Commander sidebar entry]
     U --> UI[Homelab Commander Backend Ingress]
-    HP --> HA[HACS custom integration]
+    HP --> UI
+    U --> HA[HACS custom integration]
     HA --> NB[Native Backend API]
     HA -. optional .-> SE[Semaphore Provider]
     UI --> APP[Home Assistant App]
@@ -142,26 +143,16 @@ werden Bestandteil des Links.
 
 ### Home-Assistant-Hauptansicht
 
-Für den ersten geladenen Native-Config-Entry registriert die Integration ein
-administratorgeschütztes `panel_custom` unter `/homelab-updates`. Ein statisches,
-abhängigkeitsfreies Web Component rendert Coordinator- und Task-Manager-Daten.
-Kompakte Snapshots laufen über einen Home-Assistant-WebSocket-Subscribe-Command;
-Host- und Joblistener pushen Änderungen ohne einen zweiten Browser-Poller.
-
-Der reguläre Snapshot enthält nie Jobausgabe oder Credentials. **Log öffnen**
-ruft einen getrennten admin-only WebSocket-Command auf, der über den bereits
-konfigurierten Native Adapter genau einen begrenzten redigierten Log abholt. Der
-Browser erhält dadurch weder den Backend-Token noch eine Backend-Session. Ein
-weiterer Command startet ausschließlich `CHECK_ALL`. Das Panel rendert fremde
-Texte mit `textContent` und nutzt weder HTML-Injektion noch Browser Storage.
-
-**Backend verwalten** ist ein tokenfreier Link auf die konfigurierte Backend-URL
-und eignet sich insbesondere für Standalone beziehungsweise browser-erreichbare
-Reverse-Proxy-URLs. Das Home-Assistant-App-Ingress bleibt eine getrennte
-Management-Oberfläche, weil dessen Supervisor-URL nicht aus der Backend-API-URL
-ableitbar ist. Bei mehreren Native-Einträgen besitzt zunächst der erste geladene
-Eintrag das globale Panel; nach dessen Unload wird ein weiterer geladener Native-
-Eintrag übernommen. Siehe [[adr/0007-home-assistant-main-panel]].
+Der erste geladene Native-Config-Entry besitzt das administratorgeschützte
+`panel_custom` unter `/homelab-updates`. Das Web Component öffnet direkt die
+Backend-Management-UI per `location.replace` im selben Tab. Für eine passende
+entdeckte lokale App wird `/app/<identifier>` verwendet; Supervisor übernimmt
+Ingress und HA-Navigation. Ein Remote-Backend öffnet seine konfigurierte URL und
+verwendet seine eigene UI-Session. Der gespeicherte Integrationstoken bleibt
+serverseitig; es gibt keine vorgeschaltete Übersicht oder implizite Aktion.
+Bestehende admin-only WebSocket-Commands bleiben kompatibel, werden vom Panel
+jedoch nicht mehr aufgerufen. Nach Unload übernimmt der nächste geladene Native-
+Eintrag. Siehe [[adr/0011-direct-backend-sidebar]].
 
 ## Vorgesehene Laufzeitobjekte
 

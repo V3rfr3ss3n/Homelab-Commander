@@ -9,7 +9,7 @@ tags: [wiki, home]
 
 Homelab Commander brings Linux host status and deliberate maintenance actions into
 Home Assistant. The native backend manages hosts, SSH identity and jobs; the
-integration provides devices, entities and an operational panel.
+integration provides devices, entities and a direct backend UI entry.
 
 | Area | Audience | Contents |
 | --- | --- | --- |

@@ -68,15 +68,14 @@ und eine tokenfreie UI-URL. Vollständige Ausgabe wird weder Entityattribut,
 Sensorzustand noch Diagnostics-Inhalt. Der `#/jobs/<job-id>`-Hash trägt keine
 Credentials; der anschließende Abruf bleibt session-/Ingress-authentifiziert.
 
-Das native Home-Assistant-Panel verwendet ausschließlich Home Assistants
-authentifizierte WebSocket-Verbindung. Panel, Statusabonnement, Hostprüfung und
-Logabruf verlangen Administratorrechte. Die Panel-Konfiguration enthält nur die
-Config-Entry-ID und eine bereits konfigurierte tokenfreie Backend-Basis-URL. Der
-Backend-Token bleibt serverseitig im Config Entry und wird vom Native Adapter
-verwendet. Statusevents enthalten ausschließlich kompakte Metadaten; der
-begrenzte redigierte Log wird nach **Log öffnen** einmalig übertragen, mit
-`textContent` gerendert und weder in Entities, Recorder, Diagnostics, DOM-
-Attributen noch Browser Storage persistiert.
+Der administratorgeschützte Home-Assistant-Seitenleisteneintrag öffnet direkt
+die Backend-UI im selben Tab. Lokale Apps verwenden Supervisor Ingress; Remote-
+Backends ihre bestehende UI-Anmeldung. Der Integrationstoken wird weder an die
+Zielseite noch über URL oder Browser Storage weitergegeben. Die Panelkonfiguration
+enthält nur Entry-ID und tokenfreie Zieladresse. Es werden keine CSP- oder
+Cookiegrenzen für eine Cross-Origin-Einbettung gelockert. Bestehende admin-only
+WebSocket-Commands bleiben kompatibel; das Panel startet keine Abonnements oder
+Hostaktionen. Siehe [[../02-architecture/adr/0011-direct-backend-sidebar]].
 
 ## Vertrauensgrenzen des nativen Backends
 
