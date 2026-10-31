@@ -12,6 +12,7 @@ stages: [validate]
 variables:
   UV_CACHE_DIR: .cache/uv
   UV_LINK_MODE: copy
+  UV_PYTHON: "3.14"
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
 
 quality:

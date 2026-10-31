@@ -98,7 +98,10 @@ is retained as evidence; a valid YAML/dry-run did not prove executor compatibili
 The exact final archive bootstrap was executed in an isolated temporary directory:
 SHA-256 verification passed and the installed binary reported uv 0.13.6 on AMD64.
 The AArch64 hash was read from the same official release metadata; execution on
-AArch64 is not claimed.
+AArch64 is not claimed. The runner then selected Python 3.15 from the open-ended
+project minimum, causing a source build without a compiler. CI now explicitly
+selects the supported Python 3.14 series, matching the existing GitHub job; the
+project's minimum version and lockfile remain unchanged.
 
 ## Remaining release/merge gates
 
