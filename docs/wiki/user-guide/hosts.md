@@ -42,3 +42,25 @@ missing temporarily from status becomes unavailable rather than immediately
 being deleted from the registry.
 
 Next: [updates and jobs](updates-and-jobs.md).
+
+## Guided setup and paste import
+
+Use **+** beside the host list to open **Add host**. The dialog contains the backend
+public key, connection fields and **Copy Debian setup** / **Copy Ubuntu setup**.
+Set a dedicated non-root user and your existing SSH port before copying. Run the
+reviewed command on the selected target as an administrator; Python 3 must already
+be present. Templates create/reuse that account and install only the public key,
+with restrictive `.ssh` and `authorized_keys` permissions. Repeating the same command
+does not duplicate the key. Other systems are not offered yet.
+
+These commands install no packages and do not change sudo, firewall or SSH daemon
+configuration. You must arrange Python and the intended non-interactive sudo rights,
+restrict network access and verify host identity yourself. The port field describes
+your existing SSH listener; it does not configure one.
+
+Copy the output between `HLC_HOST_BEGIN` and `HLC_HOST_END` and paste it into a
+connection field. The versioned format fills name, user, port and address after
+validation; it carries no private key or credentials. Multiple reported addresses
+require a choice of one reachable from the backend. Review all values before saving.
+Malformed or unsupported versions show a form error. Pasting and saving only edit
+inventory; connection testing and checks remain deliberate actions.

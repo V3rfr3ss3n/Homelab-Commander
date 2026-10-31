@@ -1,7 +1,7 @@
 ---
 title: Security und Privacy
 status: accepted
-updated: 2026-08-23
+updated: 2026-10-31
 tags: [operations, security, privacy]
 ---
 
@@ -144,3 +144,20 @@ Bei möglichem Leak: Veröffentlichung/Release stoppen, betroffene Zugangsdaten
 sofort außerhalb dieses Repositorys rotieren, Reichweite inklusive Git-Historie
 prüfen, sichere Bereinigung koordinieren und einen knappen Security Record ohne
 das Secret erstellen. Das Secret wird niemals zur Beweisführung erneut gepostet.
+
+## Task-Eignung und Einrichtung
+
+[ADR-0012](../02-architecture/adr/0012-dashboard-task-compatibility.md) ergänzt
+explizite, auf 30 Sekunden begrenzte read-only Prüfungen deklarierter OS-/Programm-/
+Paket-/sudo-Voraussetzungen. Keine frei ausführbaren Probe-Skripte, keine automatische
+Installation. Metadaten enthalten sichere Gründe statt SSH-Ausgabe. Vor Ausführung
+prüft der Worker unter Hostlock erneut; auch externe Clients brauchen Zuordnung,
+Aktivierung und geeignete Evidenz. Abgelaufene oder geänderte Voraussetzungen sind
+kein Freigabenachweis. Bestehende Taskdefinitionen werden verlustfrei migriert.
+
+Generierte Debian-/Ubuntu-Vorbereitung benötigt Python 3 und lokale Administrator-
+Ausführung, legt nur Account und Public Key mit restriktiven Dateirechten an und
+lehnt Symlinks sowie nicht reguläre/hartverlinkte authorized_keys ab. sudo-, Firewall-
+und SSH-Daemon-Regeln bleiben bewusste Betreiberentscheidungen. Ein versionierter
+Importblock füllt ausschließlich Formularwerte; kein Token und kein Private Key
+gehören in diesen Block. Mehrere Adressen verlangen eine bewusste Auswahl.

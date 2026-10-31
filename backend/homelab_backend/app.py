@@ -25,10 +25,12 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from .automation import AnsibleExecutor, AutomationExecutor
 from .config import Settings
 from .custom_tasks import CustomTaskRepository, ShellTasksDisabledError
+from .dashboard import DashboardService, DashboardSummary, JobPage
 from .database import Database
 from .hosts import DuplicateHostError, HostRepository
 from .jobs import JobManager, JobRepository
 from .models import (
+    AssignmentUpdate,
     CustomTask,
     CustomTaskCreate,
     CustomTaskPatch,
@@ -39,11 +41,16 @@ from .models import (
     Job,
     JobAction,
     JobLog,
+    JobState,
     PublicKeyResponse,
+    SshUser,
+    TaskCompatibility,
     UiLoginRequest,
     UiSessionResponse,
 )
+from .onboarding import OnboardingCommand, setup_command
 from .ssh_keys import SshKeyStore
+from .task_compatibility import TaskCompatibilityService
 from .ui import UI_HTML, UI_JAVASCRIPT, UI_STYLESHEET
 from .ui_sessions import UI_SESSION_COOKIE, UI_SESSION_COOKIE_PATH, UiSessionStore
 from .version import __version__
@@ -85,12 +92,17 @@ def create_app(
     )
     keys = SshKeyStore(resolved.private_key_path)
     jobs_repository = JobRepository(database)
+    automation = executor or AnsibleExecutor(
+        resolved.private_key_path, resolved.known_hosts_path
+    )
+    compatibility = TaskCompatibilityService(database, custom_tasks, hosts, automation)
+    dashboard = DashboardService(database, jobs_repository)
     jobs = JobManager(
         jobs_repository,
         hosts,
         custom_tasks,
-        executor
-        or AnsibleExecutor(resolved.private_key_path, resolved.known_hosts_path),
+        automation,
+        compatibility=compatibility,
         worker_count=resolved.worker_count,
     )
     csrf_token = secrets.token_urlsafe(32)
@@ -390,6 +402,122 @@ def create_app(
             await jobs.async_enqueue(JobAction.CHECK_UPDATES, host.id)
             for host in await hosts.async_list()
         ])
+
+    @app.get(
+        "/ui-api/onboarding",
+        response_model=OnboardingCommand,
+        dependencies=ui_authenticated,
+    )
+    async def onboarding(
+        system: str, username: SshUser, port: int = Query(default=22, ge=1, le=65535)
+    ) -> OnboardingCommand:
+        try:
+            return setup_command(system, username, port, await keys.async_public_key())
+        except ValueError as err:
+            raise HTTPException(422, str(err)) from err
+
+    @app.get(
+        "/api/v1/dashboard", response_model=DashboardSummary, dependencies=authenticated
+    )
+    @app.get(
+        "/ui-api/dashboard",
+        response_model=DashboardSummary,
+        dependencies=ui_authenticated,
+    )
+    async def dashboard_summary() -> DashboardSummary:
+        return await dashboard.async_summary()
+
+    @app.get("/api/v1/jobs/page", response_model=JobPage, dependencies=authenticated)
+    @app.get("/ui-api/jobs/page", response_model=JobPage, dependencies=ui_authenticated)
+    async def job_page(
+        limit: int = Query(default=25, ge=1, le=100),
+        offset: int = Query(default=0, ge=0),
+        host_id: UUID | None = None,
+        state: JobState | None = None,
+    ) -> JobPage:
+        return JobPage(
+            items=await jobs_repository.async_list(
+                limit=limit, offset=offset, host_id=host_id, state=state
+            ),
+            total=await jobs_repository.async_count(host_id=host_id, state=state),
+            limit=limit,
+            offset=offset,
+        )
+
+    @app.get(
+        "/api/v1/hosts/{host_id}/task-compatibility",
+        response_model=list[TaskCompatibility],
+        dependencies=authenticated,
+    )
+    @app.get(
+        "/ui-api/hosts/{host_id}/task-compatibility",
+        response_model=list[TaskCompatibility],
+        dependencies=ui_authenticated,
+    )
+    async def host_task_compatibility(host_id: UUID) -> tuple[TaskCompatibility, ...]:
+        if await hosts.async_get(host_id) is None:
+            raise HTTPException(404, "Host not found")
+        return tuple([
+            await compatibility.async_get(task.id, host_id)
+            for task in await custom_tasks.async_list()
+        ])
+
+    @app.post(
+        "/api/v1/hosts/{host_id}/tasks/{task_id}/check",
+        response_model=TaskCompatibility,
+        dependencies=authenticated,
+    )
+    @app.post(
+        "/ui-api/hosts/{host_id}/tasks/{task_id}/check",
+        response_model=TaskCompatibility,
+        dependencies=ui_mutation,
+    )
+    async def check_task_compatibility(
+        host_id: UUID, task_id: UUID
+    ) -> TaskCompatibility:
+        try:
+            return await compatibility.async_check(task_id, host_id)
+        except KeyError as err:
+            raise HTTPException(404, "Task or host not found") from err
+
+    @app.put(
+        "/api/v1/hosts/{host_id}/tasks/{task_id}/assignment",
+        response_model=TaskCompatibility,
+        dependencies=authenticated,
+    )
+    @app.put(
+        "/ui-api/hosts/{host_id}/tasks/{task_id}/assignment",
+        response_model=TaskCompatibility,
+        dependencies=ui_mutation,
+    )
+    async def assign_task(
+        host_id: UUID, task_id: UUID, data: AssignmentUpdate
+    ) -> TaskCompatibility:
+        try:
+            return await compatibility.async_assign(
+                task_id, host_id, enabled=data.enabled
+            )
+        except KeyError as err:
+            raise HTTPException(404, "Task or host not found") from err
+        except ValueError as err:
+            raise HTTPException(409, str(err)) from err
+
+    @app.delete(
+        "/api/v1/hosts/{host_id}/tasks/{task_id}/assignment",
+        status_code=204,
+        dependencies=authenticated,
+    )
+    @app.delete(
+        "/ui-api/hosts/{host_id}/tasks/{task_id}/assignment",
+        status_code=204,
+        dependencies=ui_mutation,
+    )
+    async def unassign_task(host_id: UUID, task_id: UUID) -> Response:
+        try:
+            await compatibility.async_unassign(task_id, host_id)
+        except KeyError as err:
+            raise HTTPException(404, "Task or host not found") from err
+        return Response(status_code=204)
 
     @app.get("/api/v1/jobs", response_model=list[Job], dependencies=authenticated)
     async def list_jobs(

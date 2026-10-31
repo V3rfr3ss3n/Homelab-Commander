@@ -763,6 +763,8 @@ async def test_native_client_rejects_invalid_job_fields(
         [],
         {"id": JOB_ID, "name": "Task", "enabled": "yes"},
         {"id": JOB_ID, "name": 1, "enabled": True},
+        {"id": JOB_ID, "name": "Task", "enabled": True, "host_ids": "invalid"},
+        {"id": JOB_ID, "name": "Task", "enabled": True, "host_ids": ["invalid"]},
     ],
 )
 async def test_native_client_rejects_invalid_custom_tasks(

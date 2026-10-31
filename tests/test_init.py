@@ -2,6 +2,7 @@
 
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from homeassistant.components import frontend
 from homeassistant.const import CONF_API_TOKEN
 from homeassistant.core import HomeAssistant
@@ -239,8 +240,9 @@ async def test_native_entry_migration_keeps_identity_and_updates_visible_title(
     assert entry.data[CONF_BACKEND_URL] == "https://backend.example.invalid"
 
 
+@pytest.mark.parametrize("host_ids", [None, [], [HOST_ID]])
 async def test_native_setup_creates_job_and_health_entities(
-    hass: HomeAssistant, aioclient_mock: object
+    hass: HomeAssistant, aioclient_mock: object, host_ids: list[str] | None
 ) -> None:
     """Native entries expose host entities plus provider-neutral job telemetry."""
     aioclient_mock.get(  # type: ignore[attr-defined]
@@ -258,6 +260,7 @@ async def test_native_setup_creates_job_and_health_entities(
                 "name": "Synthetic task",
                 "description": "No real command",
                 "enabled": True,
+                **({"host_ids": host_ids} if host_ids is not None else {}),
             }
         ],
     )
@@ -297,6 +300,12 @@ async def test_native_setup_creates_job_and_health_entities(
     assert f"{DOMAIN}_{entry.entry_id}_last_job_type" in unique_ids
     assert f"{DOMAIN}_{entry.entry_id}_last_failed_job" in unique_ids
     assert f"{DOMAIN}_{HOST_ID}_custom_task_{task_id}" in unique_ids
+
+    task_entity_id = er.async_get(hass).async_get_entity_id(
+        "button", DOMAIN, f"{DOMAIN}_{HOST_ID}_custom_task_{task_id}"
+    )
+    assert task_entity_id is not None
+    assert (hass.states.get(task_entity_id).state == "unavailable") == (host_ids == [])
 
     assert frontend.async_panel_exists(hass, PANEL_URL_PATH)
     panel = hass.data[frontend.DATA_PANELS][PANEL_URL_PATH].to_response()

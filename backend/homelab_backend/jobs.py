@@ -15,6 +15,7 @@ from .custom_tasks import CustomTaskRepository
 from .database import Database
 from .hosts import HostRepository
 from .models import Host, Job, JobAction, JobLog, JobState
+from .task_compatibility import TaskCompatibilityService
 
 MAX_JOB_LOG_BYTES = 64 * 1024
 _MUTATING_ACTIONS = frozenset({JobAction.UPDATE, JobAction.REBOOT})
@@ -72,11 +73,31 @@ class JobRepository:
         )
         return _job_from_row(row) if row is not None else None
 
-    async def async_list(self, *, limit: int = 100) -> tuple[Job, ...]:
+    async def async_list(
+        self,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+        host_id: UUID | None = None,
+        state: JobState | None = None,
+        completed: bool = False,
+    ) -> tuple[Job, ...]:
+        clause, parameters = _job_filter(host_id, state, completed)
+        order = "jobs.finished_at" if completed else "jobs.created_at"
         rows = await self._database.async_fetch_all(
-            f"{_SELECT} ORDER BY jobs.created_at DESC LIMIT ?", (limit,)
+            f"{_SELECT}{clause} ORDER BY {order} DESC, jobs.id DESC LIMIT ? OFFSET ?",
+            (*parameters, limit, offset),
         )
         return tuple(_job_from_row(row) for row in rows)
+
+    async def async_count(
+        self, *, host_id: UUID | None = None, state: JobState | None = None
+    ) -> int:
+        clause, parameters = _job_filter(host_id, state, False)
+        row = await self._database.async_fetch_one(
+            f"SELECT COUNT(*) AS count FROM jobs{clause}", parameters
+        )
+        return row["count"] if row is not None else 0
 
     async def async_recover_queued(self) -> tuple[UUID, ...]:
         """Return queued work after safely recovering interrupted jobs."""
@@ -157,9 +178,13 @@ class JobManager:
         executor: AutomationExecutor,
         *,
         worker_count: int = 2,
+        compatibility: TaskCompatibilityService | None = None,
     ) -> None:
         if worker_count < 1 or worker_count > 16:
             raise ValueError("worker_count must be between 1 and 16")
+        self._compatibility = compatibility or TaskCompatibilityService(
+            repository._database, custom_tasks, hosts, executor
+        )
         self._repository = repository
         self._hosts = hosts
         self._custom_tasks = custom_tasks
@@ -210,6 +235,7 @@ class JobManager:
             raise KeyError("Custom task not found")
         if not task.enabled:
             raise ValueError("Custom task is disabled")
+        await self._compatibility.async_require(task_id, host_id)
         job = await self._repository.async_create(
             JobAction.CUSTOM_TASK,
             host_id,
@@ -248,6 +274,19 @@ class JobManager:
                     await self._finish_failure(job, host, "custom_task_not_found", "")
                     return
                 async with lock:
+                    try:
+                        (
+                            custom_task,
+                            current_host,
+                        ) = await self._compatibility.async_require(
+                            custom_task.id, host.id, fresh=True
+                        )
+                    except KeyError, ValueError:
+                        await self._finish_failure(
+                            job, host, "custom_task_not_permitted", ""
+                        )
+                        return
+                    host = current_host
                     result = await self._executor.async_execute_custom(
                         custom_task, host
                     )
@@ -350,3 +389,19 @@ def _job_from_row(row: sqlite3.Row) -> Job:
             bool(row["reboot_required"]) if row["reboot_required"] is not None else None
         ),
     )
+
+
+def _job_filter(
+    host_id: UUID | None, state: JobState | None, completed: bool
+) -> tuple[str, tuple[object, ...]]:
+    clauses: list[str] = []
+    parameters: list[object] = []
+    if host_id is not None:
+        clauses.append("jobs.host_id = ?")
+        parameters.append(str(host_id))
+    if state is not None:
+        clauses.append("jobs.state = ?")
+        parameters.append(state)
+    if completed:
+        clauses.append("jobs.finished_at IS NOT NULL")
+    return (" WHERE " + " AND ".join(clauses) if clauses else ""), tuple(parameters)

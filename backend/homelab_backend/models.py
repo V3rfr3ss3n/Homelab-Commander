@@ -158,6 +158,60 @@ class CustomTaskMode(StrEnum):
     SHELL = "shell"
 
 
+DependencyName = Annotated[str, Field(pattern=r"^[A-Za-z0-9_./+:-]{1,128}$")]
+SystemName = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_-]{0,31}$")]
+
+
+class TaskRequirements(BaseModel):
+    """Declarative, bounded prerequisites; never executable probe scripts."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    distributions: tuple[SystemName, ...] = Field(default=(), max_length=32)
+    versions: tuple[Annotated[str, Field(pattern=r"^[0-9][0-9.]{0,31}$")], ...] = Field(
+        default=(), max_length=32
+    )
+    programs: tuple[DependencyName, ...] = Field(default=(), max_length=32)
+    packages: tuple[
+        Annotated[str, Field(pattern=r"^[a-z0-9][a-z0-9+.:_-]{0,127}$")], ...
+    ] = Field(default=(), max_length=32)
+    requires_sudo: bool = False
+
+
+class ProbeFacts(BaseModel):
+    """Validated output of the fixed read-only execution adapter probe."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    distribution: str = Field(max_length=64)
+    version: str = Field(max_length=64)
+    missing_programs: tuple[DependencyName, ...] = Field(max_length=33)
+    missing_packages: tuple[DependencyName, ...] = Field(max_length=32)
+
+
+class CompatibilityState(StrEnum):
+    UNCHECKED = "unchecked"
+    SUITABLE = "suitable"
+    UNSUITABLE = "unsuitable"
+    FAILED = "failed"
+
+
+class TaskCompatibility(BaseModel):
+    """Safe metadata for one task/host pair, without raw command output."""
+
+    model_config = ConfigDict(frozen=True)
+    task_id: UUID
+    host_id: UUID
+    state: CompatibilityState = CompatibilityState.UNCHECKED
+    reasons: tuple[str, ...] = ()
+    checked_at: datetime | None = None
+    assigned: bool = False
+    enabled: bool = False
+
+
+class AssignmentUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    enabled: bool = True
+
+
 class CustomTaskCreate(BaseModel):
     """Validated custom task definition accepted by the API."""
 
@@ -169,6 +223,7 @@ class CustomTaskCreate(BaseModel):
     argv: tuple[str, ...] | None = None
     shell_command: str | None = Field(default=None, max_length=4096)
     enabled: bool = True
+    requirements: TaskRequirements = Field(default_factory=TaskRequirements)
 
     @model_validator(mode="after")
     def validate_execution(self) -> CustomTaskCreate:
@@ -200,6 +255,7 @@ class CustomTaskPatch(BaseModel):
     argv: tuple[str, ...] | None = None
     shell_command: str | None = Field(default=None, max_length=4096)
     enabled: bool | None = None
+    requirements: TaskRequirements = Field(default_factory=TaskRequirements)
 
 
 class CustomTask(BaseModel):
@@ -214,6 +270,8 @@ class CustomTask(BaseModel):
     argv: tuple[str, ...] | None
     shell_command: str | None
     enabled: bool
+    requirements: TaskRequirements = Field(default_factory=TaskRequirements)
+    host_ids: tuple[UUID, ...] = ()
     created_at: datetime
     updated_at: datetime
 

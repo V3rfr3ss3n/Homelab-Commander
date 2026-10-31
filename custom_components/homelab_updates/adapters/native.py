@@ -272,7 +272,16 @@ def _parse_custom_task(payload: object) -> CustomTaskDefinition:
     enabled = payload.get("enabled")
     if name is None or not isinstance(enabled, bool):
         raise BackendTaskError("A native custom task is invalid")
+    raw_hosts = payload.get("host_ids")
+    if raw_hosts is not None and not isinstance(raw_hosts, list):
+        raise BackendTaskError("The native task host assignments are invalid")
+    host_ids = (
+        tuple(_uuid(value, "host") for value in raw_hosts)
+        if isinstance(raw_hosts, list)
+        else None
+    )
     return CustomTaskDefinition(
+        host_ids=host_ids,
         task_id=task_id,
         name=name,
         description=_optional_text(payload, "description", BackendTaskError),

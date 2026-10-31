@@ -1,7 +1,7 @@
 ---
 title: Abnahme
 status: accepted
-updated: 2026-08-23
+updated: 2026-10-31
 tags: [product, acceptance, release]
 ---
 
@@ -142,3 +142,19 @@ tags: [product, acceptance, release]
     erreichen. Ein direkter Zugriff behält ausschließlich die separat mit Bearer
     geschützte External API. Öffentliche App-Dokumente enthalten keine `/config/`-
     oder Entwickler-Home-Pfade.
+
+## Dashboard and compatibility acceptance
+
+- Dashboard is the default; Hosts/Tasks/Jobs provide full views, filtered job pages
+  and preserved job deep links in standalone and nested Ingress.
+- Notices link to security/reboot/stale hosts and failed jobs. Security notices
+  offer regular explicit updates, never a misleading security-only action.
+- Chart/counts/historical failures include data beyond the recent 100-job list.
+- Host list has exactly three action buttons plus Details. Creation dialogs expose
+  prerequisites/public key, and import rejects unsupported formats or invalid values.
+- Debian/Ubuntu preparation is idempotent, creates no sudo/firewall/sshd policy and
+  is tested only with synthetic accounts, mocked commands and isolated files.
+- Task requirements, per-host/global activation and assignment are enforced by UI,
+  external API and worker, including expired evidence and changed prerequisites.
+- Legacy migration preserves identities/history and prior host access relationships,
+  while requiring compatibility evidence before the next execution.

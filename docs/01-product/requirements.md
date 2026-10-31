@@ -1,7 +1,7 @@
 ---
 title: Produktanforderungen
 status: accepted
-updated: 2026-08-23
+updated: 2026-10-31
 tags: [product, requirements]
 ---
 
@@ -206,3 +206,20 @@ dessen Werte Hostobjekte sind. Generisches Beispiel:
 Der Top-Level-Key ist kanonisch. Ein abweichendes `host`-Feld wird nicht
 stillschweigend als neue Identität übernommen. Die genaue Validierungsentscheidung
 wird beim Parser in Tests festgeschrieben.
+
+## Dashboard und geeignete Tasks
+
+- **REQ-UI-001 MUST:** Dashboard ist der Einstieg mit Backend-/Queuezustand,
+  wichtigen verlinkten Meldungen, fünf neuesten Jobs, kompakten Hosts und einem
+  vollständigen Sieben-Tage-Verlauf. Vollansichten trennen Hosts, Tasks und Jobs.
+- **REQ-UI-002 MUST:** Hostzeilen bieten Prüfen, Update, Reboot und Details;
+  Erstellen/Bearbeiten erfolgt über Dialoge. Der Einrichtungsdialog bietet Public
+  Key, Debian-/Ubuntu-Vorlagen und validierten versionierten Paste-Import ohne
+  implizite Verbindung, Installation oder Rechtefreigabe.
+- **REQ-TASK-001 MUST:** Taskausführung braucht globale und hostbezogene Aktivierung,
+  eine Zuordnung und geeignete aktuelle Voraussetzungen. Explizite read-only
+  Prüfungen und eine erneute Prüfung vor Worker-Ausführung verhindern UI-/API-Bypass.
+  Änderungen invalidieren Evidenz; Ablauf spätestens nach 24 Stunden.
+- **REQ-TASK-002 MUST:** Upgrade erhält bestehende Task-/Host-IDs und Jobs sowie
+  bisherige Zuordnungen durch Migration; vor erneuter Ausführung ist ein Check nötig.
+  Neue Hosts erhalten keine automatischen Zuordnungen.

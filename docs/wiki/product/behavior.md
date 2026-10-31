@@ -49,3 +49,15 @@ a release approval.
 The detailed [requirements](../../01-product/requirements.md) and
 [acceptance checklist](../../01-product/acceptance.md) remain the normative records.
 Dated reviews document a particular verification point, not permanent success.
+
+## Dashboard and task eligibility
+
+The backend opens on a dashboard with linked notices, compact hosts/jobs and seven
+UTC days of job history. Full Hosts, Tasks and Jobs views own administration.
+Security notices filter affected hosts and lead to regular explicit system updates.
+
+Custom tasks require a host assignment, global and per-host activation, and current
+successful prerequisite evidence. Checks are explicit and read-only; execution
+rechecks before running. Prerequisites never install dependencies or grant rights.
+Legacy tasks retain their existing host relationships after migration but require
+a successful check before their next execution. See [custom tasks](../user-guide/custom-tasks.md).

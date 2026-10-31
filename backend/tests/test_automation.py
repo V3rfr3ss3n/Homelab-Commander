@@ -483,3 +483,22 @@ def test_fact_filter_covers_distribution_kernel_and_python() -> None:
         "ansible_python*",
         "discovered_interpreter_python",
     ]
+
+
+async def test_cancelled_probe_terminates_process(tmp_path: Path) -> None:
+    """A compatibility deadline must not leave an Ansible subprocess running."""
+    executor = AnsibleExecutor(tmp_path / "key", tmp_path / "known_hosts")
+    process = FakeProcess()
+
+    async def cancelled(awaitable, **_kwargs):
+        awaitable.close()
+        raise asyncio.CancelledError
+
+    with (
+        patch("asyncio.create_subprocess_exec", AsyncMock(return_value=process)),
+        patch("asyncio.wait_for", cancelled),
+        pytest.raises(asyncio.CancelledError),
+    ):
+        await executor._async_module(_host(), "ansible.builtin.command")
+    assert process.killed
+    assert process.waited

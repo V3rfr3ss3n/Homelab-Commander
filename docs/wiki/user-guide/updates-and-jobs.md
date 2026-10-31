@@ -50,3 +50,21 @@ authentication and are not stored in HA entity attributes or diagnostics. A
 `#/jobs/<job-id>` link carries no token and still requires UI authentication.
 Package names can reveal operational details: inspect a log locally and redact
 it before sharing a minimal error report.
+
+## Dashboard and job history
+
+The management UI opens on Dashboard. It shows backend connectivity, host counts,
+active queue counts, latest job and historical latest failure. Important notices
+link to hosts with security updates, reboot requirements or missing/status checks
+older than 24 hours, and to the historical failed job. A security notice leads to
+regular per-host updates; it does not offer a security-only update mode.
+
+The compact host list and five recent jobs are shortcuts. **Hosts**, **Tasks** and
+**Jobs** open full views. Each host row offers **Check updates**, **Update**, **Reboot**
+and **Details**; details contain connection testing, editing, deletion and tasks.
+Jobs supports host/state filters and 25-item pages with a full matching count.
+Dashboard's seven-day chart uses UTC calendar dates, with terminal jobs counted on
+the completion date and active jobs on their creation date. Recent activity links
+to completed jobs. Counts and historical failure query the full database rather
+than the browser's capped recent-job list. Backend failures mark displayed data
+as potentially out of date; refresh reconnects without starting host actions.

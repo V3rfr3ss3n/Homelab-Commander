@@ -9,8 +9,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 
+from pydantic import ValidationError
+
 from .ansible_result import RESULT_PREFIX
-from .models import CustomTask, CustomTaskMode, Host, JobAction
+from .models import CustomTask, CustomTaskMode, Host, JobAction, ProbeFacts
 from .package_providers import package_provider
 
 
@@ -48,6 +50,9 @@ class AutomationExecutor(Protocol):
         self, task: CustomTask, host: Host
     ) -> ExecutionResult:
         """Run one validated custom task for exactly one host."""
+
+    async def async_probe(self, task: CustomTask, host: Host) -> ProbeFacts:
+        """Read system and dependency facts without executing task commands."""
 
 
 class AutomationExecutionError(Exception):
@@ -119,14 +124,43 @@ class AnsibleExecutor:
                 host,
                 "ansible.builtin.command",
                 json.dumps({"argv": task.argv}),
+                become=task.requirements.requires_sudo,
             )
             return ExecutionResult(output=output)
         if task.mode is CustomTaskMode.SHELL and task.shell_command is not None:
             _, output = await self._async_module(
-                host, "ansible.builtin.shell", task.shell_command
+                host,
+                "ansible.builtin.shell",
+                task.shell_command,
+                become=task.requirements.requires_sudo,
             )
             return ExecutionResult(output=output)
         raise AutomationExecutionError("invalid_custom_task", "")
+
+    async def async_probe(self, task: CustomTask, host: Host) -> ProbeFacts:
+        """Run a fixed Python probe using structured arguments and bounded time."""
+        programs = list(task.requirements.programs)
+        programs.append(task.argv[0] if task.argv else "/bin/sh")
+        payload, _ = await self._async_module(
+            host,
+            "ansible.builtin.command",
+            json.dumps({
+                "argv": [
+                    "python3",
+                    "-c",
+                    _PROBE_SCRIPT,
+                    json.dumps({
+                        "programs": programs,
+                        "packages": task.requirements.packages,
+                    }),
+                ]
+            }),
+            become=task.requirements.requires_sudo,
+        )
+        try:
+            return ProbeFacts.model_validate_json(_string(payload.get("stdout")))
+        except ValidationError as err:
+            raise AutomationExecutionError("invalid_probe_output", "") from err
 
     async def _async_test_connection(self, host: Host) -> ExecutionResult:
         """Validate SSH, Python discovery, facts, and non-interactive sudo."""
@@ -258,9 +292,11 @@ class AnsibleExecutor:
                 output_bytes, _ = await asyncio.wait_for(
                     process.communicate(), timeout=self._command_timeout
                 )
-            except TimeoutError as err:
+            except (TimeoutError, asyncio.CancelledError) as err:
                 process.kill()
                 await process.wait()
+                if isinstance(err, asyncio.CancelledError):
+                    raise
                 raise AutomationExecutionError("execution_timeout", "") from err
         output = output_bytes.decode("utf-8", errors="replace")
         if process.returncode != 0:
@@ -387,3 +423,31 @@ def _optional_string(value: object) -> str | None:
 def _nested_bool(payload: dict[str, object], parent: str, child: str) -> bool:
     nested = payload.get(parent)
     return bool(nested.get(child)) if isinstance(nested, dict) else False
+
+
+# This fixed script only reads OS identity and checks programs/package status.
+_PROBE_SCRIPT = r"""
+import json, os, shlex, shutil, subprocess, sys
+requirements = json.loads(sys.argv[1])
+release = {}
+with open('/etc/os-release') as source:
+    for line in source:
+        key, sep, value = line.strip().partition('=')
+        if sep and key in ('ID', 'VERSION_ID'):
+            parsed = shlex.split(value)
+            release[key] = parsed[0] if parsed else ''
+missing_packages = []
+for package in requirements['packages']:
+    if not shutil.which('dpkg-query'):
+        missing_packages.append(package)
+        continue
+    result = subprocess.run(['dpkg-query', '-W', '-f=${Status}', '--', package],
+                            capture_output=True, text=True, timeout=5)
+    if result.returncode or result.stdout.strip() != 'install ok installed':
+        missing_packages.append(package)
+missing_programs = [n for n in requirements['programs'] if not shutil.which(n)]
+print(json.dumps({'distribution': release.get('ID', ''),
+                  'version': release.get('VERSION_ID', ''),
+                  'missing_programs': missing_programs,
+                  'missing_packages': missing_packages}))
+"""

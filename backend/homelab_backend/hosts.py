@@ -86,6 +86,20 @@ class HostRepository:
             raise DuplicateHostError(
                 "A host with this connection already exists"
             ) from err
+        if (
+            current.address,
+            current.port,
+            current.username,
+            current.package_provider,
+        ) != (
+            updated.address,
+            updated.port,
+            updated.username,
+            updated.package_provider,
+        ):
+            await self._database.async_execute(
+                "DELETE FROM task_checks WHERE host_id = ?", (str(host_id),)
+            )
         return updated
 
     async def async_delete(self, host_id: UUID) -> bool:

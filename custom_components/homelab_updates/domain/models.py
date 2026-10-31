@@ -87,6 +87,7 @@ class CustomTaskDefinition:
     name: str
     description: str | None
     enabled: bool
+    host_ids: tuple[str, ...] | None = None
 
 
 # Compatibility name for integrations importing the pre-0.2 model directly.

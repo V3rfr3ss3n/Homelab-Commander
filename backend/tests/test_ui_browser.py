@@ -183,11 +183,14 @@ async def test_standalone_ui_buttons_work_and_errors_are_visible(
         assert expected_paths <= {url.removeprefix(base_url) for url in request_paths}
         assert all(TOKEN not in url for url in request_paths)
 
+        await page.locator("[data-add-host]").click()
         await page.locator("#copy-key").click()
         await _wait_for_message(page, "Copied")
         copied = await page.evaluate("navigator.clipboard.readText()")
         assert copied == public_key
 
+        if not await page.locator("#host-dialog").is_visible():
+            await page.locator("[data-add-host]").click()
         await page.locator("#host-name").fill("Node 01")
         await page.locator("#host-address").fill("node-01.example.invalid")
         await page.locator("#host-user").fill("automation")
@@ -197,19 +200,30 @@ async def test_standalone_ui_buttons_work_and_errors_are_visible(
         assert await page.locator('[data-action="update"]').is_visible()
         assert await page.locator('[data-action="reboot"]').is_visible()
 
+        await page.locator('nav a[href="#/tasks"]').click()
+        await page.locator("[data-add-task]").first.click()
         await page.locator("#task-name").fill("Read uptime")
         await page.locator("#task-argv").fill('["uptime"]')
         await page.locator("#task-form button[type=submit]").click()
         await _wait_for_message(page, "Task added")
         assert await page.locator("#tasks").get_by_text("Read uptime").is_visible()
 
+        await page.locator('nav a[href="#/hosts"]').click()
+        await page.get_by_role("link", name="Details", exact=True).first.click()
         await page.locator('[data-action="test_connection"]').click()
         await _wait_for_message(page, "test connection queued")
+        await page.locator('nav a[href="#/dashboard"]').click()
         await page.locator('[data-action="check_updates"]').click()
         await _wait_for_message(page, "check updates queued")
         page.on("dialog", _accept_dialog)
-        await page.locator("#tasks button[data-task][data-host]").click()
+        await page.get_by_role("link", name="Details", exact=True).first.click()
+        await page.locator("[data-check-task]").click()
+        await _wait_for_message(page, "Compatibility checked")
+        await page.locator("[data-assign-task]").click()
+        await _wait_for_message(page, "Assignment updated")
+        await page.locator("#host-tasks button[data-task][data-host]").click()
         await _wait_for_message(page, "Task queued")
+        await page.locator('nav a[href="#/dashboard"]').click()
         relative_requests = {url.removeprefix(base_url) for url in request_paths}
         assert any("/actions/test_connection" in path for path in relative_requests)
         assert any("/actions/check_updates" in path for path in relative_requests)
@@ -256,7 +270,15 @@ async def test_standalone_ui_buttons_work_and_errors_are_visible(
         assert await page.locator("#connect-placeholder").is_hidden()
         assert await page.locator("#protected-content").is_visible()
         assert await page.locator("#token").input_value() == ""
-        assert "Hosts\n1" in await page.locator("#dashboard").inner_text()
+        assert "Hosts" in await page.locator("#dashboard").inner_text()
+        assert (
+            await page
+            .locator("#dashboard .metric")
+            .nth(1)
+            .locator(".value")
+            .inner_text()
+            == "1"
+        )
         assert await page.locator("#hosts").get_by_text("Node 01").is_visible()
         assert (await page.locator("#key").inner_text()).startswith("ssh-ed25519 ")
         assert await page.locator("#jobs").inner_text() != ""
@@ -325,14 +347,19 @@ async def test_ingress_ui_keeps_assets_and_api_calls_under_prefix(
         assert await page.locator("#disconnect").is_hidden()
         assert (await page.locator("#key").inner_text()).startswith("ssh-ed25519 ")
 
+        if not await page.locator("#host-dialog").is_visible():
+            await page.locator("[data-add-host]").click()
         await page.locator("#host-name").fill("Node 01")
         await page.locator("#host-address").fill("node-01.example.invalid")
         await page.locator("#host-user").fill("automation")
         await page.locator("#host-form button[type=submit]").click()
         await _wait_for_message(page, "Host added")
         assert await page.locator("#hosts").get_by_text("Node 01").is_visible()
+        await page.locator('nav a[href="#/hosts"]').click()
+        await page.get_by_role("link", name="Details", exact=True).first.click()
         await page.locator('[data-action="test_connection"]').click()
         await _wait_for_message(page, "test connection queued")
+        await page.locator('nav a[href="#/dashboard"]').click()
         await page.locator("#jobs").get_by_text("success", exact=True).wait_for()
         await page.locator("#jobs button[data-job-log]").first.click()
         await page.locator("#job-detail").wait_for(state="visible")
@@ -375,13 +402,18 @@ async def test_standalone_job_deep_link_requires_session_and_survives_reload(
         browser = await playwright.chromium.launch(headless=True)
         setup_page = await browser.new_page()
         await _connect_standalone(setup_page, base_url)
+        if not await setup_page.locator("#host-dialog").is_visible():
+            await setup_page.locator("[data-add-host]").click()
         await setup_page.locator("#host-name").fill("Node 01")
         await setup_page.locator("#host-address").fill("node-01.example.invalid")
         await setup_page.locator("#host-user").fill("automation")
         await setup_page.locator("#host-form button[type=submit]").click()
         await _wait_for_message(setup_page, "Host added")
+        await setup_page.locator('nav a[href="#/hosts"]').click()
+        await setup_page.get_by_role("link", name="Details", exact=True).first.click()
         await setup_page.locator('[data-action="test_connection"]').click()
         await _wait_for_message(setup_page, "test connection queued")
+        await setup_page.locator('nav a[href="#/dashboard"]').click()
         await setup_page.locator("#jobs").get_by_text("success", exact=True).wait_for()
         job_id = await setup_page.locator(
             "#jobs button[data-job-log]"
@@ -443,6 +475,8 @@ async def test_job_polling_tracks_terminal_states_and_refreshes_hosts(
         page = await browser.new_page()
         await _connect_standalone(page, base_url)
 
+        if not await page.locator("#host-dialog").is_visible():
+            await page.locator("[data-add-host]").click()
         await page.locator("#host-name").fill("Node 01")
         await page.locator("#host-address").fill("node-01.example.invalid")
         await page.locator("#host-user").fill("automation")
@@ -488,8 +522,9 @@ async def test_job_polling_tracks_terminal_states_and_refreshes_hosts(
             scenario["max_in_flight"] = max(
                 int(scenario["max_in_flight"]), int(scenario["in_flight"])
             )
-            await asyncio.sleep(0.05)
             payload = job_payload()
+            scenario["latest_payload"] = payload
+            await asyncio.sleep(0.05)
             scenario["in_flight"] = int(scenario["in_flight"]) - 1
             await route.fulfill(
                 status=200,
@@ -559,6 +594,23 @@ async def test_job_polling_tracks_terminal_states_and_refreshes_hosts(
                 body=json.dumps(job_payload("queued")),
             )
 
+        async def dashboard(route: Route) -> None:
+            latest = scenario.get("latest_payload")
+            latest = latest if isinstance(latest, dict) else None
+            await route.fulfill(
+                json={
+                    "running_jobs": int(bool(latest and latest["state"] == "running")),
+                    "queued_jobs": int(bool(latest and latest["state"] == "queued")),
+                    "last_job": latest,
+                    "last_failed_job": latest
+                    if latest and latest["state"] == "failed"
+                    else None,
+                    "history": [],
+                    "recent_completions": [],
+                }
+            )
+
+        await page.route("**/ui-api/dashboard", dashboard)
         await page.route("**/ui-api/jobs", jobs)
         await page.route("**/ui-api/hosts", hosts)
         await page.route("**/ui-api/hosts/*/actions/check_updates", check_action)
@@ -581,13 +633,19 @@ async def test_job_polling_tracks_terminal_states_and_refreshes_hosts(
         assert "Running jobs\n0" in await page.locator("#dashboard").inner_text()
         assert "Queued jobs\n0" in await page.locator("#dashboard").inner_text()
 
+        await page.locator('nav a[href="#/hosts"]').click()
+        await page.get_by_role("link", name="Details", exact=True).first.click()
         await page.locator('[data-action="test_connection"]').click()
         await _wait_for_message(page, "test connection queued")
+        await page.locator('nav a[href="#/dashboard"]').click()
         await page.locator("#jobs").get_by_text("running", exact=True).wait_for()
         await page.locator("#jobs").get_by_text("success", exact=True).wait_for()
 
+        await page.locator('nav a[href="#/hosts"]').click()
+        await page.get_by_role("link", name="Details", exact=True).first.click()
         await page.locator('[data-action="test_connection"]').click()
         await _wait_for_message(page, "test connection queued")
+        await page.locator('nav a[href="#/dashboard"]').click()
         await (
             page
             .locator("#jobs")
@@ -620,6 +678,8 @@ async def test_reload_resumes_active_polling_and_disconnect_stops_it(
         page = await browser.new_page()
         await _connect_standalone(page, base_url)
 
+        if not await page.locator("#host-dialog").is_visible():
+            await page.locator("[data-add-host]").click()
         await page.locator("#host-name").fill("Node 01")
         await page.locator("#host-address").fill("node-01.example.invalid")
         await page.locator("#host-user").fill("automation")

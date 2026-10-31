@@ -109,6 +109,25 @@ _MIGRATIONS: tuple[str, ...] = (
     CREATE INDEX jobs_created_at ON jobs(created_at DESC);
     CREATE INDEX jobs_host_created ON jobs(host_id, created_at DESC);
     """,
+    """
+    ALTER TABLE custom_tasks ADD COLUMN requirements_json TEXT NOT NULL DEFAULT '{}';
+    CREATE TABLE task_assignments (
+        task_id TEXT NOT NULL REFERENCES custom_tasks(id) ON DELETE CASCADE,
+        host_id TEXT NOT NULL REFERENCES hosts(id) ON DELETE CASCADE,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        PRIMARY KEY(task_id, host_id)
+    );
+    INSERT INTO task_assignments(task_id, host_id, enabled)
+        SELECT custom_tasks.id, hosts.id, custom_tasks.enabled
+        FROM custom_tasks CROSS JOIN hosts;
+    CREATE TABLE task_checks (
+        task_id TEXT NOT NULL REFERENCES custom_tasks(id) ON DELETE CASCADE,
+        host_id TEXT NOT NULL REFERENCES hosts(id) ON DELETE CASCADE,
+        fingerprint TEXT NOT NULL,
+        result_json TEXT NOT NULL,
+        PRIMARY KEY(task_id, host_id)
+    );
+    """,
 )
 
 

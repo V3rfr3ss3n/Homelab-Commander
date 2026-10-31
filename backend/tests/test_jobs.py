@@ -25,6 +25,7 @@ from backend.homelab_backend.models import (
     HostCreate,
     JobAction,
     JobState,
+    ProbeFacts,
 )
 from backend.homelab_backend.package_providers import (
     DebianAptProvider,
@@ -55,6 +56,14 @@ class BlockingExecutor:
         if call == 2:
             self.both_finished.set()
         return ExecutionResult(output="synthetic")
+
+    async def async_probe(self, _task: CustomTask, _host: Host) -> ProbeFacts:
+        return ProbeFacts(
+            distribution="debian",
+            version="12",
+            missing_programs=[],
+            missing_packages=[],
+        )
 
     async def async_execute_custom(
         self, _task: CustomTask, _host: Host

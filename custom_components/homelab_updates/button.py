@@ -230,6 +230,7 @@ class HomelabCustomTaskButton(HomelabUpdatesEntity, ButtonEntity):
             super().available
             and task is not None
             and task.enabled
+            and (task.host_ids is None or self._host_id in task.host_ids)
             and not self._task_manager.is_custom_running(self._task_id, self._host_id)
         )
 

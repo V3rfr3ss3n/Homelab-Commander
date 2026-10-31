@@ -18,6 +18,11 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## Weitere Änderungen zur Review
 
+- [x] Backend-Dashboard als Einstieg, Host-/Task-Dialoge mit Debian-/Ubuntu-Paste-
+  Import, vollständiger Jobverlauf und geprüfte Host-Task-Zuordnungen umgesetzt.
+  `make quality`: 330 Tests, 98,36 % Lines, 95,71 % Branches; Wheel mit UI-Assets geprüft.
+  Abnahme und Grenzen: [Dashboard-Review](../05-reviews/2026-10-31-dashboard-task-compatibility-review.md).
+
 - [x] Direkter Backend-UI-Einstieg über die HA-Seitenleiste ohne vorgeschaltete
   Jobübersicht: lokale App über Ingress, Remote im selben Tab mit eigener Anmeldung.
   `make quality`: 306 Tests, 98,20 % Lines, 95,37 % Branches; Audit und Privacy grün.

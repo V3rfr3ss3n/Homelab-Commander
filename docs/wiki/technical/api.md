@@ -41,3 +41,23 @@ Standalone login/session/logout exchange the API token for an opaque HttpOnly
 session. Ingress uses Supervisor auth. Both mutation paths enforce CSRF. UI cookies
 do not authorize `/api/v1`, and external Bearer headers do not substitute for a
 standalone management session.
+
+## Dashboard, assignments and prerequisites
+
+Additive read routes under both API prefixes are `/dashboard`, `/jobs/page` and
+`/hosts/{host_id}/task-compatibility`. Job pages accept `host_id`, `state`, `offset`
+and `limit` (1–100, default 25), returning `items`, `total`, `offset` and `limit`.
+The existing `/jobs` list shape is preserved.
+
+`POST /hosts/{host_id}/tasks/{task_id}/check` explicitly runs the fixed probe and
+returns safe compatibility metadata (30-second deadline). `PUT` on the same base
+plus `/assignment` accepts `{ "enabled": true }`; `DELETE` removes the assignment.
+These are authenticated mutations and require CSRF on `/ui-api`. Unknown identities
+return 404; unsuitable assignment or forbidden execution returns 409. A check result
+can itself be unsuitable or failed and is returned as metadata for the operator.
+
+Task responses add `requirements` and `host_ids` (enabled assignments). Requirements
+contain `distributions`, `versions`, `programs`, `packages` and `requires_sudo`.
+`GET /ui-api/onboarding?system=debian&username=automation&port=22` returns a command
+for authenticated UI users; it executes nothing. Only Debian/Ubuntu and dedicated
+non-root account names are accepted. See [ADR-0012](../../02-architecture/adr/0012-dashboard-task-compatibility.md).

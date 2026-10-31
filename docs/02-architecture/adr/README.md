@@ -21,6 +21,8 @@ tags: [architecture, adr, index]
 | [[0010-secure-test-dependency-replacements]] | accepted | Gezielter, geprüfter Pillow-Sicherheitsersatz nur im Entwicklungsgraph |
 | [[0011-direct-backend-sidebar]] | accepted | Direkter Backend-UI-Einstieg aus der HA-Seitenleiste |
 
+| [[0012-dashboard-task-compatibility]] | accepted | Dashboard, Hostzuordnung und geprüfte Task-Voraussetzungen |
+
 Neue ADRs verwenden [[../../templates/adr-template|die ADR-Vorlage]]. Akzeptierte
 ADRs werden nicht rückwirkend umgeschrieben; eine neue ADR ersetzt die alte und
 verlinkt sie als `superseded`.

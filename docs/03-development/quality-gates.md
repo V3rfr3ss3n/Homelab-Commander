@@ -101,6 +101,12 @@ validiert. Dokumentlinks verwenden deshalb explizite relative Pfade.
 - HA sidebar: direkte Same-Tab-Navigation zur lokalen App beziehungsweise Remote-
   UI, Zurück ohne Redirectschleife, keine implizite Aktion oder Tokenweitergabe;
   bestehende admin-only WebSocket-Commands und token-/logfreier Statusstream
+- Dashboard: vollständige Aggregate jenseits des Recent-Limits, gefilterte Jobseiten,
+  Dialoge/Paste-Import und mobile Standalone-/Ingress-Navigation
+- Task-Zuordnung: globale und Host-Aktivierung, fehlende/veraltete Voraussetzungen,
+  API-/Worker-Bypass, Änderungen während einer Probe und sichere Log-Redaktion
+- Onboarding: Debian-/Ubuntu-Vorlagen nur mit simulierten Systembefehlen und
+  isolierten Accounts/Dateien prüfen; keine echte Benutzer-/SSH-Konfiguration
 - Container: AMD64/AArch64, versionierte Labels, Port/Volume/Healthcheck,
   Ansible/OpenSSH und PID 1 nach Privilege Drop als UID `10001`
 

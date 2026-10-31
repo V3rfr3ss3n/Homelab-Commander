@@ -56,3 +56,12 @@ The sidebar opens a discovered local App through the HA App route in the same ta
 Legacy entries migrate without changing established entity identities. Provider
 JSON stays in adapters. See [ADR-0009](../../02-architecture/adr/0009-supervisor-native-backend-discovery.md)
 and [requirements](../../01-product/requirements.md) before changing this contract.
+
+## Host-scoped custom tasks
+
+The native adapter validates the optional `host_ids` metadata into immutable UUID
+strings. Task buttons require global activation and an enabled assignment to their
+host. Existing entities remain stable and become unavailable when assignment is
+removed or disabled. Older native backends omitting this additive field retain
+legacy behavior; the new backend independently enforces suitability and assignment
+on every execution request.
