@@ -79,11 +79,7 @@ async def test_setup_creates_devices_and_entities(
     assert f"{DOMAIN}_node-01_reboot_required" in unique_ids
     assert f"{DOMAIN}_node-01_reboot" in unique_ids
 
-    devices = [
-        device
-        for device in dr.async_get(hass).devices.values()
-        if mock_entry.entry_id in device.config_entries
-    ]
+    devices = dr.async_entries_for_config_entry(dr.async_get(hass), mock_entry.entry_id)
     assert len(devices) == 2
     assert {device.name for device in devices} == {
         "example-node",

@@ -11,7 +11,10 @@ tags: [wiki, maintenance]
 
 The English Wiki reading path is authored in the repository under `docs/wiki/`.
 The published GitLab Wiki is a reviewed presentation snapshot of those files,
-not an independently edited second master. Request changes through the source MR.
+not an independently edited second master. Request changes through the source MR. `AGENTS.md` directs Codex/OpenCode to the
+Wiki home, requires updates to affected Wiki sources with code and requires
+publishing the reviewed snapshot through the existing authorized GitLab access.
+Agents must check remote edits first and report any source/publication mismatch.
 Detailed requirements, accepted ADRs, security rules and reproducible development
 instructions stay beside the code and are linked as normative references.
 

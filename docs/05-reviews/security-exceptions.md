@@ -1,7 +1,7 @@
 ---
 title: Security-Ausnahmen
 status: active
-updated: 2026-08-20
+updated: 2026-10-31
 tags: [review, security, dependencies]
 ---
 
@@ -10,6 +10,11 @@ tags: [review, security, dependencies]
 Ausnahmen sind Teil des Quality Gates, nicht dessen Umgehung. Jede Ausnahme hat
 Quelle, Begründung, Kompensation, Owner und Ablaufdatum. Nach Ablauf schlägt der
 Gate fehl, bis die Ausnahme entfernt oder neu bewertet wurde.
+
+## Active exceptions
+
+None. `make audit` checks the expiry registry and audits the installed graph
+without advisory ignores. Resolved records remain below as history.
 
 ## SE-2026-001 – Home-Assistant-Teststack `cryptography 48.0.1`
 
@@ -24,9 +29,11 @@ Gate fehl, bis die Ausnahme entfernt oder neu bewertet wurde.
 | Kompensation | Produktionsimage nutzt den Fix; Backend-Keyhandling nutzt OpenSSH; CI und Dependabot bleiben aktuell |
 | Owner | Projektmaintainer |
 | Ablauf | 2026-09-15 |
-| Status | offen, akzeptiert bis Ablauf |
+| Status | resolved 2026-10-31: refreshed HA test graph installs cryptography 50.0.1; all advisory ignores removed |
 
-`make audit` ignoriert ausschließlich diese drei IDs. Beim nächsten kompatiblen
-Home-Assistant-/Testplugin-Update wird neu gelockt und geprüft. Sobald der Lock eine
-gefixte Version enthält, müssen alle drei Ignore-Argumente und diese Ausnahme im
-selben Pull Request entfernt werden.
+The original exception expired without renewal. It was removed from the active
+registry only after the fixed development and production-only graphs passed an
+unfiltered audit. The production image now installs cryptography from `uv.lock`
+and no longer overwrites it after sync. The tested development-only Pillow
+replacement is documented in [ADR-0010](../02-architecture/adr/0010-secure-test-dependency-replacements.md);
+it installs the fixed package and does not ignore vulnerability reports.

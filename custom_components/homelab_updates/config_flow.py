@@ -3,7 +3,6 @@
 import logging
 from collections.abc import Mapping
 
-import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_API_TOKEN
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -44,6 +43,7 @@ from .exceptions import (
     InvalidStatusDataError,
     InvalidUrlError,
 )
+from .schema import schema as vol
 from .supervisor import async_discover_native_backend
 
 _LOGGER = logging.getLogger(__name__)

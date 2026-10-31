@@ -29,8 +29,9 @@ Lockfile, Chromium und synthetischen Tests. MR-Pipelines und `main` werden
 geprüft; Feature-Pushes erzeugen keinen zusätzlichen zweiten Lauf. uv wird in einem
 isolierten Verzeichnis aus dem offiziellen, SHA-256-geprüften Releasearchiv
 installiert. Shell-Runner benötigen Python ab 3.12, Make, Git, OpenSSH und
-Chromium-Systembibliotheken vorab; der Job installiert dort keine Betriebssystempakete. Nur ein privilegierter Wegwerf-
-Container installiert diese Pakete selbst. GitHub behält
+Chromium-Systembibliotheken vorab; der Job installiert dort keine
+Betriebssystempakete. Nur ein als Root laufender Wegwerf-Container installiert
+diese Pakete selbst. GitHub behält
 seine bestehenden Hassfest-, HACS-, Container- und Secret-Scan-Workflows. Diese
 separaten Gates sind kein Bestandteil von `make quality` und müssen vor einer
 Veröffentlichung ebenfalls bestätigt sein. Die GitLab-Konfiguration veröffentlicht
@@ -120,9 +121,14 @@ validiert. Dokumentlinks verwenden deshalb explizite relative Pfade.
 - OpenSSH erzeugt und liest den persistenten ED25519-Schlüssel über feste
   Argumentlisten; dadurch ist keine zusätzliche Kryptografie-Runtime nötig.
 
-`ansible-core` zieht transitiv `cryptography` ein. Der gemeinsame Entwicklungslock
-bleibt wegen Home Assistant vorübergehend auf `48.0.1`; der Produktionscontainer
-überschreibt diesen transitiven Stand reproduzierbar mit `50.0.0`.
+`ansible-core` zieht transitiv `cryptography` ein. Der gemeinsame Lock verwendet
+`50.0.1` für Entwicklung und Produktion; der Container führt keine nachträgliche
+Installation außerhalb des Locks aus. Der HA-Teststack ist auf `2026.10.4` und
+seine Frontend-/Testplugin-Versionen aktualisiert. Der Entwicklungsgraph ersetzt
+HA's verwundbaren Pillow-Pin durch `13.0.0`; Pillow ist im Produktionsgraph nicht
+enthalten. Begründung, Kompatibilitätsprüfung und Rückbaukriterium stehen in
+[ADR-0010](../02-architecture/adr/0010-secure-test-dependency-replacements.md).
+`make audit` verwendet keine Advisory-Ignores; SE-2026-001 ist behoben.
 
 SQLite, Queue-Steuerung und Prozessausführung nutzen die Python-Standardbibliothek.
 Dadurch entsteht für Persistenz und Worker keine zusätzliche Runtime-Abhängigkeit.

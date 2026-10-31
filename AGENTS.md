@@ -37,8 +37,11 @@ identifiers: `homelab_updates`, the App slug and `/api/v1`.
 
 ## Read only what the task needs
 
-Use [the documentation index](docs/README.md) when locating context; no mandatory
-full-vault reading. Trivial edits need only their immediate context.
+Start with [the English Wiki home](docs/wiki/home.md): User Guide, Product,
+Technical and Maintenance contain the project's reading paths. The published
+GitLab Wiki presents these versioned sources. Use [the detailed index](docs/README.md)
+for normative contracts and historical records; read only relevant sections.
+Trivial edits need only their immediate context.
 
 | Change | Read before implementing |
 | --- | --- |
@@ -63,8 +66,11 @@ full-vault reading. Trivial edits need only their immediate context.
 5. Use focused checks while iterating. Before merge/release the complete
    [quality gates](docs/03-development/quality-gates.md) must pass, including
    independent 95% line/branch thresholds. Never weaken or bypass a failing gate.
-6. Update affected documentation with code; update TODO/backlog/review records
-   when applicable. Public user docs are English; internal notes may be German.
+6. Maintain affected `docs/wiki/` pages with code and publish the reviewed Wiki
+   snapshot through existing authorized GitLab access; check remote edits first.
+   Never let the published Wiki and source silently diverge. Update linked normative
+   documents and TODO/backlog/review records when applicable. Public user docs are
+   English; internal notes may be German.
    Use ISO dates, relative Markdown links and compatible Obsidian links. Separate
    facts, decisions, proposals and open questions.
 7. Review the staged diff and run privacy checks. Commit/push and create the

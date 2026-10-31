@@ -2,9 +2,8 @@
 
 from datetime import UTC, date, datetime
 
-SECURITY_EXCEPTIONS = {
-    "SE-2026-001": date(2026, 9, 15),
-}
+# Resolved exceptions stay documented in the security register, not active here.
+SECURITY_EXCEPTIONS: dict[str, date] = {}
 
 
 def main() -> int:

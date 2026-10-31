@@ -11,6 +11,13 @@ The integration domain remains `homelab_updates`. Configuration uses HA-native
 Config Entries, flows, reauthentication and reconfiguration. Typed `runtime_data`
 owns the coordinator, services, provider adapters and task lifecycle.
 
+## Schema compatibility
+
+The integration uses HA's current Probatio schema engine where available, with a
+small Voluptuous fallback for older supported installations. Both validation paths
+are tested, including required-field rejection. An unrelated import failure is
+not swallowed. No schema package is added to users' manifest requirements.
+
 ## Status and entities
 
 A shared DataUpdateCoordinator obtains a single host snapshot per poll. Network

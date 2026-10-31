@@ -1,9 +1,7 @@
 """Binary sensor platform for host reboot requirements."""
 
-from homeassistant.components.binary_sensor import (
-    BinarySensorDeviceClass,
-    BinarySensorEntity,
-)
+from homeassistant.components.binary_sensor import BinarySensorEntity
+from homeassistant.components.binary_sensor.const import BinarySensorDeviceClass
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback

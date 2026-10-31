@@ -6,7 +6,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
-import voluptuous as vol
 from homeassistant.components import frontend, panel_custom
 from homeassistant.components.http.server import StaticPathConfig
 from homeassistant.components.websocket_api import async_register_command
@@ -30,6 +29,7 @@ from .const import (
     VERSION,
 )
 from .domain import BackendTask, Command, HostStatus, TaskPhase
+from .schema import schema as vol
 from .supervisor import async_discover_native_backend
 
 if TYPE_CHECKING:

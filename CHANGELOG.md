@@ -32,6 +32,13 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ### Changed
 
+- Security-refreshed HA development lock, fixed development-only Pillow pin and
+  unfiltered audits; resolved SE-2026-001 without renewing exceptions.
+- HA schema-engine compatibility and explicit device-class imports for the new
+  test baseline, retaining older Voluptuous installations.
+- Agent rules now require task-specific Wiki reading, maintenance and reviewed
+  publication of affected English source pages.
+
 - Compact, task-based agent instructions shared by Codex and OpenCode, with
   preserved safety rules and current Homelab Commander component boundaries.
 - Task-oriented Markdown documentation navigation and an explicit Wiki migration

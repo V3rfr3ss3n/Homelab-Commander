@@ -1,6 +1,7 @@
 """Explicit maintenance action buttons."""
 
-from homeassistant.components.button import ButtonDeviceClass, ButtonEntity
+from homeassistant.components.button import ButtonEntity
+from homeassistant.components.button.const import ButtonDeviceClass
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo

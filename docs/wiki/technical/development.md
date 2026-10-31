@@ -34,10 +34,15 @@ install OS packages on a persistent shell runner. Disposable root containers may
 install their own required packages. No privileged runner or Docker socket is needed
 by the integration.
 
-If a job stops before tests, inspect its exact failed command. If all tests pass
-and `Expired security exceptions: SE-2026-001` follows, the environment is working:
-the dependency-security gate is the blocker. Keep the job red until a reviewed
-compatible remediation exists. Do not remove the expiry check.
+If a job stops before tests, inspect its exact failed command. Security findings
+or expired exceptions remain blocking even when tests pass. SE-2026-001 was resolved
+by updating the dependency graph; the expiry mechanism remains and the audit has
+no advisory ignores. Never remove an expiry check to hide an unresolved finding.
+
+The current development baseline is HA 2026.10.4 with its matching frontend/plugin.
+A single reviewed replacement installs fixed Pillow 13.0.0 in the development graph;
+Pillow is absent from production. See [ADR-0010](../../02-architecture/adr/0010-secure-test-dependency-replacements.md)
+for compatibility evidence and the criterion for removing that replacement.
 
 ## Test boundaries and additional validators
 

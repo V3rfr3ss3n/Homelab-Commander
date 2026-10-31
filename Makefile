@@ -22,10 +22,7 @@ test:
 
 audit:
 	uv run python scripts/check_security_exceptions.py
-	uv run pip-audit --skip-editable \
-		--ignore-vuln PYSEC-2026-3552 \
-		--ignore-vuln PYSEC-2026-3553 \
-		--ignore-vuln PYSEC-2026-3554
+	uv run pip-audit --skip-editable
 
 privacy:
 	bash scripts/check-public-data.sh

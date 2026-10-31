@@ -36,24 +36,19 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 - [ ] T-020a Container-Build und Healthcheck auf AMD64/AArch64 durch den neuen
   PR-Workflow bestätigen. Lokal ist weiterhin kein Docker-Daemon erreichbar.
 - [ ] T-017b isolierte manuelle Installation aus dem Releaseartefakt durchführen
-- [ ] T-018 Home-Assistant-Patch mit gefixter `cryptography`-Version übernehmen
-  und SE-2026-001 spätestens am 2026-09-15 entfernen
+- [x] T-018 Security-Lock auf HA 2026.10.4 aktualisiert, cryptography 50.0.1,
+  Entwicklungs-Pillow 13.0.0 nach ADR-0010; SE-2026-001 und Advisory-Ignores entfernt.
+  Vollständiger lokaler Gate einschließlich ungefiltertem Audit bestanden.
 - [ ] T-017 vollständige Abnahme, Privacy Audit und Release Candidate nach
   Abschluss der `0.2`-Entwicklung
 
 ## Blocker und offene Festlegungen
 
-- Runner-Voraussetzungen sind bestätigt: Nach Installation von `make` bestand
-  Job 396 alle 287 Tests mit 98,18 % Lines und 95,32 % Branches. Er scheiterte
-  anschließend ausschließlich am Ablauf von SE-2026-001; `make` ist kein aktueller
-  Blocker mehr. Die notwendige Dependency-Remediation bleibt offen.
+- Dependency-Blocker und Runner-Voraussetzungen sind lokal behoben; vollständiger
+  `make release-check` mit 297 Tests, 98,19 % Lines und 95,34 % Branches bestanden.
+  Unabhängige CI-/Container-/HA-Validatoren vor Merge bestätigen. Aktueller Nachweis:
+  [Dependency-Review](../05-reviews/2026-10-31-dependency-remediation-review.md).
 
-- SE-2026-001 ist seit 2026-09-16 abgelaufen; `make audit` bleibt blockiert.
-  T-018 darf nicht durch Verlängerung der Ausnahme oder Abschalten des Gates
-  ersetzt werden. Aktueller Prüfstand siehe
-  [[../05-reviews/2026-10-30-documentation-link-gate-review]]. Der aktuelle Lauf
-  meldet zusätzliche Dependency-Funde; siehe
-  [Modernisierungsreview](../05-reviews/2026-10-31-workflow-modernization-review.md).
 - Die Semaphore-Kompatibilitätsmatrix bleibt bis zu isolierten Tests mit
   synthetischen Response-Fixtures bewusst vorläufig.
 
