@@ -259,14 +259,11 @@ async def test_panel_commands_reject_non_admin_users(
 
 
 def test_panel_asset_avoids_browser_token_storage_and_unsafe_html() -> None:
-    """The shipped panel stays on HA auth and renders backend text safely."""
+    """The sidebar delegates UI authentication without copying credentials."""
     source = PANEL_SOURCE.read_text()
 
     assert PANEL_URL_PATH in source
-    assert "homelab_updates/subscribe_panel" in source
-    assert "homelab_updates/job_log" in source
-    assert "Hosts prüfen" in source
-    assert "Backend verwalten" in source
+    assert "window.location.replace" in source
     for forbidden in (
         "localStorage",
         "sessionStorage",

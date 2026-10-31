@@ -13,7 +13,7 @@ The recommended Home Assistant OS/Supervised deployment uses two components:
 
 | Component | Install through | Purpose |
 | --- | --- | --- |
-| Homelab Commander | HACS, as an Integration | Devices, entities, config flow and operational sidebar panel |
+| Homelab Commander | HACS, as an Integration | Devices, entities, config flow and direct backend UI sidebar entry |
 | Homelab Commander Backend | Home Assistant App store | Host inventory, SSH/Ansible, persistent jobs and administrative UI |
 
 Home Assistant Container/Core users run the backend separately and configure the

@@ -16,6 +16,13 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
   die [[../04-operations/public-install-checklist|frische Installation]] mit
   automatischer lokaler App-Erkennung bestätigen.
 
+## Weitere Änderungen zur Review
+
+- [x] Direkter Backend-UI-Einstieg über die HA-Seitenleiste ohne vorgeschaltete
+  Jobübersicht: lokale App über Ingress, Remote im selben Tab mit eigener Anmeldung.
+  `make quality`: 306 Tests, 98,20 % Lines, 95,37 % Branches; Audit und Privacy grün.
+  Entscheidung: [ADR-0011](../02-architecture/adr/0011-direct-backend-sidebar.md).
+
 ## Modernisierung zur Review
 
 - [x] T-034 Agentenregeln bedarfsgerecht verkürzen, GitLab-Workflow dokumentieren,

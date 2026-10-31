@@ -118,15 +118,17 @@ tags: [product, acceptance, release]
     Semaphore-Hub behält **Hosts prüfen** und **Status aktualisieren**, weil dort
     zwei getrennte Templates angesprochen werden.
 25. Native registriert für Administratoren **Homelab Commander** in der
-    Home-Assistant-Seitenleiste. Die Hauptansicht zeigt Onlinezustand, Hosts,
-    Queuezählung, letzten Job und letzten fehlgeschlagenen Job.
-26. **Log öffnen** lädt einen begrenzten redigierten Joblog erst auf Klick über
-    Home Assistants authentifizierte WebSocket-Verbindung. Nicht-Administratoren
-    werden abgewiesen; Token und Log erscheinen weder im Statusstream noch in
-    Browser Storage oder Panel-Konfiguration.
-27. Sobald ein globaler Check terminal `success`, `failed` oder `cancelled` ist,
-    wechselt das Panel aus **Prüfung läuft…** zurück zu **Hosts prüfen**, ohne auf
-    einen späteren periodischen Coordinator-Poll zu warten.
+    Home-Assistant-Seitenleiste. Ein Klick öffnet direkt die Backend-Weboberfläche
+    im selben Tab: lokale App über HA-Ingress, Remote über die konfigurierte URL.
+    Es gibt keine vorgeschaltete Jobübersicht und keine implizite Hostaktion.
+    Zurück führt ohne Weiterleitungsschleife zur vorherigen Seite.
+26. Der kompatible HA-WebSocket-Logcommand lädt einen begrenzten redigierten
+    Joblog nur auf explizite Anfrage. Nicht-Administratoren werden abgewiesen;
+    Token und Log erscheinen weder im Statusstream noch in Browser Storage oder
+    Panel-Konfiguration. Die Backend-UI nutzt ihre eigene authentifizierte Log-API.
+27. Terminale globale Checks (`success`, `failed`, `cancelled`) entfernen ihren
+    aktiven Tracker sofort und benachrichtigen bestehende HA-Statusabonnenten,
+    ohne auf einen späteren periodischen Coordinator-Poll zu warten.
 28. Pull Requests und normale `main`-Pushes bauen beide App-Architekturen ohne
     Publication; nur ein passender Versionstag oder eine explizite Freigabe von
     `main` veröffentlicht mit minimalen Package-Rechten.

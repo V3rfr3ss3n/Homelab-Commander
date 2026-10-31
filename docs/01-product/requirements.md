@@ -137,12 +137,13 @@ tags: [product, requirements]
   kompakte Jobmetadaten; vollständige Jobausgabe gelangt weder in Entity-
   Attribute noch Diagnostics oder Recorder.
 - **REQ-HA-005 MUST:** Für Native registriert die Integration eine
-  administratorgeschützte Home-Assistant-Seitenleistenansicht. Sie zeigt Hosts,
-  Jobzustände und getrennte Latest-/Failure-Semantik, startet die eine globale
-  Hostprüfung und lädt begrenzte redigierte Logs nur nach expliziter Auswahl über
-  Home Assistants authentifizierte Verbindung. API-Token, Session-Cookies und
-  Logs werden nicht in Browser Storage, Panel-Konfiguration oder Statusstreams
-  übernommen.
+  administratorgeschützte Home-Assistant-Seitenleistenansicht, die direkt die
+  Backend-Weboberfläche im selben Tab öffnet, ohne vorgeschaltete Übersicht.
+  Lokale Apps nutzen Supervisor Ingress über `/app/<identifier>`; entfernte
+  Backends ihre konfigurierte browser-erreichbare URL mit eigener UI-Anmeldung.
+  Der Integrationstoken wird nicht weitergegeben. Bestehende admin-only
+  WebSocket-Commands bleiben kompatibel; Statusstreams enthalten keine Logs
+  oder Credentials. Öffnen der Ansicht startet keine Hostaktionen.
 - **REQ-ADD-001 MUST:** Das Add-on verwendet Home Assistant Ingress, läuft ohne
   Host-Netzwerk und ohne Docker-Socket und fordert keine unnötigen Privilegien.
 - **REQ-ADD-002 MUST:** Die App referenziert ein öffentlich und anonym pullbares,
