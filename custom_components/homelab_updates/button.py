@@ -1,7 +1,6 @@
 """Explicit maintenance action buttons."""
 
 from homeassistant.components.button import ButtonEntity
-from homeassistant.components.button.const import ButtonDeviceClass
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -11,6 +10,7 @@ from . import HomelabUpdatesConfigEntry
 from .application import TaskManager
 from .const import BACKEND_NATIVE, CONF_BACKEND_TYPE, DOMAIN, NAME
 from .coordinator import CustomTasksCoordinator, HomelabUpdatesCoordinator
+from .device_classes import ButtonDeviceClass
 from .domain import Command
 from .entity import (
     HomelabUpdatesEntity,

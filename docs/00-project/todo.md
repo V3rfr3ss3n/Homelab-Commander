@@ -45,7 +45,7 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 ## Blocker und offene Festlegungen
 
 - Dependency-Blocker und Runner-Voraussetzungen sind lokal behoben; vollständiger
-  `make release-check` mit 297 Tests, 98,19 % Lines und 95,34 % Branches bestanden.
+  `make release-check` mit 301 Tests, 98,20 % Lines und 95,37 % Branches bestanden.
   Unabhängige CI-/Container-/HA-Validatoren vor Merge bestätigen. Aktueller Nachweis:
   [Dependency-Review](../05-reviews/2026-10-31-dependency-remediation-review.md).
 

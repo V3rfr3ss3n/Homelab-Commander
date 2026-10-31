@@ -30,7 +30,10 @@ review records remain dated evidence and are never automatically current policy.
 2. Run `make docs`, relevant tests and privacy review. Inspect the complete diff.
 3. Publish only the reviewed Wiki page set using the existing authorized GitLab
    access. Preserve any unexpected remote edits for review; never overwrite them
-   blindly. Do not delete old content merely to clean up navigation.
+   blindly. When updating a nested page through the GitLab Wiki API, pass its full
+   slug path as `title` (for example, `technical/development`); the returned display
+   title alone can lose its parent directory. Verify the returned slug. Do not
+   delete old content merely to clean up navigation.
 4. Map local `.md` links to Wiki page slugs and detailed repository references to
    an exact source revision. A source marker identifies the published snapshot.
 5. Verify returned content, page inventory, nested navigation and sidebar links.

@@ -16,7 +16,9 @@ owns the coordinator, services, provider adapters and task lifecycle.
 The integration uses HA's current Probatio schema engine where available, with a
 small Voluptuous fallback for older supported installations. Both validation paths
 are tested, including required-field rejection. An unrelated import failure is
-not swallowed. No schema package is added to users' manifest requirements.
+not swallowed. Device classes similarly use the current explicit exports with
+narrow fallbacks to older public exports. No schema package is added to users'
+manifest requirements.
 
 ## Status and entities
 
