@@ -5,7 +5,31 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.3.0-dev.1] - 2026-11-09
+
+### Upgrade notes
+
+- Development prerelease for testing; back up the complete backend data directory
+  (SQLite and SSH identity) before upgrading. Additive migrations retain existing
+  hosts, task IDs and job history; schema downgrade requires restoring the backup.
+- Existing tasks retain their host assignments and activation, but require a
+  successful compatibility check before their next execution. New hosts receive
+  no assignments automatically.
+- Visible Dashboard/Hosts views request status checks every five minutes by
+  default. Disable **Auto-check hosts** to opt out. Checks may refresh APT metadata;
+  updates, reboots and custom tasks still require explicit confirmation.
+
 ### Added
+
+- Dashboard entry with compact connectivity/counts, linked job/log previews,
+  resolved-notice sidebar and a seven-day line graph over complete stored history.
+- Full Hosts/Tasks/Jobs views with setup dialogs, Debian/Ubuntu preparation commands
+  and validated versioned paste import, filtered jobs and stable deep links.
+- Declarative task prerequisites, expiring compatibility checks, per-host assignment
+  and independent global/host activation enforced by API admission and workers.
+- Per-host HTTP(S) website shortcuts with browser-only favicons, fallback initials,
+  no-referrer requests and safe external links.
+
 
 - English Wiki documentation with User Guide, Product, Technical and Maintenance
   sections, nested guides, a custom sidebar and versioned publication sources.
@@ -31,6 +55,9 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 - HACS metadata, CI quality gates, security scanning, and public documentation.
 
 ### Changed
+
+- Kept the contributor rename on the copyright line so GitHub/HACS can recognize
+  the unchanged MIT license.
 
 - Security-refreshed HA development lock, fixed development-only Pillow pin and
   unfiltered audits; resolved SE-2026-001 without renewing exceptions.
