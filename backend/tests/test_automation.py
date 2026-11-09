@@ -1,14 +1,19 @@
 """Ansible adapter tests that never start Ansible or contact a host."""
 
+import ast
 import asyncio
 import json
+import os
 from collections.abc import Coroutine
 from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 from uuid import UUID
 
+import ansible
 import pytest
+import yaml
+from ansible.config.manager import ConfigManager
 
 from backend.homelab_backend.ansible_result import RESULT_PREFIX
 from backend.homelab_backend.automation import (
@@ -502,3 +507,73 @@ async def test_cancelled_probe_terminates_process(tmp_path: Path) -> None:
         await executor._async_module(_host(), "ansible.builtin.command")
     assert process.killed
     assert process.waited
+
+
+async def test_controller_paths_are_writable_isolated_and_cleaned(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Resolve actual Ansible settings without executing any module or SSH."""
+    blocker = tmp_path / "unwritable-controller-default"
+    blocker.write_text("A file cannot contain directories")
+    inherited_home = str(blocker / "home")
+    inherited_control = str(blocker / "cp")
+    monkeypatch.setenv("ANSIBLE_HOME", inherited_home)
+    monkeypatch.setenv("ANSIBLE_SSH_CONTROL_PATH_DIR", inherited_control)
+    config_file = tmp_path / "ansible.cfg"
+    config_file.write_text("[defaults]\n")
+    source = Path(ansible.__file__).parent / "plugins/connection/ssh.py"
+    definition = next(
+        node.value
+        for node in ast.parse(source.read_text()).body
+        if isinstance(node, ast.Assign)
+        and any(
+            isinstance(target, ast.Name) and target.id == "DOCUMENTATION"
+            for target in node.targets
+        )
+    )
+    ssh_options = yaml.safe_load(ast.literal_eval(definition))["options"]
+    scopes: list[Path] = []
+    paths: list[Path] = []
+
+    async def config_probe(
+        *args: str, env: dict[str, str], **kwargs: object
+    ) -> FakeProcess:
+        scope = Path(args[args.index("--inventory") + 1]).parent
+        scopes.append(scope)
+        # Only configuration parsing runs; the execution process is synthetic.
+        with patch.dict("os.environ", env):
+            config = ConfigManager(conf_file=str(config_file))
+            config.initialize_plugin_configuration_definitions(
+                "connection", "ssh", ssh_options
+            )
+            resolved = [
+                Path(config.get_config_value("ANSIBLE_HOME")),
+                Path(config.get_config_value("DEFAULT_LOCAL_TMP")),
+                Path(
+                    config.get_config_value(
+                        "control_path_dir", plugin_type="connection", plugin_name="ssh"
+                    )
+                ),
+            ]
+        for directory in resolved:
+            directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+            (directory / "synthetic-write-probe").write_text("ok")
+            assert directory.is_relative_to(scope)
+            assert directory.stat().st_mode & 0o777 == 0o700
+        paths.extend(resolved)
+        return FakeProcess()
+
+    executor = AnsibleExecutor(tmp_path / "key", tmp_path / "known_hosts")
+    with patch("asyncio.create_subprocess_exec", side_effect=config_probe):
+        results = await asyncio.gather(
+            *(
+                executor._async_module(_host(), "ansible.builtin.setup")
+                for _ in range(2)
+            ),
+            return_exceptions=True,
+        )
+        assert all(not isinstance(result, BaseException) for result in results), results
+    assert len(set(scopes)) == 2
+    assert all(not path.exists() for path in (*paths, *scopes))
+    assert os.environ["ANSIBLE_HOME"] == inherited_home
+    assert os.environ["ANSIBLE_SSH_CONTROL_PATH_DIR"] == inherited_control

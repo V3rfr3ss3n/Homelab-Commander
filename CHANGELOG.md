@@ -5,6 +5,13 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- Use private writable Ansible home and SSH control paths per invocation when the
+  backend container inherits a root home after dropping privileges.
+- Show unknown update/reboot status before the first successful host check rather
+  than misleading zero counts; dashboard totals identify unchecked hosts.
+
 ## [0.3.0-dev.1] - 2026-11-09
 
 ### Upgrade notes

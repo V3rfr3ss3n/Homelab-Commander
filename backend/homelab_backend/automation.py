@@ -278,7 +278,11 @@ class AnsibleExecutor:
                 "ANSIBLE_CALLBACK_PLUGINS": str(callback_path),
                 "ANSIBLE_HOST_KEY_CHECKING": "True",
                 "ANSIBLE_LOAD_CALLBACK_PLUGINS": "True",
+                # The container drops root privileges but may inherit root's home.
+                # Keep all controller writes, including SSH sockets, in this run.
+                "ANSIBLE_HOME": str(working_path),
                 "ANSIBLE_LOCAL_TEMP": str(local_temp_path),
+                "ANSIBLE_SSH_CONTROL_PATH_DIR": str(working_path / "ssh-control"),
                 "ANSIBLE_NOCOLOR": "True",
                 "ANSIBLE_STDOUT_CALLBACK": "homelab_json",
             })

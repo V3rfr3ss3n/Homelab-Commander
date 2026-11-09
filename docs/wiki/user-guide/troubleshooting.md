@@ -1,7 +1,7 @@
 ---
 title: Troubleshooting
 status: active
-updated: 2026-10-31
+updated: 2026-11-09
 tags: [wiki, user-guide]
 ---
 
@@ -58,3 +58,14 @@ screenshots. Report vulnerabilities through the private channel in
 [SECURITY.md](../../../SECURITY.md), not a public issue.
 
 Contributor pipeline failures are covered in [development and CI](../technical/development.md).
+
+## Local Ansible directory permission errors
+
+A job that reports permission denied creating `/root/.ansible` or its `cp`
+subdirectory failed on the backend controller before collecting host status.
+It does not establish that the host has no updates. The backend must direct its
+Ansible home, temporary files and SSH control sockets to private writable paths;
+adding privileges to the managed host cannot fix this local directory failure.
+Before the first successful check, host rows display update/reboot status as
+unknown and the dashboard identifies unchecked hosts. Previously collected
+counts remain last-known values; inspect their check time and the latest job.

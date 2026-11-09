@@ -173,3 +173,9 @@ tags: [product, acceptance, release]
 - Host website shortcuts validate HTTP(S) URLs without credentials, safely escape
   names and load favicons in the browser without referrers. Missing icons have a
   readable fallback. Existing hosts migrate with no links.
+
+- Before a successful stored host check, update and reboot status are unknown.
+  Dashboard totals identify unchecked hosts; successful zero-update checks remain zero.
+- Container privilege drop must not cause Ansible controller writes or SSH control
+  sockets to fall back to an unwritable root home. Private invocation paths remain
+  isolated and are cleaned without changing persistent identity or remote privileges.

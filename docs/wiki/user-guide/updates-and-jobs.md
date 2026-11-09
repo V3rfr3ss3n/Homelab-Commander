@@ -93,3 +93,8 @@ pages and other views stop starting checks; accepted jobs may finish. Disable th
 checkbox to opt out. The small refresh icon beside each host starts a manual check.
 Status checks may refresh APT metadata; they never install updates or reboot.
 Updates, reboots and custom tasks still require explicit confirmation.
+
+Until a host has a successful stored check, update and reboot status are shown as
+unknown. Dashboard totals include only checked hosts and label any unchecked
+hosts; unknown status is never presented as a successful zero-update check.
+A failed first check leaves status unknown. Open its job for the failure reason.
