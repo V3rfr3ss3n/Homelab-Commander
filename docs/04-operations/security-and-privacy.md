@@ -176,3 +176,11 @@ never fetches them. Browser origin-favicon requests have no referrer and no API
 credentials; external navigation uses noopener/noreferrer. CSP expands image sources
 only, not script or API origins. No image proxy, external favicon service or runtime
 dependency is added. Hostnames/links remain deployment-sensitive inventory data.
+
+## Controller scratch directories
+
+Ansible's home, controller temporary files and SSH control-socket directory are
+scoped to each invocation's private temporary directory, cleaned after completion
+or failure. They must not fall back to an inherited root home after privilege
+drop. SSH identity and known-host state keep their existing persistent paths.
+This fix grants no extra backend/host privileges and changes no remote policies.

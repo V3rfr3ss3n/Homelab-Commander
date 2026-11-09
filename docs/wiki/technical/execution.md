@@ -1,7 +1,7 @@
 ---
 title: SSH and Ansible execution
 status: active
-updated: 2026-10-31
+updated: 2026-11-09
 tags: [wiki, technical]
 ---
 
@@ -40,3 +40,13 @@ useful UI messages without exposing raw process output.
 The package provider models package operations, not transport. Further package
 managers belong behind that boundary. Custom command tasks use argv; shell tasks
 are explicit deployment-level opt-ins. See the [operations reference](../../04-operations/native-backend.md).
+
+## Controller paths in unprivileged containers
+
+Every invocation sets `ANSIBLE_HOME`, `ANSIBLE_LOCAL_TEMP` and
+`ANSIBLE_SSH_CONTROL_PATH_DIR` inside its private temporary working directory.
+This prevents inherited root-home defaults from directing controller writes or
+SSH control sockets to `/root/.ansible` after the container drops privileges.
+Directories are isolated between invocations and removed on completion or failure.
+Persistent SSH identity and `known_hosts` remain in the backend data directory.
+No remote permissions or SSH/sudo policy are changed.

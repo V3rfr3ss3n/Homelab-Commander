@@ -109,6 +109,12 @@ async def test_dashboard_host_import_and_task_assignment(
         await page.locator("#host-form button[type=submit]").click()
         await _wait_for_message(page, "Host added")
         assert await page.locator("#hosts [data-action]").count() == 3
+        await expect(page.locator("#hosts")).to_contain_text("Update status unknown")
+        await expect(page.locator("#hosts")).not_to_contain_text("0 updates")
+        await expect(page.locator("#hosts")).not_to_contain_text("reboot not required")
+        await expect(page.locator("#dashboard .metric-detail").first).to_contain_text(
+            "Update status unknown · 1 unchecked host"
+        )
         assert await page.locator("#jobs").get_by_text("No jobs yet.").is_visible()
         await page.locator('a.notice[href="#/hosts?filter=stale"]').click()
         await expect(page.locator("#host-filter")).to_contain_text("Filter: stale")

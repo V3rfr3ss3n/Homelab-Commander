@@ -194,6 +194,10 @@ async def test_readable_dashboard_shortcuts_graph_and_visible_checks(
         await page.locator("#connect").click()
         await _wait_for_connection(page)
         await expect(page.locator("#notices-panel")).to_be_hidden()
+        await expect(page.locator("#hosts")).to_contain_text("0 updates")
+        await expect(page.locator("#hosts")).not_to_contain_text(
+            "Update status unknown"
+        )
         await expect(page.locator("#auto-host-checks")).not_to_be_checked()
         assert await last_failure.locator("[data-preview-log]").count() == 1
         await page.get_by_role("link", name="Details", exact=True).first.click()

@@ -118,7 +118,7 @@ function hostRow(host,detail=false){
   const locked=jobs.some(job=>MUTATING_JOB_ACTIONS.has(job.action));
   const action=(name,label,danger=false)=>`<button type="button" ${danger?'class="danger" ':""}data-host="${host.id}" data-action="${name}" aria-label="${name==="check_updates"?"Check for updates":label}" title="${name==="check_updates"?"Check for updates":label}" ${jobs.some(job=>job.action===name)||(MUTATING_JOB_ACTIONS.has(name)&&locked)?"disabled":""}>${name==="check_updates"?`<span class="refresh-glyph ${jobs.some(job=>job.action===name)?"spinning":""}" aria-hidden="true">↻</span>`:jobs.some(job=>job.action===name)?"Running…":label}</button>`;
   const system=[host.distribution,host.distribution_version].filter(Boolean).join(" ")||host.status||"Not checked";
-  return `<div class="row"><span>${detail?"":`<a href="#/hosts/${host.id}">${escapeHtml(host.name)}</a>`}<span class="website-links">${websiteLinks(host)}</span><small>${escapeHtml(system)} · ${host.updates} updates · ${host.security_updates} security · reboot ${host.reboot_required?"required":"not required"}</small></span><span class="actions">${action("check_updates","↻")}${action("update","Update")}${action("reboot","Reboot",true)}${detail?"":`<a href="#/hosts/${host.id}">Details</a>`}</span></div>`;
+  return `<div class="row"><span>${detail?"":`<a href="#/hosts/${host.id}">${escapeHtml(host.name)}</a>`}<span class="website-links">${websiteLinks(host)}</span><small>${escapeHtml(system)} · ${host.checked_at?`${host.updates} updates · ${host.security_updates} security · reboot ${host.reboot_required?"required":"not required"}`:"Update status unknown · reboot status unknown"}</small></span><span class="actions">${action("check_updates","↻")}${action("update","Update")}${action("reboot","Reboot",true)}${detail?"":`<a href="#/hosts/${host.id}">Details</a>`}</span></div>`;
 }
 function jobRow(job){return `<div class="row"><span><span title="${escapeHtml(job.type||job.action)}">${escapeHtml(actionName(job.type||job.action))}</span><small>${escapeHtml(job.host_name||"No host")} · ${timeLabel(job.finished_at||job.created_at)}</small></span><span class="actions"><span class="state-${escapeHtml(job.state)}" title="${escapeHtml(job.error_code||job.state)}">${escapeHtml(job.state==="failed"&&job.error_code?jobError(job.error_code):job.state)}</span><button type="button" data-job-log="${job.id}">Open</button></span></div>`}
 function staleHost(host){return !host.checked_at||Date.now()-Date.parse(host.checked_at)>86400000}
@@ -129,8 +129,10 @@ function render(){
   const summary=state.dashboard;
   const latest=summary?.last_job,failed=summary?.last_failed_job;
   renderBackendStatus();
-  const updates=state.hosts.reduce((total,host)=>total+host.updates,0),securityCount=state.hosts.reduce((total,host)=>total+host.security_updates,0);
-  const metrics=[["Hosts",state.hosts.length,`${updates} updates · ${securityCount} security updates`],["Running jobs",summary?.running_jobs??0,"Being processed now"],["Queued jobs",summary?.queued_jobs??0,"Waiting for a worker"]];
+  const checkedHosts=state.hosts.filter(host=>host.checked_at),unchecked=state.hosts.length-checkedHosts.length;
+  const updates=checkedHosts.reduce((total,host)=>total+host.updates,0),securityCount=checkedHosts.reduce((total,host)=>total+host.security_updates,0);
+  const updateStatus=checkedHosts.length?`${updates} ${unchecked?"known ":""}updates · ${securityCount} ${unchecked?"known ":""}security updates`:state.hosts.length?"Update status unknown":"No hosts yet";
+  const metrics=[["Hosts",state.hosts.length,updateStatus+(unchecked?` · ${unchecked} unchecked ${unchecked===1?"host":"hosts"}`:"")],["Running jobs",summary?.running_jobs??0,"Being processed now"],["Queued jobs",summary?.queued_jobs??0,"Waiting for a worker"]];
   element("dashboard").innerHTML=metrics.map(([label,value,detail])=>`<div class="metric"><small>${label}</small><span class="value">${escapeHtml(value)}</span><span class="metric-detail">${escapeHtml(detail)}</span></div>`).join("");
   element("job-highlights").innerHTML=highlightJob(latest,"Last job")+highlightJob(failed,"Last failed job");
   element("auto-host-checks").checked=state.preferences?.enabled??true;
