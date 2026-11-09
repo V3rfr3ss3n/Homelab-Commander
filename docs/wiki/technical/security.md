@@ -1,7 +1,7 @@
 ---
 title: Security and privacy
 status: active
-updated: 2026-10-31
+updated: 2026-11-09
 tags: [wiki, technical]
 ---
 
@@ -43,3 +43,25 @@ green. An upstream dependency pin can require a separately tested compatibility
 migration. Read [the security policy](../../../SECURITY.md) for private vulnerability
 reporting and [the full privacy model](../../04-operations/security-and-privacy.md)
 before changing a trust boundary.
+
+## Onboarding and task prerequisites
+
+Setup commands only prepare a dedicated account and the public key on the selected
+host; they never grant sudo or network access. Operators review the command, select
+a reachable address and independently grant intended privileges. Import is data-only.
+Task probes are fixed, read-only and bounded to 30 seconds; arbitrary task code is
+never used as a prerequisite check. Execution requires global and per-host activation,
+assignment and current compatibility, rechecked by the worker under the host lock.
+Read [ADR-0012](../../02-architecture/adr/0012-dashboard-task-compatibility.md) for
+migration and the limits of declared prerequisites.
+
+## Website icons and visible status checks
+
+Website shortcuts accept HTTP(S) only and reject URL userinfo. The backend performs
+no fetch or thumbnail proxy. Browser favicon requests use only the saved origin and
+`/favicon.ico`, with no referrer, and never receive the integration token or UI CSRF
+headers. Navigation uses a separate tab with `noopener noreferrer`. CSP permits
+HTTP(S) images while scripts and API connections remain same-origin. Tests intercept
+all synthetic website requests. The shared auto-check preference is authenticated,
+mutations require CSRF, and an atomic cooldown prevents duplicate multi-tab checks.
+Only status checks run from a visible UI; package installation/reboot remains explicit.

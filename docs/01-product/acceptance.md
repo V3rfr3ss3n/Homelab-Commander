@@ -1,7 +1,7 @@
 ---
 title: Abnahme
 status: accepted
-updated: 2026-08-23
+updated: 2026-10-31
 tags: [product, acceptance, release]
 ---
 
@@ -142,3 +142,34 @@ tags: [product, acceptance, release]
     erreichen. Ein direkter Zugriff behält ausschließlich die separat mit Bearer
     geschützte External API. Öffentliche App-Dokumente enthalten keine `/config/`-
     oder Entwickler-Home-Pfade.
+
+## Dashboard and compatibility acceptance
+
+- Dashboard is the default; Hosts/Tasks/Jobs provide full views, filtered job pages
+  and preserved job deep links in standalone and nested Ingress.
+- Notices link to security/reboot/stale hosts and failed jobs. Security notices
+  offer regular explicit updates, never a misleading security-only action.
+- Chart/counts/historical failures include data beyond the recent 100-job list.
+- Host list has exactly three action buttons plus Details. Creation dialogs expose
+  prerequisites/public key, and import rejects unsupported formats or invalid values.
+- Debian/Ubuntu preparation is idempotent, creates no sudo/firewall/sshd policy and
+  is tested only with synthetic accounts, mocked commands and isolated files.
+- Task requirements, per-host/global activation and assignment are enforced by UI,
+  external API and worker, including expired evidence and changed prerequisites.
+- Legacy migration preserves identities/history and prior host access relationships,
+  while requiring compatibility evidence before the next execution.
+
+## Dashboard readability acceptance
+
+- Hosts/running/queued counts share the top row; connectivity uses one compact dot.
+  Job highlights link directly to details and explicitly requested log previews.
+- Resolved notices disappear; historical failures remain accessible. The seven-day
+  line graph retains UTC counts and dates in point tooltips. Human-readable times
+  retain their original values in tooltips and technical details.
+- Visible Dashboard/Hosts views request checks every five minutes by default.
+  Disabling the persisted preference, hiding the page, navigating away or
+  disconnecting stops new requests. Fresh/busy hosts and concurrent tabs do not
+  duplicate work. Only status checks can be started automatically.
+- Host website shortcuts validate HTTP(S) URLs without credentials, safely escape
+  names and load favicons in the browser without referrers. Missing icons have a
+  readable fallback. Existing hosts migrate with no links.

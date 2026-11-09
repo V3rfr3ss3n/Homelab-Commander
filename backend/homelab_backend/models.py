@@ -5,13 +5,34 @@ from enum import StrEnum
 from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
+from pydantic import (
+    AnyHttpUrl,
+    BaseModel,
+    ConfigDict,
+    Field,
+    computed_field,
+    model_validator,
+)
 
 HostName = Annotated[str, Field(min_length=1, max_length=100)]
 HostAddress = Annotated[
     str, Field(min_length=1, max_length=255, pattern=r"^[A-Za-z0-9][A-Za-z0-9.:-]*$")
 ]
 SshUser = Annotated[str, Field(pattern=r"^[a-z_][a-z0-9_-]{0,31}$")]
+
+
+class HostWebsite(BaseModel):
+    """Operator-selected HTTP(S) shortcut; never fetched by the backend."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, str_strip_whitespace=True)
+    name: str = Field(min_length=1, max_length=80)
+    url: AnyHttpUrl = Field(max_length=2048)
+
+    @model_validator(mode="after")
+    def reject_credentials(self) -> HostWebsite:
+        if self.url.username is not None or self.url.password is not None:
+            raise ValueError("Website links must not include credentials")
+        return self
 
 
 class HostCreate(BaseModel):
@@ -24,6 +45,7 @@ class HostCreate(BaseModel):
     port: int = Field(default=22, ge=1, le=65535)
     username: SshUser
     package_provider: str = Field(default="debian_apt", pattern=r"^[a-z][a-z0-9_]+$")
+    websites: tuple[HostWebsite, ...] = Field(default=(), max_length=12)
 
 
 class HostPatch(BaseModel):
@@ -36,6 +58,7 @@ class HostPatch(BaseModel):
     port: int | None = Field(default=None, ge=1, le=65535)
     username: SshUser | None = None
     package_provider: str | None = Field(default=None, pattern=r"^[a-z][a-z0-9_]+$")
+    websites: tuple[HostWebsite, ...] | None = Field(default=None, max_length=12)
 
 
 class Host(BaseModel):
@@ -49,6 +72,7 @@ class Host(BaseModel):
     port: int
     username: str
     package_provider: str
+    websites: tuple[HostWebsite, ...] = ()
     distribution: str | None = None
     distribution_version: str | None = None
     kernel: str | None = None
@@ -158,6 +182,60 @@ class CustomTaskMode(StrEnum):
     SHELL = "shell"
 
 
+DependencyName = Annotated[str, Field(pattern=r"^[A-Za-z0-9_./+:-]{1,128}$")]
+SystemName = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_-]{0,31}$")]
+
+
+class TaskRequirements(BaseModel):
+    """Declarative, bounded prerequisites; never executable probe scripts."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    distributions: tuple[SystemName, ...] = Field(default=(), max_length=32)
+    versions: tuple[Annotated[str, Field(pattern=r"^[0-9][0-9.]{0,31}$")], ...] = Field(
+        default=(), max_length=32
+    )
+    programs: tuple[DependencyName, ...] = Field(default=(), max_length=32)
+    packages: tuple[
+        Annotated[str, Field(pattern=r"^[a-z0-9][a-z0-9+.:_-]{0,127}$")], ...
+    ] = Field(default=(), max_length=32)
+    requires_sudo: bool = False
+
+
+class ProbeFacts(BaseModel):
+    """Validated output of the fixed read-only execution adapter probe."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    distribution: str = Field(max_length=64)
+    version: str = Field(max_length=64)
+    missing_programs: tuple[DependencyName, ...] = Field(max_length=33)
+    missing_packages: tuple[DependencyName, ...] = Field(max_length=32)
+
+
+class CompatibilityState(StrEnum):
+    UNCHECKED = "unchecked"
+    SUITABLE = "suitable"
+    UNSUITABLE = "unsuitable"
+    FAILED = "failed"
+
+
+class TaskCompatibility(BaseModel):
+    """Safe metadata for one task/host pair, without raw command output."""
+
+    model_config = ConfigDict(frozen=True)
+    task_id: UUID
+    host_id: UUID
+    state: CompatibilityState = CompatibilityState.UNCHECKED
+    reasons: tuple[str, ...] = ()
+    checked_at: datetime | None = None
+    assigned: bool = False
+    enabled: bool = False
+
+
+class AssignmentUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    enabled: bool = True
+
+
 class CustomTaskCreate(BaseModel):
     """Validated custom task definition accepted by the API."""
 
@@ -169,6 +247,7 @@ class CustomTaskCreate(BaseModel):
     argv: tuple[str, ...] | None = None
     shell_command: str | None = Field(default=None, max_length=4096)
     enabled: bool = True
+    requirements: TaskRequirements = Field(default_factory=TaskRequirements)
 
     @model_validator(mode="after")
     def validate_execution(self) -> CustomTaskCreate:
@@ -200,6 +279,7 @@ class CustomTaskPatch(BaseModel):
     argv: tuple[str, ...] | None = None
     shell_command: str | None = Field(default=None, max_length=4096)
     enabled: bool | None = None
+    requirements: TaskRequirements = Field(default_factory=TaskRequirements)
 
 
 class CustomTask(BaseModel):
@@ -214,6 +294,8 @@ class CustomTask(BaseModel):
     argv: tuple[str, ...] | None
     shell_command: str | None
     enabled: bool
+    requirements: TaskRequirements = Field(default_factory=TaskRequirements)
+    host_ids: tuple[UUID, ...] = ()
     created_at: datetime
     updated_at: datetime
 

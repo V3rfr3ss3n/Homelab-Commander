@@ -1,7 +1,7 @@
 ---
 title: Persistence and job recovery
 status: active
-updated: 2026-10-31
+updated: 2026-11-09
 tags: [wiki, technical]
 ---
 
@@ -39,3 +39,25 @@ rewritten as part of a backend migration.
 
 See [backup and recovery](../user-guide/backup-and-removal.md) and
 [the backend boundary ADR](../../02-architecture/adr/0005-native-backend-boundary.md).
+
+## Task assignment migration
+
+An additive migration adds task requirement JSON, independent task/host assignments
+and bounded compatibility metadata keyed by task and host. Existing tasks are
+assigned to pre-existing hosts with their old enabled state; no check evidence is
+invented. New hosts are not auto-assigned. Host/task deletion cascades assignment
+and check records while existing job history retains its established deletion
+behavior. Back up before upgrade; downgrade to an older schema is not supported.
+Checks contain only safe reasons, timestamps and an input fingerprint, not command
+output. They expire after 24 hours and connection/prerequisite changes invalidate
+them. See [ADR-0012](../../02-architecture/adr/0012-dashboard-task-compatibility.md).
+
+## Visible checks and website shortcuts
+
+Migration 6 adds an empty website list to existing hosts, a backend-wide automatic
+status-check preference (enabled by default), and per-host request timestamps.
+Cooldown claims are transactional across tabs; host deletion removes the request
+record. No background scheduler or automatic install/reboot is introduced.
+Website links contain validated HTTP(S) URLs without credentials. Existing host IDs,
+task assignments and job history remain intact. See
+[ADR-0013](../../02-architecture/adr/0013-visible-dashboard-checks-and-websites.md).

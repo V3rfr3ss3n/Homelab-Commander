@@ -21,7 +21,7 @@ from backend.homelab_backend.automation import (
     HostSnapshot,
 )
 from backend.homelab_backend.config import Settings
-from backend.homelab_backend.models import CustomTask, Host, JobAction
+from backend.homelab_backend.models import CustomTask, Host, JobAction, ProbeFacts
 from backend.homelab_backend.ssh_keys import SshKeyStore
 from backend.homelab_backend.ui_sessions import (
     UI_SESSION_COOKIE,
@@ -61,6 +61,14 @@ class FakeExecutor:
                 checked_at=datetime(2026, 1, 15, tzinfo=UTC),
             ),
             reboot_required=True,
+        )
+
+    async def async_probe(self, _task: CustomTask, _host: Host) -> ProbeFacts:
+        return ProbeFacts(
+            distribution="debian",
+            version="12",
+            missing_programs=[],
+            missing_packages=[],
         )
 
     async def async_execute_custom(
@@ -393,6 +401,7 @@ def test_custom_task_crud_and_exact_host_execution(tmp_path: Path) -> None:
         assert patched.status_code == 200
         assert patched.json()["id"] == task_id
 
+        _assign_task(client, host_id, task_id)
         queued = client.post(
             f"/api/v1/hosts/{host_id}/actions/tasks/{task_id}", headers=AUTH
         )
@@ -863,6 +872,7 @@ def test_ingress_management_routes_cover_crud_actions_and_errors(
             ).status_code
             == 422
         )
+        _assign_task(client, host["id"], task["id"])
         assert (
             client.post(
                 f"/ui-api/hosts/{host['id']}/tasks/{task['id']}", headers=headers
@@ -912,3 +922,14 @@ def test_ingress_management_routes_cover_crud_actions_and_errors(
             client.delete(f"/ui-api/hosts/{missing_id}", headers=headers).status_code
             == 404
         )
+
+
+def _assign_task(client: TestClient, host_id: str, task_id: str) -> None:
+    path = f"/api/v1/hosts/{host_id}/tasks/{task_id}"
+    assert client.post(path + "/check", headers=AUTH).json()["state"] == "suitable"
+    assert (
+        client.put(
+            path + "/assignment", headers=AUTH, json={"enabled": True}
+        ).status_code
+        == 200
+    )

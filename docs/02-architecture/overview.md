@@ -1,7 +1,7 @@
 ---
 title: Architektur
 status: accepted
-updated: 2026-08-23
+updated: 2026-10-31
 tags: [architecture, design]
 ---
 
@@ -202,3 +202,13 @@ ausreichend flexibel.
 Siehe [[adr/0001-ports-and-adapters]], [[adr/0002-public-by-default]],
 [[adr/0004-safe-reboot-flow]], [[adr/0005-native-backend-boundary]] und
 [[adr/0007-home-assistant-main-panel]].
+
+## Dashboard und Task-Eignung
+
+Die Management-UI trennt Dashboard-Schnellzugriffe, vollständige Host-/Task-/Job-
+Ansichten und Dialoge. UI-Assets bleiben ohne Framework und sind als Paketressourcen
+im Backend enthalten. `DashboardService` aggregiert vollständige SQLite-Historie;
+`TaskCompatibilityService` verwaltet Prüfevidenz und Zuordnung über den typisierten
+Execution-Protocol. Nur der Ansible-Adapter liest fremde Hostdaten in `ProbeFacts`.
+Entities konsumieren ausschließlich normalisierte Task-Host-Metadaten.
+Migration und Sicherheitsentscheidung: [ADR-0012](adr/0012-dashboard-task-compatibility.md).

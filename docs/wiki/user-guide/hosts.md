@@ -1,7 +1,7 @@
 ---
 title: Host onboarding
 status: active
-updated: 2026-10-31
+updated: 2026-11-09
 tags: [wiki, user-guide]
 ---
 
@@ -42,3 +42,35 @@ missing temporarily from status becomes unavailable rather than immediately
 being deleted from the registry.
 
 Next: [updates and jobs](updates-and-jobs.md).
+
+## Guided setup and paste import
+
+Use **+** beside the host list to open **Add host**. The dialog contains the backend
+public key, connection fields and **Copy Debian setup** / **Copy Ubuntu setup**.
+Set a dedicated non-root user and your existing SSH port before copying. Run the
+reviewed command on the selected target as an administrator; Python 3 must already
+be present. Templates create/reuse that account and install only the public key,
+with restrictive `.ssh` and `authorized_keys` permissions. Repeating the same command
+does not duplicate the key. Other systems are not offered yet.
+
+These commands install no packages and do not change sudo, firewall or SSH daemon
+configuration. You must arrange Python and the intended non-interactive sudo rights,
+restrict network access and verify host identity yourself. The port field describes
+your existing SSH listener; it does not configure one.
+
+Copy the output between `HLC_HOST_BEGIN` and `HLC_HOST_END` and paste it into a
+connection field. The versioned format fills name, user, port and address after
+validation; it carries no private key or credentials. Multiple reported addresses
+require a choice of one reachable from the backend. Review all values before saving.
+Malformed or unsupported versions show a form error. Pasting and saving only edit
+inventory; connection testing and checks remain deliberate actions.
+
+## Website shortcuts
+
+In **Add host** or **Edit host**, enter up to twelve websites, one per line as
+`Name | https://service.example.invalid`. Only HTTP(S) URLs without embedded login
+credentials are accepted. Saved sites appear as compact clickable icons beside the
+host and open in a separate tab. The browser loads the site's origin favicon without
+sending a referrer; an unavailable icon falls back to the site's initial. The backend
+never fetches website content or icons. Adding a site lets your browser contact that
+site when its icon is displayed; avoid putting credentials in links.
