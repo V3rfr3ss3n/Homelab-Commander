@@ -5,6 +5,8 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.3.0-dev.2] - 2026-11-09
+
 ### Fixed
 
 - Use private writable Ansible home and SSH control paths per invocation when the

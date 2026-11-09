@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0-dev.2
+
+- Fixes local Ansible home and SSH control directory permission errors after the
+  container drops root privileges. Host checks no longer fall back to root's home.
+- Shows update/reboot status as unknown until the first successful host check;
+  valid zero-update results remain zero. Dashboard totals identify unchecked hosts.
+- No extra privileges, dependencies or data migrations are introduced by this fix.
+
 ## 0.3.0-dev.1
 
 - Opens directly on the backend dashboard, with compact counts/status, job and log

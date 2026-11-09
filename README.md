@@ -5,7 +5,7 @@ remote operations. Software updates are the first mature capability; the
 architecture is designed to grow beyond update management.
 
 > [!WARNING]
-> Version `0.3.0-dev.1` is a development release. Use it in a test environment
+> Version `0.3.0-dev.2` is a development release. Use it in a test environment
 > first and keep backups of the backend `/data` volume.
 
 ## Two components, one Native setup

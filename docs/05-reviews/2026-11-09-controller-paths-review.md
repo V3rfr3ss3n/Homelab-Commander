@@ -31,6 +31,10 @@ dashboard totals identify unchecked hosts. Valid zero-update results remain zero
 - `UV_NO_SYNC=1 make quality` passes: 342 tests, 98.41% line and 95.83% branch
   coverage independently checked; formatting, lint, strict types, documentation
   links, unfiltered dependency audit and privacy pass.
+- The `0.3.0-dev.2` candidate aligns App, integration, backend, Compose, workflow
+  defaults and Python/lock versions. `UV_NO_SYNC=1 make release-check` passes with
+  the same 342 tests and independent coverage. The candidate wheel contains
+  byte-identical runner/UI/version files.
 - Focused local async tests require permitted local event-loop sockets. Restricted
   runs stalled at executor cleanup; the approved local-test run passes without
   loosening checks or contacting managed infrastructure.

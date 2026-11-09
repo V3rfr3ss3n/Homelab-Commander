@@ -47,3 +47,14 @@ update **Homelab Commander Backend**. In HACS, enable prereleases/beta versions 
 this custom integration, choose `0.3.0-dev.1`, update and restart Home Assistant.
 The HA OS installation/upgrade walkthrough remains a manual acceptance step; CI
 uses synthetic hosts and does not validate an operator's live installation.
+
+## 0.3.0-dev.2 candidate
+
+This candidate fixes controller-directory permission failures during host checks
+in unprivileged containers. Ansible home and SSH control sockets now use private
+per-invocation paths. No remote rights or persistence migration are added.
+Unchecked host update/reboot state is displayed as unknown instead of false zeros.
+The candidate must be merged and its versioned image must pass the publication
+checks before the App can offer it as an update. After upgrade, explicitly request
+**Check for updates** and inspect the resulting job; the failed earlier checks do
+not establish that a host has no updates.
