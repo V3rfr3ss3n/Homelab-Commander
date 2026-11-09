@@ -61,3 +61,13 @@ record. No background scheduler or automatic install/reboot is introduced.
 Website links contain validated HTTP(S) URLs without credentials. Existing host IDs,
 task assignments and job history remain intact. See
 [ADR-0013](../../02-architecture/adr/0013-visible-dashboard-checks-and-websites.md).
+
+
+## Failure review
+
+Additive migration 7 adds nullable `jobs.reviewed_at`. Existing jobs remain
+unreviewed; identities, logs and outcome metadata are preserved. A review records
+the first acknowledgement timestamp idempotently and only accepts failed jobs.
+Notice selection excludes reviewed failures, keeping the established later-success
+resolution rule. The historical last failure remains independent. See
+[ADR-0014](../../02-architecture/adr/0014-guided-setup-and-failure-review.md).

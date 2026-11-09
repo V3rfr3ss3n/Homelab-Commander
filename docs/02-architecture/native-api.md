@@ -131,3 +131,18 @@ active jobs and the shared five-minute request cooldown. It never queues updates
 reboots or custom tasks, and no backend timer exists. Clients request only while
 Dashboard/Hosts is visible and connected. See
 [ADR-0013](adr/0013-visible-dashboard-checks-and-websites.md).
+
+
+### Job review and setup choices
+
+`POST /api/v1/jobs/{job_id}/review` (Bearer auth) and
+`POST /ui-api/jobs/{job_id}/review` (UI auth + CSRF) acknowledge one failed job.
+They return its additive nullable `reviewed_at`, preserving the initial timestamp
+on repeated calls; 404 means absent and 409 means not failed. No request body or
+host action is needed. Dashboard attention excludes reviewed failures.
+
+Authenticated `GET /ui-api/onboarding` retains system/username/port and adds fixed
+`mode=create|update`, `shell=/bin/sh|/bin/bash`, `sudo=none|full`,
+`restricted_key=true|false` and optional `source` IP/CIDR. Defaults are create, sh,
+none, true and empty. Unsupported/invalid values return 422. Rendering never applies
+configuration. Output is still the marked version-1 host connection JSON envelope.

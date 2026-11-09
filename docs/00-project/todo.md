@@ -18,6 +18,11 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## Weitere Änderungen zur Review
 
+- [x] Geführte Host-Einrichtung mit konfigurierbaren Benutzer-/Key-/sudo-Skripten
+  und Updatepfad sowie persistente Bestätigung fehlgeschlagener Jobs umgesetzt.
+  Entscheidung: [ADR-0014](../02-architecture/adr/0014-guided-setup-and-failure-review.md).
+  Prüfstand: [Review](../05-reviews/2026-11-09-guided-setup-review.md).
+
 - [x] Backend-Dashboard als Einstieg, Host-/Task-Dialoge mit Debian-/Ubuntu-Paste-
   Import, vollständiger Jobverlauf und geprüfte Host-Task-Zuordnungen umgesetzt.
   `make quality`: 330 Tests, 98,36 % Lines, 95,71 % Branches; Wheel mit UI-Assets geprüft.

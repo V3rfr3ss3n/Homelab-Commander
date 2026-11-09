@@ -75,10 +75,32 @@ async def test_dashboard_host_import_and_task_assignment(
         assert not await page.locator("#task-dialog").is_visible()
         assert await page.locator("#history .graph-series.success circle").count() == 7
         await page.locator("[data-add-host]").click()
-        await page.locator('[data-setup="debian"]').click()
+        await expect(page.locator("#host-system-step")).to_be_visible()
+        await page.locator("#host-system-next").click()
+        await expect(page.locator("#copy-setup")).to_be_enabled()
+        await page.locator("#setup-sudo").select_option("full")
+        await expect(page.locator("#setup-root-warning")).to_be_visible()
+        await expect(page.locator("#copy-setup")).to_be_disabled()
+        await expect(page.locator("#setup-status")).to_contain_text("Ready to copy")
+        await page.locator("#setup-root-confirm").check()
+        await expect(page.locator("#copy-setup")).to_be_enabled()
+        await page.locator("#copy-setup").click()
         await _wait_for_message(page, "Setup command copied")
         assert "HLC_HOST_BEGIN" in await page.locator("#setup-preview").inner_text()
         assert "sudo python3" in await page.evaluate("navigator.clipboard.readText()")
+        # Clipboard fallback stays inside the active modal on insecure origins.
+        await page.evaluate(
+            "async () => {window.savedClipboard=navigator.clipboard;"
+            "await window.savedClipboard.writeText('synthetic stale');"
+            "Object.defineProperty(navigator,'clipboard',"
+            "{configurable:true,value:undefined});}"
+        )
+        await page.locator("#copy-setup").click()
+        assert "HLC_HOST_BEGIN" in await page.evaluate(
+            "window.savedClipboard.readText()"
+        )
+        await page.screenshot(path=f"/tmp/guided-host-setup-{ingress}.png")
+        await page.locator("#host-setup-next").click()
         # Pasting and saving the versioned output never contact a host.
         envelope = {
             "format": "homelab-commander-host",

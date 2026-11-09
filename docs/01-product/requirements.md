@@ -233,3 +233,15 @@ wird beim Parser in Tests festgeschrieben.
 - Dashboard uses compact connectivity, aligned counts, directly linked job previews,
   a line graph and a disappearing responsive notice panel. Technical identifiers and
   exact timestamps remain available behind human-readable presentation.
+
+
+## Guided setup and failure review
+
+- **REQ-UI-REVIEW MUST:** Explicitly reviewing a failed job persistently excludes
+  that exact failure from notices without changing history, logs or execution state.
+  New failures remain visible. Security/reboot/status notices retain state semantics.
+- **REQ-UI-SETUP MUST:** Host creation guides system, declarative account preparation
+  and connection/import. Operators can generate existing-user update scripts and
+  directly copy visible previews. Root sudo is opt-in with explicit UI acknowledgement;
+  no package, firewall or SSH daemon changes are inferred. Managed sudo rules are
+  validated, isolated from foreign rules and safely installed. See ADR-0014.

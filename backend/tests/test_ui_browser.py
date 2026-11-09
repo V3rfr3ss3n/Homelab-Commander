@@ -193,6 +193,8 @@ async def test_standalone_ui_buttons_work_and_errors_are_visible(
         assert all(TOKEN not in url for url in request_paths)
 
         await page.locator("[data-add-host]").click()
+        await page.locator("#host-system-next").click()
+        await page.get_by_text("Backend public key", exact=True).click()
         await page.locator("#copy-key").click()
         await _wait_for_message(page, "Copied")
         copied = await page.evaluate("navigator.clipboard.readText()")
@@ -200,6 +202,7 @@ async def test_standalone_ui_buttons_work_and_errors_are_visible(
 
         if not await page.locator("#host-dialog").is_visible():
             await page.locator("[data-add-host]").click()
+        await page.locator("#host-setup-next").click()
         await page.locator("#host-name").fill("Node 01")
         await page.locator("#host-address").fill("node-01.example.invalid")
         await page.locator("#host-user").fill("automation")
@@ -362,6 +365,7 @@ async def test_ingress_ui_keeps_assets_and_api_calls_under_prefix(
 
         if not await page.locator("#host-dialog").is_visible():
             await page.locator("[data-add-host]").click()
+        await page.locator("#host-skip-setup").click()
         await page.locator("#host-name").fill("Node 01")
         await page.locator("#host-address").fill("node-01.example.invalid")
         await page.locator("#host-user").fill("automation")
@@ -421,6 +425,7 @@ async def test_standalone_job_deep_link_requires_session_and_survives_reload(
         await _connect_standalone(setup_page, base_url)
         if not await setup_page.locator("#host-dialog").is_visible():
             await setup_page.locator("[data-add-host]").click()
+        await setup_page.locator("#host-skip-setup").click()
         await setup_page.locator("#host-name").fill("Node 01")
         await setup_page.locator("#host-address").fill("node-01.example.invalid")
         await setup_page.locator("#host-user").fill("automation")
@@ -502,6 +507,7 @@ async def test_job_polling_tracks_terminal_states_and_refreshes_hosts(
 
         if not await page.locator("#host-dialog").is_visible():
             await page.locator("[data-add-host]").click()
+        await page.locator("#host-skip-setup").click()
         await page.locator("#host-name").fill("Node 01")
         await page.locator("#host-address").fill("node-01.example.invalid")
         await page.locator("#host-user").fill("automation")
@@ -708,6 +714,7 @@ async def test_reload_resumes_active_polling_and_disconnect_stops_it(
 
         if not await page.locator("#host-dialog").is_visible():
             await page.locator("[data-add-host]").click()
+        await page.locator("#host-skip-setup").click()
         await page.locator("#host-name").fill("Node 01")
         await page.locator("#host-address").fill("node-01.example.invalid")
         await page.locator("#host-user").fill("automation")

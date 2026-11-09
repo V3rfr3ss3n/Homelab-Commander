@@ -156,9 +156,10 @@ Aktivierung und geeignete Evidenz. Abgelaufene oder geänderte Voraussetzungen s
 kein Freigabenachweis. Bestehende Taskdefinitionen werden verlustfrei migriert.
 
 Generierte Debian-/Ubuntu-Vorbereitung benötigt Python 3 und lokale Administrator-
-Ausführung, legt nur Account und Public Key mit restriktiven Dateirechten an und
-lehnt Symlinks sowie nicht reguläre/hartverlinkte authorized_keys ab. sudo-, Firewall-
-und SSH-Daemon-Regeln bleiben bewusste Betreiberentscheidungen. Ein versionierter
+Ausführung, richtet Account und Public Key mit restriktiven Dateirechten ein und
+lehnt Symlinks sowie nicht reguläre/hartverlinkte authorized_keys ab. ADR-0014 ergänzt
+explizit auswählbare verwaltete sudo-Regeln; Firewall- und SSH-Daemon-Regeln bleiben
+unverändert und bewusste Betreiberentscheidungen. Ein versionierter
 Importblock füllt ausschließlich Formularwerte; kein Token und kein Private Key
 gehören in diesen Block. Mehrere Adressen verlangen eine bewusste Auswahl.
 
@@ -184,3 +185,17 @@ scoped to each invocation's private temporary directory, cleaned after completio
 or failure. They must not fall back to an inherited root home after privilege
 drop. SSH identity and known-host state keep their existing persistent paths.
 This fix grants no extra backend/host privileges and changes no remote policies.
+
+
+## Guided user configuration (ADR-0014)
+
+The user-requested setup assistant supersedes the previous no-sudo-template policy:
+no sudo remains the default, but explicit full-root selection can generate a marked
+passwordless rule. Copy requires a separate UI acknowledgement. Only manually
+running that script applies it. The backend key then has root-equivalent authority.
+Update scripts manage only their own regular, root-owned, marked sudoers file;
+visudo validates candidates before atomic replacement. Unrelated rules/groups remain
+active, so choosing no managed rule is not complete privilege revocation. Optional
+source IP/CIDR and forwarding restrictions affect only this backend public key.
+Packages, firewall and SSH daemon settings remain unchanged. Tests redirect all
+filesystem paths and mock every system command; no real account is configured.

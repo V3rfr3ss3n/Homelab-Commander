@@ -130,6 +130,7 @@ class Job(BaseModel):
     exit_code: int | None = None
     error_code: str | None = None
     log_available: bool = False
+    reviewed_at: datetime | None = None
     reboot_required: bool | None = None
 
     # Mypy does not yet understand Pydantic's decorator above a property.

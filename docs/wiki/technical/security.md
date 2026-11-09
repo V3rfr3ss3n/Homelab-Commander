@@ -46,9 +46,15 @@ before changing a trust boundary.
 
 ## Onboarding and task prerequisites
 
-Setup commands only prepare a dedicated account and the public key on the selected
-host; they never grant sudo or network access. Operators review the command, select
-a reachable address and independently grant intended privileges. Import is data-only.
+Setup commands prepare a dedicated account and public key on the selected host.
+They default to no sudo rule; the operator may explicitly select passwordless root
+access and acknowledge its authority before copying. Only a Commander-managed
+sudoers file may be installed/removed; a new rule is validated with `visudo`.
+Optional key source restrictions and forwarding/terminal restrictions apply only
+to the backend key. Scripts change no firewall or SSH daemon configuration and
+install no packages. Update mode changes an existing account's selected shell.
+Operators review the script and verify network access/fingerprints. Import is data-only.
+See [the guided setup decision](../../02-architecture/adr/0014-guided-setup-and-failure-review.md).
 Task probes are fixed, read-only and bounded to 30 seconds; arbitrary task code is
 never used as a prerequisite check. Execution requires global and per-host activation,
 assignment and current compatibility, rechecked by the worker under the host lock.

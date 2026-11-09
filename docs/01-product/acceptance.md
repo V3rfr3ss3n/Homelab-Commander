@@ -152,7 +152,7 @@ tags: [product, acceptance, release]
 - Chart/counts/historical failures include data beyond the recent 100-job list.
 - Host list has exactly three action buttons plus Details. Creation dialogs expose
   prerequisites/public key, and import rejects unsupported formats or invalid values.
-- Debian/Ubuntu preparation is idempotent, creates no sudo/firewall/sshd policy and
+- Debian/Ubuntu preparation is idempotent, changes no firewall/sshd policy and
   is tested only with synthetic accounts, mocked commands and isolated files.
 - Task requirements, per-host/global activation and assignment are enforced by UI,
   external API and worker, including expired evidence and changed prerequisites.
@@ -179,3 +179,18 @@ tags: [product, acceptance, release]
 - Container privilege drop must not cause Ansible controller writes or SSH control
   sockets to fall back to an unwritable root home. Private invocation paths remain
   isolated and are cleaned without changing persistent identity or remote privileges.
+
+
+## Guided setup and failure review acceptance
+
+- A failed job can be explicitly reviewed from its notice link. Review survives
+  restart/reload and suppresses only that failure; history/logs remain intact and
+  new failures reappear. UI auth/CSRF and external Bearer auth remain mandatory.
+- Host creation guides system selection, reviewed user setup and connection import.
+  Existing prepared hosts can skip setup; editing provides update-existing scripts.
+- Sudo defaults to none; full root needs explicit selection and copy acknowledgement.
+  Scripts validate/atomically install only marked managed sudoers files, preserve
+  unrelated rights and keys, reject symlinks, and never install packages or alter
+  firewall/sshd. Key source and forwarding restrictions are configurable.
+- Changed choices invalidate previews; one click copies the rendered script. The
+  existing marked v1 JSON import and multiple-address selection remain compatible.

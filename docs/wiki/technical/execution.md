@@ -50,3 +50,8 @@ SSH control sockets to `/root/.ansible` after the container drops privileges.
 Directories are isolated between invocations and removed on completion or failure.
 Persistent SSH identity and `known_hosts` remain in the backend data directory.
 No remote permissions or SSH/sudo policy are changed.
+
+
+SSH execution explicitly disables TTY allocation, matching the guided setup's
+non-interactive, no-PTY key restrictions. Maintenance still requires deliberately
+provisioned non-interactive sudo; no credential prompt is used.

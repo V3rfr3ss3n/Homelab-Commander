@@ -140,6 +140,9 @@ _MIGRATIONS: tuple[str, ...] = (
         requested_at TEXT NOT NULL
     );
     """,
+    """
+    ALTER TABLE jobs ADD COLUMN reviewed_at TEXT;
+    """,
 )
 
 

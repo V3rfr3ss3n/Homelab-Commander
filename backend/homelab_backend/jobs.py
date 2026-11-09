@@ -22,7 +22,7 @@ _MUTATING_ACTIONS = frozenset({JobAction.UPDATE, JobAction.REBOOT})
 _SELECT = (
     "SELECT jobs.id, jobs.action, jobs.host_id, hosts.name AS host_name, jobs.state, "
     "jobs.created_at, jobs.started_at, jobs.finished_at, jobs.exit_code, "
-    "jobs.error_code, jobs.reboot_required, jobs.custom_task_id, "
+    "jobs.error_code, jobs.reboot_required, jobs.custom_task_id, jobs.reviewed_at, "
     "EXISTS(SELECT 1 FROM job_logs WHERE job_logs.job_id = jobs.id) "
     "AS log_available FROM jobs LEFT JOIN hosts ON hosts.id = jobs.host_id"
 )
@@ -102,6 +102,7 @@ class JobRepository:
     async def async_unresolved_failure(self) -> Job | None:
         row = await self._database.async_fetch_one(
             "SELECT failed.id FROM jobs failed WHERE failed.state='failed' "
+            "AND failed.reviewed_at IS NULL "
             "AND NOT EXISTS(SELECT 1 FROM jobs later WHERE later.state='success' "
             "AND later.host_id IS failed.host_id AND later.action=failed.action "
             "AND later.custom_task_id IS failed.custom_task_id "
@@ -109,6 +110,20 @@ class JobRepository:
             "failed.created_at DESC LIMIT 1"
         )
         return await self.async_get(UUID(row["id"])) if row else None
+
+    async def async_review(self, job_id: UUID) -> Job:
+        """Acknowledge one failed job without changing its outcome or log."""
+        await self._database.async_execute(
+            "UPDATE jobs SET reviewed_at = COALESCE(reviewed_at, ?) "
+            "WHERE id = ? AND state = 'failed'",
+            (datetime.now(UTC).isoformat(), str(job_id)),
+        )
+        job = await self.async_get(job_id)
+        if job is None:
+            raise KeyError("Job not found")
+        if job.state != JobState.FAILED:
+            raise ValueError("Only failed jobs can be marked as reviewed")
+        return job
 
     async def async_recover_queued(self) -> tuple[UUID, ...]:
         """Return queued work after safely recovering interrupted jobs."""
@@ -396,6 +411,11 @@ def _job_from_row(row: sqlite3.Row) -> Job:
         exit_code=row["exit_code"],
         error_code=row["error_code"],
         log_available=bool(row["log_available"]),
+        reviewed_at=(
+            datetime.fromisoformat(row["reviewed_at"])
+            if row["reviewed_at"] is not None
+            else None
+        ),
         reboot_required=(
             bool(row["reboot_required"]) if row["reboot_required"] is not None else None
         ),

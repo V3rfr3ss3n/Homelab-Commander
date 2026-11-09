@@ -326,6 +326,7 @@ def _inventory(host: Host, known_hosts_path: Path) -> dict[str, object]:
                         f"-o UserKnownHostsFile={known_hosts_path}"
                     ),
                     "ansible_python_interpreter": "auto_silent",
+                    "ansible_ssh_use_tty": False,
                 }
             }
         }

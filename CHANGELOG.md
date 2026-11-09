@@ -5,6 +5,17 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ## [Unreleased]
 
+### Added
+
+- Persistent **Mark as reviewed** for failed-job notices, keeping outcomes and logs.
+- Guided Debian/Ubuntu host setup, configurable account/key/optional sudo scripts,
+  existing-user update scripts and direct copying of visible previews.
+
+### Changed
+
+- SSH execution uses no TTY, matching restricted automation keys.
+- Additive job-review migration preserves existing inventory and history.
+
 ## [0.3.0-dev.2] - 2026-11-09
 
 ### Fixed

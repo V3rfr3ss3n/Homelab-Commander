@@ -5,7 +5,7 @@ import secrets
 import socket
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import (
@@ -48,7 +48,7 @@ from .models import (
     UiLoginRequest,
     UiSessionResponse,
 )
-from .onboarding import OnboardingCommand, setup_command
+from .onboarding import OnboardingCommand, SetupOptions, setup_command
 from .ssh_keys import SshKeyStore
 from .task_compatibility import TaskCompatibilityService
 from .ui import UI_HTML, UI_JAVASCRIPT, UI_STYLESHEET
@@ -437,10 +437,29 @@ def create_app(
         dependencies=ui_authenticated,
     )
     async def onboarding(
-        system: str, username: SshUser, port: int = Query(default=22, ge=1, le=65535)
+        system: str,
+        username: SshUser,
+        mode: Literal["create", "update"] = "create",
+        shell: Literal["/bin/sh", "/bin/bash"] = "/bin/sh",
+        sudo: Literal["none", "full"] = "none",
+        restricted_key: bool = True,
+        source: str = Query(default="", max_length=64),
+        port: int = Query(default=22, ge=1, le=65535),
     ) -> OnboardingCommand:
         try:
-            return setup_command(system, username, port, await keys.async_public_key())
+            return setup_command(
+                system,
+                username,
+                port,
+                await keys.async_public_key(),
+                SetupOptions(
+                    mode=mode,
+                    shell=shell,
+                    sudo=sudo,
+                    restricted_key=restricted_key,
+                    source=source,
+                ),
+            )
         except ValueError as err:
             raise HTTPException(422, str(err)) from err
 
@@ -677,6 +696,20 @@ def create_app(
         if job is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Job not found")
         return job
+
+    @app.post(
+        "/ui-api/jobs/{job_id}/review", response_model=Job, dependencies=ui_mutation
+    )
+    @app.post(
+        "/api/v1/jobs/{job_id}/review", response_model=Job, dependencies=authenticated
+    )
+    async def review_job(job_id: UUID) -> Job:
+        try:
+            return await jobs_repository.async_review(job_id)
+        except KeyError as err:
+            raise HTTPException(404, "Job not found") from err
+        except ValueError as err:
+            raise HTTPException(409, str(err)) from err
 
     @app.post(
         "/ui-api/hosts",
