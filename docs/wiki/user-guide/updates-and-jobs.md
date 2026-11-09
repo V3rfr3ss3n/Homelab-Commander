@@ -1,7 +1,7 @@
 ---
 title: Updates and jobs
 status: active
-updated: 2026-10-31
+updated: 2026-11-09
 tags: [wiki, user-guide]
 ---
 
@@ -68,3 +68,8 @@ the completion date and active jobs on their creation date. Recent activity link
 to completed jobs. Counts and historical failure query the full database rather
 than the browser's capped recent-job list. Backend failures mark displayed data
 as potentially out of date; refresh reconnects without starting host actions.
+
+In normal operation, connectivity appears once in the dashboard's **Backend** tile.
+Successful connection, refresh and navigation do not add status banners. Connection
+progress and sign-in guidance appear when needed; errors and confirmations for
+explicit operations remain visible.

@@ -10,7 +10,7 @@ from typing import Any
 
 import pytest
 import uvicorn
-from playwright.async_api import Dialog, Page, Route, async_playwright
+from playwright.async_api import Dialog, Page, Route, async_playwright, expect
 
 from backend.homelab_backend.app import create_app
 from backend.homelab_backend.config import Settings
@@ -104,6 +104,11 @@ async def _wait_for_message(page: Page, text: str) -> None:
     await page.locator("#message").filter(has_text=text).wait_for()
 
 
+async def _wait_for_connection(page: Page) -> None:
+    await page.locator("#protected-content").wait_for(state="visible")
+    await expect(page.locator("#connection-label")).to_have_text("Connected")
+
+
 async def _accept_dialog(dialog: Dialog) -> None:
     await dialog.accept()
 
@@ -112,7 +117,7 @@ async def _connect_standalone(page: Page, base_url: str) -> None:
     await page.goto(f"{base_url}/")
     await page.locator("#token").fill(TOKEN)
     await page.locator("#connect").click()
-    await _wait_for_message(page, "Connected")
+    await _wait_for_connection(page)
 
 
 async def _reject_authentication(route: Route) -> None:
@@ -165,7 +170,7 @@ async def test_standalone_ui_buttons_work_and_errors_are_visible(
 
         await page.locator("#token").fill(TOKEN)
         await page.locator("#connect").click()
-        await _wait_for_message(page, "Connected")
+        await _wait_for_connection(page)
         assert await page.locator("#connection-label").inner_text() == "Connected"
         assert await page.locator("#protected-content").is_visible()
         public_key = await page.locator("#key").inner_text()
@@ -244,7 +249,7 @@ async def test_standalone_ui_buttons_work_and_errors_are_visible(
 
         await page.route("**/ui-api/jobs", failed_jobs, times=1)
         await page.locator("#connect").click()
-        await _wait_for_message(page, "Connected")
+        await _wait_for_connection(page)
         assert (
             await page
             .locator("#jobs")
@@ -261,11 +266,11 @@ async def test_standalone_ui_buttons_work_and_errors_are_visible(
 
         await page.locator("#token").fill(TOKEN)
         await page.locator("#connect").click()
-        await _wait_for_message(page, "Connected")
+        await _wait_for_connection(page)
         assert await page.locator("#hosts").get_by_text("Node 01").is_visible()
 
         await page.reload()
-        await _wait_for_message(page, "Connected")
+        await _wait_for_connection(page)
         assert await page.locator("#connection-label").inner_text() == "Connected"
         assert await page.locator("#connect-placeholder").is_hidden()
         assert await page.locator("#protected-content").is_visible()
@@ -340,7 +345,7 @@ async def test_ingress_ui_keeps_assets_and_api_calls_under_prefix(
         page.on("request", lambda request: request_paths.append(request.url))
 
         await page.goto(f"{base_url}{prefix}/")
-        await _wait_for_message(page, "Connected")
+        await _wait_for_connection(page)
         assert proxy.forwarded_paths[0] == "/"
         assert "//" not in proxy.forwarded_paths
         assert await page.locator("#token-field").is_hidden()
@@ -434,7 +439,7 @@ async def test_standalone_job_deep_link_requires_session_and_survives_reload(
 
         await page.locator("#token").fill(TOKEN)
         await page.locator("#connect").click()
-        await _wait_for_message(page, "Connected")
+        await _wait_for_connection(page)
         assert await page.locator("#job-detail").is_visible()
         metadata = await page.locator("#job-metadata").inner_text()
         assert job_id in metadata
@@ -448,7 +453,7 @@ async def test_standalone_job_deep_link_requires_session_and_survives_reload(
         assert all(TOKEN not in url for url in request_urls)
 
         await page.reload()
-        await _wait_for_message(page, "Connected")
+        await _wait_for_connection(page)
         assert page.url == deep_link
         assert await page.locator("#job-detail").is_visible()
         assert job_id in await page.locator("#job-metadata").inner_text()
@@ -748,7 +753,7 @@ async def test_reload_resumes_active_polling_and_disconnect_stops_it(
         await _wait_for_message(page, "check updates queued")
         await page.locator("#jobs").get_by_text("queued", exact=True).wait_for()
         await page.reload()
-        await _wait_for_message(page, "Connected")
+        await _wait_for_connection(page)
         await page.locator("#jobs").get_by_text("success", exact=True).wait_for()
 
         await page.locator('[data-action="check_updates"]').click()

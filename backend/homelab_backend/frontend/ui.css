@@ -12,3 +12,6 @@ input{width:100%;margin:4px 0}button{cursor:pointer}button:disabled{cursor:wait;
 .sr-only{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}body:has(#jobs-section:not([hidden]) #job-filters:not([hidden])) #jobs-section{grid-column:1/-1}
 
 .history-bar{fill:#60d4b4}.history-bar.failed{fill:#ef8888}.history-bar.cancelled{fill:#9ca3af}.history-bar.running{fill:#60a5fa}.history-bar.queued{fill:#fbbf24}
+
+/* Healthy connectivity is shown once, in the dashboard metric. */
+.connection-state.connected{display:none}

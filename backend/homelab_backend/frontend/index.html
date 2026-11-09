@@ -6,7 +6,7 @@
 <body><main><header class="app-header"><div><h1>Homelab Commander</h1><div class="sub">Your homelab at a glance</div></div><span class="brand-mark" aria-hidden="true">HC</span></header>
 <div id="connection-state" class="connection-state"><strong id="connection-label">Not connected</strong><span id="connection-hint">Enter your API token to load backend data.</span></div>
 <form id="connect-form"><label id="token-field">API token<input id="token" type="password" autocomplete="off" minlength="32" required></label><button id="connect" type="submit">Connect</button><button id="disconnect" type="button" hidden>Disconnect</button></form>
-<p id="message" role="status" aria-live="polite"></p>
+<p id="message" role="status" aria-live="polite" hidden></p>
 <section id="connect-placeholder" class="connect-placeholder"><h2>Connect first</h2><p>Enter your API token to load backend data.</p></section>
 <div id="protected-content" hidden>
 <nav aria-label="Main navigation"><a href="#/dashboard">Dashboard</a><a href="#/hosts">Hosts</a><a href="#/tasks">Tasks</a><a href="#/jobs">Jobs</a></nav>

@@ -13,6 +13,7 @@ from backend.tests.test_ui_browser import (
     _accept_dialog,
     _live_server,
     _PrefixProxy,
+    _wait_for_connection,
     _wait_for_message,
 )
 
@@ -52,8 +53,20 @@ async def test_dashboard_host_import_and_task_assignment(
         if not ingress:
             await page.locator("#token").fill(TOKEN)
             await page.locator("#connect").click()
-        await _wait_for_message(page, "Connected")
+        await _wait_for_connection(page)
         assert await page.locator("#dashboard").is_visible()
+        await expect(page.locator("#connection-state")).to_be_hidden()
+        await expect(page.locator("#message")).to_be_hidden()
+        await expect(page.get_by_text("Online", exact=True)).to_have_count(1)
+        await page.locator('nav a[href="#/tasks"]').click()
+        await page.locator("#tasks").wait_for(state="visible")
+        await expect(page.locator("#message")).to_be_hidden()
+        await page.locator('nav a[href="#/dashboard"]').click()
+        await page.locator("#dashboard").wait_for(state="visible")
+        await expect(page.locator("#message")).to_be_hidden()
+        await page.locator("#connect").click()
+        await _wait_for_connection(page)
+        await expect(page.locator("#message")).to_be_hidden()
         assert not await page.locator("#host-dialog").is_visible()
         assert not await page.locator("#task-dialog").is_visible()
         assert await page.locator("#history .history-day").count() == 7
@@ -133,7 +146,7 @@ async def test_dashboard_host_import_and_task_assignment(
         await page.locator("#job-detail").wait_for(state="visible")
         assert "custom_task" in await page.locator("#job-metadata").inner_text()
         await page.reload()
-        await _wait_for_message(page, "Connected")
+        await _wait_for_connection(page)
         assert await page.locator("#job-detail").is_visible()
         await page.locator('nav a[href="#/dashboard"]').click()
         await expect(page.locator("#activity [data-job-log]")).to_have_count(1)
