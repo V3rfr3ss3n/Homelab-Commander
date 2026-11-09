@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0-dev.1
+
+- Opens directly on the backend dashboard, with compact counts/status, job and log
+  previews, important notices, readable timestamps and a seven-day line graph.
+- Adds full host/task/job management, SSH setup/import dialogs, task compatibility
+  and per-host assignments, and named website shortcuts with favicons.
+- Status checks run every five minutes while Dashboard/Hosts is visible by default;
+  disable Auto-check hosts to opt out. Updates/reboots/tasks remain explicit.
+- Back up the complete backend data directory before upgrade. Additive migrations
+  preserve existing data; existing tasks require a compatibility check before use.
+  Downgrade requires restoring a compatible backup. This is a development prerelease.
+
 ## 0.3.0-dev.0
 
 - Renamed the visible product and App to Homelab Commander.

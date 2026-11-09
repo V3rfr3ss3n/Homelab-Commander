@@ -12,7 +12,7 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## In Arbeit
 
-- [ ] T-032 Den Release Candidate `0.3.0-dev.0` nach Merge öffentlich bauen und
+- [ ] T-032 Den Release Candidate `0.3.0-dev.1` nach Merge öffentlich bauen und
   die [[../04-operations/public-install-checklist|frische Installation]] mit
   automatischer lokaler App-Erkennung bestätigen.
 
