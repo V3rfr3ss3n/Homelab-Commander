@@ -152,6 +152,10 @@ async def test_standalone_ui_buttons_work_and_errors_are_visible(
             ["clipboard-read", "clipboard-write"], origin=base_url
         )
         page = await context.new_page()
+        await page.route(
+            "**/ui-api/preferences/host-checks",
+            lambda route: route.fulfill(json={"enabled": False}),
+        )
         errors: list[str] = []
         request_paths: list[str] = []
         page.on("pageerror", lambda error: errors.append(str(error)))
@@ -279,7 +283,7 @@ async def test_standalone_ui_buttons_work_and_errors_are_visible(
         assert (
             await page
             .locator("#dashboard .metric")
-            .nth(1)
+            .nth(0)
             .locator(".value")
             .inner_text()
             == "1"
@@ -339,6 +343,10 @@ async def test_ingress_ui_keeps_assets_and_api_calls_under_prefix(
     ):
         browser = await playwright.chromium.launch(headless=True)
         page = await browser.new_page()
+        await page.route(
+            "**/ui-api/preferences/host-checks",
+            lambda route: route.fulfill(json={"enabled": False}),
+        )
         errors: list[str] = []
         request_paths: list[str] = []
         page.on("pageerror", lambda error: errors.append(str(error)))
@@ -369,7 +377,7 @@ async def test_ingress_ui_keeps_assets_and_api_calls_under_prefix(
         await page.locator("#jobs button[data-job-log]").first.click()
         await page.locator("#job-detail").wait_for(state="visible")
         assert "Node 01" in await page.locator("#job-metadata").inner_text()
-        assert "test_connection" in await page.locator("#job-metadata").inner_text()
+        assert "Connection test" in await page.locator("#job-metadata").inner_text()
         assert f"{base_url}{prefix}/#/jobs/" in page.url
 
         relevant = [url.removeprefix(base_url) for url in request_paths]
@@ -406,6 +414,10 @@ async def test_standalone_job_deep_link_requires_session_and_survives_reload(
     async with _live_server(app) as base_url, async_playwright() as playwright:
         browser = await playwright.chromium.launch(headless=True)
         setup_page = await browser.new_page()
+        await setup_page.route(
+            "**/ui-api/preferences/host-checks",
+            lambda route: route.fulfill(json={"enabled": False}),
+        )
         await _connect_standalone(setup_page, base_url)
         if not await setup_page.locator("#host-dialog").is_visible():
             await setup_page.locator("[data-add-host]").click()
@@ -429,6 +441,10 @@ async def test_standalone_job_deep_link_requires_session_and_survives_reload(
         await setup_page.close()
 
         page = await browser.new_page()
+        await page.route(
+            "**/ui-api/preferences/host-checks",
+            lambda route: route.fulfill(json={"enabled": False}),
+        )
         request_urls: list[str] = []
         page.on("request", lambda request: request_urls.append(request.url))
         deep_link = f"{base_url}/#/jobs/{job_id}"
@@ -444,7 +460,7 @@ async def test_standalone_job_deep_link_requires_session_and_survives_reload(
         metadata = await page.locator("#job-metadata").inner_text()
         assert job_id in metadata
         assert "Node 01" in metadata
-        assert "test_connection" in metadata
+        assert "Connection test" in metadata
         assert "success" in metadata
         assert (
             "checked [redacted] as [redacted]"
@@ -478,6 +494,10 @@ async def test_job_polling_tracks_terminal_states_and_refreshes_hosts(
     async with _live_server(app) as base_url, async_playwright() as playwright:
         browser = await playwright.chromium.launch(headless=True)
         page = await browser.new_page()
+        await page.route(
+            "**/ui-api/preferences/host-checks",
+            lambda route: route.fulfill(json={"enabled": False}),
+        )
         await _connect_standalone(page, base_url)
 
         if not await page.locator("#host-dialog").is_visible():
@@ -624,10 +644,9 @@ async def test_job_polling_tracks_terminal_states_and_refreshes_hosts(
         await page.locator('[data-action="check_updates"]').click()
         await _wait_for_message(page, "check updates queued")
         await page.locator("#jobs").get_by_text("queued", exact=True).wait_for()
-        assert (
-            await page.locator('[data-action="check_updates"]').inner_text()
-            == "Running…"
-        )
+        await expect(
+            page.locator('[data-action="check_updates"] .refresh-glyph')
+        ).to_have_class("refresh-glyph spinning")
         await page.locator("#jobs").get_by_text("running", exact=True).wait_for()
         await page.locator("#jobs").get_by_text("success", exact=True).wait_for()
         assert "Example Linux 2.0" in await page.locator("#hosts").inner_text()
@@ -658,8 +677,8 @@ async def test_job_polling_tracks_terminal_states_and_refreshes_hosts(
             .wait_for()
         )
         assert (
-            "Last failed job\ntest_connection · sudo_unavailable"
-            in await page.locator("#dashboard").inner_text()
+            "Non-interactive sudo is not available"
+            in await page.locator("#job-highlights").inner_text()
         )
 
         calls_after_terminal = int(scenario["calls"])
@@ -681,6 +700,10 @@ async def test_reload_resumes_active_polling_and_disconnect_stops_it(
     async with _live_server(app) as base_url, async_playwright() as playwright:
         browser = await playwright.chromium.launch(headless=True)
         page = await browser.new_page()
+        await page.route(
+            "**/ui-api/preferences/host-checks",
+            lambda route: route.fulfill(json={"enabled": False}),
+        )
         await _connect_standalone(page, base_url)
 
         if not await page.locator("#host-dialog").is_visible():
@@ -790,6 +813,10 @@ async def test_expired_and_invalid_sessions_return_to_safe_login_state(
         browser = await playwright.chromium.launch(headless=True)
         context = await browser.new_context()
         page = await context.new_page()
+        await page.route(
+            "**/ui-api/preferences/host-checks",
+            lambda route: route.fulfill(json={"enabled": False}),
+        )
         await _connect_standalone(page, base_url)
 
         clock.now = 11

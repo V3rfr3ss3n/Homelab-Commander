@@ -128,6 +128,18 @@ _MIGRATIONS: tuple[str, ...] = (
         PRIMARY KEY(task_id, host_id)
     );
     """,
+    """
+    ALTER TABLE hosts ADD COLUMN websites_json TEXT NOT NULL DEFAULT '[]';
+    CREATE TABLE ui_preferences (
+        id INTEGER PRIMARY KEY CHECK(id = 1),
+        auto_check_enabled INTEGER NOT NULL CHECK(auto_check_enabled IN (0,1))
+    );
+    INSERT INTO ui_preferences(id,auto_check_enabled) VALUES (1,1);
+    CREATE TABLE ui_auto_checks (
+        host_id TEXT PRIMARY KEY REFERENCES hosts(id) ON DELETE CASCADE,
+        requested_at TEXT NOT NULL
+    );
+    """,
 )
 
 

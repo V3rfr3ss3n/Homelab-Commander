@@ -222,7 +222,7 @@ async def test_migration_preserves_legacy_tasks_hosts_and_jobs(tmp_path: Path) -
         connection.execute(
             "CREATE TABLE schema_migrations(version INTEGER PRIMARY KEY)"
         )
-        for index, migration in enumerate(_MIGRATIONS[:-1], 1):
+        for index, migration in enumerate(_MIGRATIONS[:4], 1):
             connection.executescript(migration)
             connection.execute("INSERT INTO schema_migrations VALUES (?)", (index,))
         connection.execute(

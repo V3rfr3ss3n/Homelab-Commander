@@ -54,6 +54,7 @@ from .task_compatibility import TaskCompatibilityService
 from .ui import UI_HTML, UI_JAVASCRIPT, UI_STYLESHEET
 from .ui_sessions import UI_SESSION_COOKIE, UI_SESSION_COOKIE_PATH, UiSessionStore
 from .version import __version__
+from .visible_checks import HostCheckPreferences, VisibleChecks
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -105,6 +106,7 @@ def create_app(
         compatibility=compatibility,
         worker_count=resolved.worker_count,
     )
+    visible_checks = VisibleChecks(database, hosts, jobs)
     csrf_token = secrets.token_urlsafe(32)
     ui_sessions = session_store or UiSessionStore()
     trusted_ingress_addresses = ingress_proxy_addresses or frozenset()
@@ -203,7 +205,7 @@ def create_app(
                 "Cache-Control": "no-store",
                 "Content-Security-Policy": (
                     "default-src 'self'; script-src 'self'; style-src 'self'; "
-                    "connect-src 'self'; img-src 'self' data:; object-src 'none'; "
+                    "connect-src 'self'; img-src 'self' data: http: https:; object-src 'none'; "
                     "base-uri 'self'; frame-ancestors 'self'"
                 ),
             },
@@ -402,6 +404,32 @@ def create_app(
             await jobs.async_enqueue(JobAction.CHECK_UPDATES, host.id)
             for host in await hosts.async_list()
         ])
+
+    @app.get(
+        "/ui-api/preferences/host-checks",
+        response_model=HostCheckPreferences,
+        dependencies=ui_authenticated,
+    )
+    async def host_check_preferences() -> HostCheckPreferences:
+        return await visible_checks.async_preferences()
+
+    @app.patch(
+        "/ui-api/preferences/host-checks",
+        response_model=HostCheckPreferences,
+        dependencies=ui_mutation,
+    )
+    async def update_host_check_preferences(
+        data: HostCheckPreferences,
+    ) -> HostCheckPreferences:
+        return await visible_checks.async_update(data)
+
+    @app.post(
+        "/ui-api/actions/check-visible",
+        response_model=list[Job],
+        dependencies=ui_mutation,
+    )
+    async def check_visible_hosts() -> tuple[Job, ...]:
+        return await visible_checks.async_check()
 
     @app.get(
         "/ui-api/onboarding",

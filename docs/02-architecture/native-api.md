@@ -1,7 +1,7 @@
 ---
 title: Native API v1
 status: accepted
-updated: 2026-10-31
+updated: 2026-11-09
 tags: [architecture, api, backend]
 ---
 
@@ -117,3 +117,17 @@ der nächsten Ausführung erfüllen; Antwortfelder und `/api/v1` bleiben kompati
 Das Importformat ist `format: homelab-commander-host`, `version: 1` mit `name`,
 `addresses`, `username`, `port`, eingerahmt von `HLC_HOST_BEGIN`/`HLC_HOST_END`.
 Siehe [ADR-0012](adr/0012-dashboard-task-compatibility.md).
+
+## Visible UI checks and website metadata
+
+Hosts add `websites` (maximum twelve named HTTP(S) URLs without userinfo), persisted
+in an additive migration. Empty arrays clear sites; omitted patch fields preserve them.
+The backend never fetches these URLs. Browser icons use origin favicons with no referrer.
+
+Management-only `GET/PATCH /ui-api/preferences/host-checks` reads/writes `enabled`
+(default true). `POST /ui-api/actions/check-visible` returns queued status jobs and
+requires UI mutation auth/CSRF. An atomic claim rechecks preference, host age,
+active jobs and the shared five-minute request cooldown. It never queues updates,
+reboots or custom tasks, and no backend timer exists. Clients request only while
+Dashboard/Hosts is visible and connected. See
+[ADR-0013](adr/0013-visible-dashboard-checks-and-websites.md).

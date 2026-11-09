@@ -1,7 +1,7 @@
 ---
 title: Host onboarding
 status: active
-updated: 2026-10-31
+updated: 2026-11-09
 tags: [wiki, user-guide]
 ---
 
@@ -64,3 +64,13 @@ validation; it carries no private key or credentials. Multiple reported addresse
 require a choice of one reachable from the backend. Review all values before saving.
 Malformed or unsupported versions show a form error. Pasting and saving only edit
 inventory; connection testing and checks remain deliberate actions.
+
+## Website shortcuts
+
+In **Add host** or **Edit host**, enter up to twelve websites, one per line as
+`Name | https://service.example.invalid`. Only HTTP(S) URLs without embedded login
+credentials are accepted. Saved sites appear as compact clickable icons beside the
+host and open in a separate tab. The browser loads the site's origin favicon without
+sending a referrer; an unavailable icon falls back to the site's initial. The backend
+never fetches website content or icons. Adding a site lets your browser contact that
+site when its icon is displayed; avoid putting credentials in links.

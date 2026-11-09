@@ -20,8 +20,9 @@ tags: [architecture, adr, index]
 | [[0009-supervisor-native-backend-discovery]] | accepted | Lokale App-Erkennung über Supervisor mit Remote-Fallback |
 | [[0010-secure-test-dependency-replacements]] | accepted | Gezielter, geprüfter Pillow-Sicherheitsersatz nur im Entwicklungsgraph |
 | [[0011-direct-backend-sidebar]] | accepted | Direkter Backend-UI-Einstieg aus der HA-Seitenleiste |
-
 | [[0012-dashboard-task-compatibility]] | accepted | Dashboard, Hostzuordnung und geprüfte Task-Voraussetzungen |
+
+| [[0013-visible-dashboard-checks-and-websites]] | accepted | Sichtbare UI-Statusprüfungen und Host-Weblinks |
 
 Neue ADRs verwenden [[../../templates/adr-template|die ADR-Vorlage]]. Akzeptierte
 ADRs werden nicht rückwirkend umgeschrieben; eine neue ADR ersetzt die alte und

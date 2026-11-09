@@ -1,7 +1,7 @@
 ---
 title: Security und Privacy
 status: accepted
-updated: 2026-10-31
+updated: 2026-11-09
 tags: [operations, security, privacy]
 ---
 
@@ -161,3 +161,18 @@ lehnt Symlinks sowie nicht reguläre/hartverlinkte authorized_keys ab. sudo-, Fi
 und SSH-Daemon-Regeln bleiben bewusste Betreiberentscheidungen. Ein versionierter
 Importblock füllt ausschließlich Formularwerte; kein Token und kein Private Key
 gehören in diesen Block. Mehrere Adressen verlangen eine bewusste Auswahl.
+
+## Visible checks and website shortcuts
+
+[ADR-0013](../02-architecture/adr/0013-visible-dashboard-checks-and-websites.md)
+records the owner's request for default-on, opt-out status checks while viewing
+Dashboard/Hosts. Only status collection (including existing APT metadata refresh)
+is permitted; updates, reboots and custom tasks remain explicitly confirmed.
+Preferences/requests require UI authentication and CSRF. Atomic freshness/active-job/
+cooldown checks bound multi-tab work. No backend scheduler runs after closing the UI.
+
+Website URLs are operator-selected HTTP(S) links without userinfo. The backend
+never fetches them. Browser origin-favicon requests have no referrer and no API
+credentials; external navigation uses noopener/noreferrer. CSP expands image sources
+only, not script or API origins. No image proxy, external favicon service or runtime
+dependency is added. Hostnames/links remain deployment-sensitive inventory data.

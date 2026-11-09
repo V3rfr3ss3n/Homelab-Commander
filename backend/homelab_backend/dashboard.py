@@ -22,6 +22,7 @@ class DashboardSummary(BaseModel):
     running_jobs: int
     queued_jobs: int
     last_job: Job | None
+    attention_job: Job | None
     last_failed_job: Job | None
     recent_jobs: tuple[Job, ...]
     recent_completions: tuple[Job, ...]
@@ -74,6 +75,7 @@ class DashboardService:
             queued_jobs=totals.get("queued", 0),
             last_job=next(iter(recent), None),
             last_failed_job=next(iter(failed), None),
+            attention_job=await self._jobs.async_unresolved_failure(),
             recent_jobs=recent,
             recent_completions=await self._jobs.async_list(limit=5, completed=True),
             history=tuple(

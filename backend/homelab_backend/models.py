@@ -5,13 +5,34 @@ from enum import StrEnum
 from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
+from pydantic import (
+    AnyHttpUrl,
+    BaseModel,
+    ConfigDict,
+    Field,
+    computed_field,
+    model_validator,
+)
 
 HostName = Annotated[str, Field(min_length=1, max_length=100)]
 HostAddress = Annotated[
     str, Field(min_length=1, max_length=255, pattern=r"^[A-Za-z0-9][A-Za-z0-9.:-]*$")
 ]
 SshUser = Annotated[str, Field(pattern=r"^[a-z_][a-z0-9_-]{0,31}$")]
+
+
+class HostWebsite(BaseModel):
+    """Operator-selected HTTP(S) shortcut; never fetched by the backend."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, str_strip_whitespace=True)
+    name: str = Field(min_length=1, max_length=80)
+    url: AnyHttpUrl = Field(max_length=2048)
+
+    @model_validator(mode="after")
+    def reject_credentials(self) -> HostWebsite:
+        if self.url.username is not None or self.url.password is not None:
+            raise ValueError("Website links must not include credentials")
+        return self
 
 
 class HostCreate(BaseModel):
@@ -24,6 +45,7 @@ class HostCreate(BaseModel):
     port: int = Field(default=22, ge=1, le=65535)
     username: SshUser
     package_provider: str = Field(default="debian_apt", pattern=r"^[a-z][a-z0-9_]+$")
+    websites: tuple[HostWebsite, ...] = Field(default=(), max_length=12)
 
 
 class HostPatch(BaseModel):
@@ -36,6 +58,7 @@ class HostPatch(BaseModel):
     port: int | None = Field(default=None, ge=1, le=65535)
     username: SshUser | None = None
     package_provider: str | None = Field(default=None, pattern=r"^[a-z][a-z0-9_]+$")
+    websites: tuple[HostWebsite, ...] | None = Field(default=None, max_length=12)
 
 
 class Host(BaseModel):
@@ -49,6 +72,7 @@ class Host(BaseModel):
     port: int
     username: str
     package_provider: str
+    websites: tuple[HostWebsite, ...] = ()
     distribution: str | None = None
     distribution_version: str | None = None
     kernel: str | None = None

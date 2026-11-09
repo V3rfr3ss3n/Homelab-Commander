@@ -1,16 +1,18 @@
 """Persistent host inventory service."""
 
+import json
 import sqlite3
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from .database import Database
-from .models import Host, HostCreate, HostPatch
+from .models import Host, HostCreate, HostPatch, HostWebsite
 
 _SELECT = (
     "SELECT id, name, address, port, username, package_provider, "
     "distribution, distribution_version, kernel, updates, security_updates, "
-    "reboot_required, status, checked_at, created_at, updated_at FROM hosts"
+    "reboot_required, status, checked_at, created_at, updated_at, "
+    "websites_json FROM hosts"
 )
 
 
@@ -37,8 +39,8 @@ class HostRepository:
             await self._database.async_execute(
                 "INSERT INTO hosts "
                 "(id, name, address, port, username, package_provider, "
-                "created_at, updated_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                "created_at, updated_at, websites_json) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 _values(host),
             )
         except sqlite3.IntegrityError as err:
@@ -71,7 +73,7 @@ class HostRepository:
         try:
             await self._database.async_execute(
                 "UPDATE hosts SET name = ?, address = ?, port = ?, username = ?, "
-                "package_provider = ?, updated_at = ? WHERE id = ?",
+                "package_provider = ?, updated_at = ?, websites_json = ? WHERE id = ?",
                 (
                     updated.name,
                     updated.address,
@@ -79,6 +81,9 @@ class HostRepository:
                     updated.username,
                     updated.package_provider,
                     updated.updated_at.isoformat(),
+                    json.dumps([
+                        site.model_dump(mode="json") for site in updated.websites
+                    ]),
                     str(updated.id),
                 ),
             )
@@ -153,6 +158,7 @@ def _values(host: Host) -> tuple[object, ...]:
         host.package_provider,
         host.created_at.isoformat(),
         host.updated_at.isoformat(),
+        json.dumps([site.model_dump(mode="json") for site in host.websites]),
     )
 
 
@@ -164,6 +170,10 @@ def _host_from_row(row: sqlite3.Row) -> Host:
         port=row["port"],
         username=row["username"],
         package_provider=row["package_provider"],
+        websites=tuple(
+            HostWebsite.model_validate(site)
+            for site in json.loads(row["websites_json"])
+        ),
         distribution=row["distribution"],
         distribution_version=row["distribution_version"],
         kernel=row["kernel"],

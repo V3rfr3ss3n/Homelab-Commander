@@ -37,6 +37,10 @@ async def test_dashboard_host_import_and_task_assignment(
             ["clipboard-read", "clipboard-write"], origin=base_url
         )
         page = await context.new_page()
+        await page.route(
+            "**/ui-api/preferences/host-checks",
+            lambda route: route.fulfill(json={"enabled": False}),
+        )
         page.on("dialog", _accept_dialog)
         errors: list[str] = []
         console_errors: list[str] = []
@@ -57,7 +61,7 @@ async def test_dashboard_host_import_and_task_assignment(
         assert await page.locator("#dashboard").is_visible()
         await expect(page.locator("#connection-state")).to_be_hidden()
         await expect(page.locator("#message")).to_be_hidden()
-        await expect(page.get_by_text("Online", exact=True)).to_have_count(1)
+        await expect(page.get_by_text("Backend online", exact=True)).to_have_count(1)
         await page.locator('nav a[href="#/tasks"]').click()
         await page.locator("#tasks").wait_for(state="visible")
         await expect(page.locator("#message")).to_be_hidden()
@@ -69,7 +73,7 @@ async def test_dashboard_host_import_and_task_assignment(
         await expect(page.locator("#message")).to_be_hidden()
         assert not await page.locator("#host-dialog").is_visible()
         assert not await page.locator("#task-dialog").is_visible()
-        assert await page.locator("#history .history-day").count() == 7
+        assert await page.locator("#history .graph-series.success circle").count() == 7
         await page.locator("[data-add-host]").click()
         await page.locator('[data-setup="debian"]').click()
         await _wait_for_message(page, "Setup command copied")
@@ -144,7 +148,7 @@ async def test_dashboard_host_import_and_task_assignment(
         assert "of 1" in await page.locator("#jobs-count").inner_text()
         await page.locator("#jobs [data-job-log]").first.click()
         await page.locator("#job-detail").wait_for(state="visible")
-        assert "custom_task" in await page.locator("#job-metadata").inner_text()
+        assert "Custom task" in await page.locator("#job-metadata").inner_text()
         await page.reload()
         await _wait_for_connection(page)
         assert await page.locator("#job-detail").is_visible()

@@ -1,7 +1,7 @@
 ---
 title: Native API
 status: active
-updated: 2026-10-31
+updated: 2026-11-09
 tags: [wiki, technical]
 ---
 
@@ -61,3 +61,18 @@ contain `distributions`, `versions`, `programs`, `packages` and `requires_sudo`.
 `GET /ui-api/onboarding?system=debian&username=automation&port=22` returns a command
 for authenticated UI users; it executes nothing. Only Debian/Ubuntu and dedicated
 non-root account names are accepted. See [ADR-0012](../../02-architecture/adr/0012-dashboard-task-compatibility.md).
+
+## Visible checks and host websites
+
+Host create/patch/read responses add `websites`, an array (maximum twelve) of
+`{ "name": "Portal", "url": "https://service.example.invalid" }`. Omitted values
+preserve existing sites on patch; an empty array clears them. Only HTTP(S) URLs
+without userinfo are accepted. Sites are stored separately from connection identity.
+
+`GET /ui-api/preferences/host-checks` reads `{ "enabled": true }`;
+`PATCH` updates this shared persisted preference and requires UI auth plus CSRF.
+`POST /ui-api/actions/check-visible` returns a list of queued status jobs and also
+requires CSRF. It skips disabled/recent/busy/cooldown hosts atomically. The backend
+does not schedule itself. Visibility/route/disconnect control belongs to the client.
+The fixed interval/cooldown is five minutes. See
+[ADR-0013](../../02-architecture/adr/0013-visible-dashboard-checks-and-websites.md).

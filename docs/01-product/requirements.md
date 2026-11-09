@@ -1,7 +1,7 @@
 ---
 title: Produktanforderungen
 status: accepted
-updated: 2026-10-31
+updated: 2026-11-09
 tags: [product, requirements]
 ---
 
@@ -223,3 +223,13 @@ wird beim Parser in Tests festgeschrieben.
 - **REQ-TASK-002 MUST:** Upgrade erhält bestehende Task-/Host-IDs und Jobs sowie
   bisherige Zuordnungen durch Migration; vor erneuter Ausführung ist ein Check nötig.
   Neue Hosts erhalten keine automatischen Zuordnungen.
+
+## Readable dashboard follow-up
+
+- Default-on, configurable visible UI checks are explicitly requested by the owner;
+  they only queue status checks, skip recent/busy/cooldown hosts, stop outside visible
+  host views and never infer an update/reboot/custom task.
+- Host website shortcuts are validated HTTP(S) links with browser-only origin favicons.
+- Dashboard uses compact connectivity, aligned counts, directly linked job previews,
+  a line graph and a disappearing responsive notice panel. Technical identifiers and
+  exact timestamps remain available behind human-readable presentation.

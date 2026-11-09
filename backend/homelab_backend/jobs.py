@@ -99,6 +99,17 @@ class JobRepository:
         )
         return row["count"] if row is not None else 0
 
+    async def async_unresolved_failure(self) -> Job | None:
+        row = await self._database.async_fetch_one(
+            "SELECT failed.id FROM jobs failed WHERE failed.state='failed' "
+            "AND NOT EXISTS(SELECT 1 FROM jobs later WHERE later.state='success' "
+            "AND later.host_id IS failed.host_id AND later.action=failed.action "
+            "AND later.custom_task_id IS failed.custom_task_id "
+            "AND later.created_at>failed.created_at) ORDER BY "
+            "failed.created_at DESC LIMIT 1"
+        )
+        return await self.async_get(UUID(row["id"])) if row else None
+
     async def async_recover_queued(self) -> tuple[UUID, ...]:
         """Return queued work after safely recovering interrupted jobs."""
         await self._database.async_execute(

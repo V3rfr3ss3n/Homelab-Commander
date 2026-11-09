@@ -116,3 +116,9 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
   App-Verantwortungen sowie internen DNS-Pfad dokumentiert
 - [x] T-032a Homelab-Commander-Branding und optionale Supervisor-App-Erkennung
   mit sicherem Remote-Fallback implementiert
+
+## Dashboard follow-up (2026-11-09)
+
+- [x] Kompakte Status-/Jobansicht, responsive Hinweise, Liniengraph und lesbare
+  Zeitangaben; Website-Shortcuts je Host und abschaltbare, sichtbarkeitsgebundene
+  Statusprüfungen ergänzt. Siehe [Review](../05-reviews/2026-11-09-dashboard-readability-review.md).
