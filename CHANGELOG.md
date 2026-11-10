@@ -7,6 +7,9 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ### Fixed
 
+- Keep website icons and failed attempts stable across refreshes; try modern icon
+  paths and support an optional direct icon URL plus explicit retry in Edit host.
+
 - Return to the host list after removal without reloading a deleted host's details.
 - Expose removal and existing-user setup above Edit host connection fields, with
   in-dialog copy/error feedback and explicit inventory-only removal confirmation.

@@ -90,13 +90,28 @@ inventory; connection testing and checks remain deliberate actions.
 
 ## Website shortcuts
 
-In **Add host** or **Edit host**, enter up to twelve websites, one per line as
-`Name | https://service.example.invalid`. Only HTTP(S) URLs without embedded login
-credentials are accepted. Saved sites appear as compact clickable icons beside the
-host and open in a separate tab. The browser loads the site's origin favicon without
-sending a referrer; an unavailable icon falls back to the site's initial. The backend
-never fetches website content or icons. Adding a site lets your browser contact that
-site when its icon is displayed; avoid putting credentials in links.
+In **Add host** or **Edit host**, enter up to twelve websites, one per line:
+
+```text
+Portal | https://service.example.invalid
+Portal | https://service.example.invalid | https://assets.example.invalid/portal.svg
+```
+
+The optional third value is a direct image URL, useful when a site uses a different
+icon location. Website and icon URLs must use HTTP(S) without embedded credentials.
+Sites open in a separate tab. The browser tries `/favicon.ico`, `/favicon.svg`,
+`/favicon.png`, `/apple-touch-icon.png` and `/favicons/favicon-32x32.png` on the website
+origin, or only the supplied override. No backend or third-party icon service
+fetches them. An override may contact another origin you explicitly choose.
+Requests send no referrer or Commander authentication headers.
+
+Loaded image nodes survive refreshes and host-view navigation. Failed icons retain
+a stable initial and explanatory tooltip instead of flashing/retrying on each job
+refresh. **Retry saved website icons** in Edit host explicitly retries the saved
+links; unsaved edits are not used. A full page reload also starts new icon attempts.
+HTTPS certificates must be trusted. Cloudflare challenges, access rules or browser
+privacy settings can still block embedded images even if the site itself opens;
+provide a publicly loadable image URL in that case. There is no HTTPS-to-HTTP fallback.
 
 
 ## Remove a host

@@ -146,3 +146,12 @@ Authenticated `GET /ui-api/onboarding` retains system/username/port and adds fix
 `restricted_key=true|false` and optional `source` IP/CIDR. Defaults are create, sh,
 none, true and empty. Unsupported/invalid values return 422. Rendering never applies
 configuration. Output is still the marked version-1 host connection JSON envelope.
+
+
+### Website icon override
+
+Host website entries accept optional `icon_url`: an HTTP(S) image URL without
+credentials. It is stored in existing website JSON and returned when set; absent
+or null values retain the legacy `{name,url}` serialized shape. No image is fetched
+by the backend. It may reference another explicitly operator-selected origin.
+See [ADR-0015](adr/0015-stable-website-icons.md).

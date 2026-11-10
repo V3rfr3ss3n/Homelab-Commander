@@ -199,3 +199,15 @@ active, so choosing no managed rule is not complete privilege revocation. Option
 source IP/CIDR and forwarding restrictions affect only this backend public key.
 Packages, firewall and SSH daemon settings remain unchanged. Tests redirect all
 filesystem paths and mock every system command; no real account is configured.
+
+
+## Stable website icons (ADR-0015)
+
+The browser-only image policy now tries five bounded same-origin paths, or a single
+explicitly saved HTTP(S) `icon_url` that rejects credentials and can use another
+operator-selected origin. No backend fetch, third-party discovery service, HTML
+scraping, TLS bypass or HTTPS downgrade is introduced. Cached image nodes and
+failure states survive UI refresh; stale entries and logout cancel/remove cached
+attempts. Operators explicitly retry from Edit host. External browser/Cloudflare
+access policies remain authoritative. See
+[ADR-0015](../02-architecture/adr/0015-stable-website-icons.md).

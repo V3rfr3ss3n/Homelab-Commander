@@ -18,6 +18,11 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## Weitere Änderungen zur Review
 
+- [x] Website-Icons behalten DOM-/Fehlerzustand beim Refresh; feste HTTPS-Iconpfade,
+  optionale direkte Icon-URL und manueller Retry ohne TLS-/Cloudflare-Umgehung.
+  Entscheidung: [ADR-0015](../02-architecture/adr/0015-stable-website-icons.md).
+  Prüfstand: [Icon-Review](../05-reviews/2026-11-10-website-icons-review.md).
+
 - [x] Hostentfernung navigiert vor dem Refresh aus gelöschten Details; Edit host
   zeigt Benutzer-Setup/Entfernen oberhalb der Felder. Abhängig vom offenen !26.
   Prüfstand: [Hostverwaltung](../05-reviews/2026-11-10-host-management-review.md).

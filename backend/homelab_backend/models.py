@@ -27,11 +27,17 @@ class HostWebsite(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, str_strip_whitespace=True)
     name: str = Field(min_length=1, max_length=80)
     url: AnyHttpUrl = Field(max_length=2048)
+    icon_url: AnyHttpUrl | None = Field(
+        default=None, max_length=2048, exclude_if=lambda value: value is None
+    )
 
     @model_validator(mode="after")
     def reject_credentials(self) -> HostWebsite:
-        if self.url.username is not None or self.url.password is not None:
-            raise ValueError("Website links must not include credentials")
+        for url in (self.url, self.icon_url):
+            if url is not None and (
+                url.username is not None or url.password is not None
+            ):
+                raise ValueError("Website links and icons must not include credentials")
         return self
 
 

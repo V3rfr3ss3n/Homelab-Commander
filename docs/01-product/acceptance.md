@@ -207,3 +207,15 @@ tags: [product, acceptance, release]
   configure/copy an update script without submitting or completing those fields;
   unsaved values survive setup navigation. Copy feedback is visible in the dialog.
 - Mobile standalone and nested Ingress regressions cover both management paths.
+
+
+## Stable website icon acceptance
+
+- HTTP and trusted HTTPS images use the same browser-only loader. A missing ICO
+  can resolve through fixed SVG/PNG paths or an explicit direct icon override.
+- Loaded image nodes and failed states survive refresh/navigation without repeat
+  fetches or flashing, including no-store responses. Duplicate bookmarks work.
+- Edit host offers explicit retry of saved icons. Optional icon URLs round-trip
+  safely and legacy two-field website JSON remains compatible.
+- No referrer, API/CSRF headers, backend fetch, external discovery service, HTTP
+  downgrade or TLS/access-control bypass is introduced. Logout clears cached nodes.

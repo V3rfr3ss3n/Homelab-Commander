@@ -1,7 +1,7 @@
 ---
 title: Security and privacy
 status: active
-updated: 2026-11-09
+updated: 2026-11-10
 tags: [wiki, technical]
 ---
 
@@ -64,10 +64,17 @@ migration and the limits of declared prerequisites.
 ## Website icons and visible status checks
 
 Website shortcuts accept HTTP(S) only and reject URL userinfo. The backend performs
-no fetch or thumbnail proxy. Browser favicon requests use only the saved origin and
-`/favicon.ico`, with no referrer, and never receive the integration token or UI CSRF
-headers. Navigation uses a separate tab with `noopener noreferrer`. CSP permits
-HTTP(S) images while scripts and API connections remain same-origin. Tests intercept
-all synthetic website requests. The shared auto-check preference is authenticated,
+no fetch or thumbnail proxy. Browser favicon requests use five fixed same-origin
+image paths, or a single explicitly saved HTTP(S) icon URL. Both website and icon
+URLs reject credentials. Overrides can contact another operator-selected origin;
+no third-party discovery service is used. Requests have no referrer or Commander
+API/CSRF headers. Loaded DOM nodes and failed attempts are retained for this page;
+refresh does not retry, and logout clears/cancels the cache. Only explicit retry
+or a new page starts fresh attempts. HTTPS is never downgraded and certificate,
+Cloudflare and browser access controls are not bypassed. Navigation uses a separate
+tab with `noopener noreferrer`. CSP still permits HTTP(S) images while scripts/API
+connections remain same-origin. Tests intercept synthetic image requests.
+See [ADR-0015](../../02-architecture/adr/0015-stable-website-icons.md).
+The shared auto-check preference is authenticated,
 mutations require CSRF, and an atomic cooldown prevents duplicate multi-tab checks.
 Only status checks run from a visible UI; package installation/reboot remains explicit.

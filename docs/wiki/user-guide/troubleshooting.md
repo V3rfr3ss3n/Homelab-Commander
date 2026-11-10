@@ -1,7 +1,7 @@
 ---
 title: Troubleshooting
 status: active
-updated: 2026-11-09
+updated: 2026-11-10
 tags: [wiki, user-guide]
 ---
 
@@ -69,3 +69,18 @@ adding privileges to the managed host cannot fix this local directory failure.
 Before the first successful check, host rows display update/reboot status as
 unknown and the dashboard identifies unchecked hosts. Previously collected
 counts remain last-known values; inspect their check time and the latest job.
+
+
+## Website icon missing over HTTPS
+
+Opening a site successfully does not guarantee its `/favicon.ico` is an accessible
+image. Commander tries five common icon paths and retains an initial when those
+fail. For a different path, add a direct HTTP(S) image URL as the optional third
+value in **Edit host → Websites**; see [website shortcuts](hosts.md#website-shortcuts).
+Cloudflare challenges, authentication or browser privacy rules can block embedded
+images independently of the site's main page. Use an accessible image endpoint;
+never disable certificate verification. HTTPS targets are not retried over HTTP.
+
+Regular refreshes retain both successful and failed icon states, preventing repeat
+loads/flashing. Use **Retry saved website icons** after fixing the endpoint, or
+reload the page. The retry uses saved website settings; save edited URLs first.
