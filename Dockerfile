@@ -12,7 +12,7 @@ RUN uv sync --frozen --no-dev --no-editable
 
 FROM python:3.14.7-slim-bookworm@sha256:416f0db2a2b561945630cef9877a7ea0581b27449eb9fd9df42f03e1b74b5b63
 
-ARG BUILD_VERSION=0.3.0-dev.2
+ARG BUILD_VERSION=0.3.0-dev.3
 ARG BUILD_ARCH=amd64
 
 LABEL io.hass.name="Homelab Commander Backend" \

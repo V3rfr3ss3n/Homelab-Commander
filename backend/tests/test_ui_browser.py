@@ -7,10 +7,13 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 import uvicorn
 from playwright.async_api import Dialog, Page, Route, async_playwright, expect
+from uvicorn.protocols.http.h11_impl import H11Protocol
+from uvicorn.server import ServerState
 
 from backend.homelab_backend.app import create_app
 from backend.homelab_backend.config import Settings
@@ -34,6 +37,41 @@ class _BrowserClock:
         return self.now
 
 
+class _BrowserH11Protocol(H11Protocol):
+    """Own the test server's keep-alive timer even on an abrupt peer reset."""
+
+    def connection_lost(self, exc: Exception | None) -> None:
+        # Pinned Uvicorn only clears this timer when exc is None.
+        try:
+            super().connection_lost(exc)
+        finally:
+            self._unset_keepalive_if_required()
+
+
+async def test_browser_server_reset_cleans_its_keepalive_timer(tmp_path: Path) -> None:
+    """An exceptional disconnect must not leak a timer into HA test teardown."""
+    app = create_app(
+        Settings(data_dir=tmp_path, api_token=TOKEN), executor=FakeExecutor()
+    )
+    loop = asyncio.get_running_loop()
+    protocol = _BrowserH11Protocol(
+        uvicorn.Config(app, access_log=False), ServerState(), {}, _loop=loop
+    )
+    transport = MagicMock(spec=asyncio.Transport)
+    transport.get_extra_info.return_value = None
+    protocol.connection_made(transport)
+    timer = loop.call_later(60, protocol.timeout_keep_alive_handler)
+    protocol.timeout_keep_alive_task = timer
+    try:
+        protocol.connection_lost(ConnectionResetError("Synthetic peer reset"))
+        settled: asyncio.Future[None] = loop.create_future()
+        loop.call_soon(settled.set_result, None)
+        await settled
+        assert timer.cancelled()
+    finally:
+        timer.cancel()
+
+
 @asynccontextmanager
 async def _live_server(app: Any) -> AsyncIterator[str]:
     """Serve one ASGI app on an ephemeral loopback port."""
@@ -43,7 +81,13 @@ async def _live_server(app: Any) -> AsyncIterator[str]:
     listener.listen()
     port = listener.getsockname()[1]
     server = uvicorn.Server(
-        uvicorn.Config(app, log_level="critical", lifespan="on", access_log=False)
+        uvicorn.Config(
+            app,
+            log_level="critical",
+            lifespan="on",
+            access_log=False,
+            http=_BrowserH11Protocol,
+        )
     )
     task = asyncio.create_task(server.serve(sockets=[listener]))
     try:

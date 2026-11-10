@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0-dev.3
+
+- Adds persistent failed-job review and guided Debian/Ubuntu SSH user setup with
+  configurable permissions and existing-user update scripts. Root sudo remains
+  explicit and requires acknowledgement before copying. Scripts run only manually.
+- Fixes host-removal navigation and exposes removal/user setup above Edit host fields.
+- Keeps website icons stable across refreshes, tries common HTTPS SVG/PNG paths and
+  supports direct icon URLs plus manual retry without weakening TLS/access checks.
+- Preserves existing `/data`, hosts, tasks, jobs and SSH identity. The review-column
+  migration runs automatically; no reconfiguration is required. Development prerelease.
+
 ## 0.3.0-dev.2
 
 - Fixes local Ansible home and SSH control directory permission errors after the

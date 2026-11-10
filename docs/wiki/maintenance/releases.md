@@ -1,7 +1,7 @@
 ---
 title: Releases and compatibility
 status: active
-updated: 2026-11-09
+updated: 2026-11-10
 tags: [wiki, maintenance]
 ---
 
@@ -58,3 +58,23 @@ The candidate must be merged and its versioned image must pass the publication
 checks before the App can offer it as an update. After upgrade, explicitly request
 **Check for updates** and inspect the resulting job; the failed earlier checks do
 not establish that a host has no updates.
+
+
+## 0.3.0-dev.3 development candidate
+
+This candidate includes failed-job acknowledgement, guided account setup/update
+scripts, working host removal and stable HTTP/HTTPS website icons with an optional
+direct image URL. Sudo stays opt-in; icon loading bypasses no TLS or Cloudflare
+policy. Review timestamps migrate automatically, and existing `/data`, host/task/job
+identities and SSH keys remain intact. Updating the installed Backend App requires
+no host recreation or integration reconfiguration. A standalone UI session expires
+at restart and may require signing in again.
+
+Publication requires the version-aligned commit and the full quality, HA/HACS,
+security, native AMD64/AArch64 and anonymous image gates. The isolated artifact
+upgrade uses synthetic data only. A full fresh HA OS/Supervisor install/upgrade
+walkthrough remains a manual acceptance item, not an automated validation claim.
+After publication, refresh the App store and update **Homelab Commander Backend**;
+then reload its UI. The integration prerelease is also version-aligned, but these
+backend UI fixes do not require deleting/re-adding the integration. Keep the normal
+backup/recovery strategy; older binaries may not parse stored custom icon overrides.

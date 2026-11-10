@@ -5,6 +5,19 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.3.0-dev.3] - 2026-11-10
+
+### Upgrade notes
+
+- Update the existing Backend App; no host/user/key recreation or integration
+  reconfiguration is required. `/data` and existing host/task/job IDs remain intact.
+- Migration 7 automatically adds failed-job review timestamps. Optional icon URLs
+  use existing website JSON. Older backend binaries may not understand saved icon
+  overrides; downgrade/restore is not an automatic rollback path.
+- Development prerelease: use the normal backup/recovery procedure for protection
+  against storage loss. Full fresh HA OS/Supervisor installation remains a manual
+  acceptance step; automated checks use synthetic services and isolated artifacts.
+
 ### Fixed
 
 - Keep website icons and failed attempts stable across refreshes; try modern icon

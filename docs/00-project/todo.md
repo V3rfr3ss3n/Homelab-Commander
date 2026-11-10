@@ -12,7 +12,7 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## In Arbeit
 
-- [ ] T-032 Den Release Candidate `0.3.0-dev.2` nach Merge öffentlich bauen und
+- [ ] T-032 Den Release Candidate `0.3.0-dev.3` nach Merge öffentlich bauen und
   die [[../04-operations/public-install-checklist|frische Installation]] mit
   automatischer lokaler App-Erkennung bestätigen.
 
@@ -24,7 +24,7 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
   Prüfstand: [Icon-Review](../05-reviews/2026-11-10-website-icons-review.md).
 
 - [x] Hostentfernung navigiert vor dem Refresh aus gelöschten Details; Edit host
-  zeigt Benutzer-Setup/Entfernen oberhalb der Felder. Abhängig vom offenen !26.
+  zeigt Benutzer-Setup/Entfernen oberhalb der Felder. Mit !26 zusammengeführt; Feature-MRs !26–!28 sind gemerged.
   Prüfstand: [Hostverwaltung](../05-reviews/2026-11-10-host-management-review.md).
 
 - [x] Geführte Host-Einrichtung mit konfigurierbaren Benutzer-/Key-/sudo-Skripten
