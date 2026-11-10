@@ -98,3 +98,14 @@ Until a host has a successful stored check, update and reboot status are shown a
 unknown. Dashboard totals include only checked hosts and label any unchecked
 hosts; unknown status is never presented as a successful zero-update check.
 A failed first check leaves status unknown. Open its job for the failure reason.
+
+
+## Review a failed-job notice
+
+Follow **Review the job** from Important notices, inspect the log, then select
+**Mark as reviewed**. This acknowledges that exact failed job for everyone using
+this backend and persists across reloads/restarts. It removes that job from notice
+selection without deleting history, changing failure status or retrying work.
+Older unreviewed failures can then appear; new failures always need their own
+review. The last-failed-job highlight remains historical. Security, reboot and
+stale-host notices still reflect host state and are not dismissed by job review.

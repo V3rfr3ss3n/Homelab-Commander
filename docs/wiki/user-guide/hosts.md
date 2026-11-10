@@ -45,18 +45,35 @@ Next: [updates and jobs](updates-and-jobs.md).
 
 ## Guided setup and paste import
 
-Use **+** beside the host list to open **Add host**. The dialog contains the backend
-public key, connection fields and **Copy Debian setup** / **Copy Ubuntu setup**.
-Set a dedicated non-root user and your existing SSH port before copying. Run the
-reviewed command on the selected target as an administrator; Python 3 must already
-be present. Templates create/reuse that account and install only the public key,
-with restrictive `.ssh` and `authorized_keys` permissions. Repeating the same command
-does not duplicate the key. Other systems are not offered yet.
+Use **+** beside the host list. The assistant has three steps:
 
-These commands install no packages and do not change sudo, firewall or SSH daemon
-configuration. You must arrange Python and the intended non-interactive sudo rights,
-restrict network access and verify host identity yourself. The port field describes
-your existing SSH listener; it does not configure one.
+1. Choose Debian (also used for Proxmox VE) or Ubuntu.
+2. Select **Create or reuse account** or **Update existing account**, the SSH
+   username, existing port, shell, key restrictions and optional allowed source IP/CIDR.
+   Review the generated script and press **Copy script** once to copy it. Run it
+   on the target as root; Python 3 must already be installed. The public key is
+   available in an expandable section. If SSH is already prepared, skip this step.
+3. Enter or import the SSH connection and save the host.
+
+No sudo rule is selected by default. Built-in maintenance needs non-interactive
+sudo; choosing **Passwordless root access** requires a separate acknowledgement
+before copying. It gives the backend key root-equivalent authority, including more
+than package maintenance. Key restrictions disable forwarding and interactive
+terminals by default; an optional IP/CIDR restricts that key's source, not the
+firewall. Verify that the source matches what the target sees.
+
+**Edit host → Update SSH user setup** generates a script for an existing account.
+Update mode applies the selected shell, replaces restrictions on this backend key
+without duplicating it, and creates or removes only its own managed sudoers file.
+It refuses to overwrite foreign rules. Other sudo rules and group memberships
+remain active: selecting no managed rule does not guarantee removal of all sudo
+access. Create/reuse mode leaves an existing account's shell unchanged.
+
+Scripts install no packages and change no firewall or SSH daemon configuration.
+They set private `.ssh`/key permissions and validate new sudo rules with `visudo`
+before installation. A sudo selection requires sudo/visudo already installed;
+update mode requires `/etc/sudoers.d` to exist. The port describes your existing
+SSH listener. Restrict network access and verify the host fingerprint yourself.
 
 Copy the output between `HLC_HOST_BEGIN` and `HLC_HOST_END` and paste it into a
 connection field. The versioned format fills name, user, port and address after

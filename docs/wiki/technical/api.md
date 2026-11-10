@@ -76,3 +76,18 @@ requires CSRF. It skips disabled/recent/busy/cooldown hosts atomically. The back
 does not schedule itself. Visibility/route/disconnect control belongs to the client.
 The fixed interval/cooldown is five minutes. See
 [ADR-0013](../../02-architecture/adr/0013-visible-dashboard-checks-and-websites.md).
+
+
+### Job review and setup choices
+
+`POST /api/v1/jobs/{job_id}/review` (Bearer auth) and
+`POST /ui-api/jobs/{job_id}/review` (UI auth + CSRF) acknowledge one failed job.
+They return its additive nullable `reviewed_at`, preserving the initial timestamp
+on repeated calls; 404 means absent and 409 means not failed. No request body or
+host action is needed. Dashboard attention excludes reviewed failures.
+
+Authenticated `GET /ui-api/onboarding` retains system/username/port and adds fixed
+`mode=create|update`, `shell=/bin/sh|/bin/bash`, `sudo=none|full`,
+`restricted_key=true|false` and optional `source` IP/CIDR. Defaults are create, sh,
+none, true and empty. Unsupported/invalid values return 422. Rendering never applies
+configuration. Output is still the marked version-1 host connection JSON envelope.

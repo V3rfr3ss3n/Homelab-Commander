@@ -205,6 +205,11 @@ async def test_readable_dashboard_shortcuts_graph_and_visible_checks(
         assert await page.locator("#host-info time").get_attribute("title")
         assert "T" not in await page.locator("#host-info time").inner_text()
         await page.locator("[data-edit-host]").click()
+        await page.locator("#host-update-setup").click()
+        await page.locator("#host-system-next").click()
+        await expect(page.locator("#setup-mode")).to_have_value("update")
+        await expect(page.locator("#setup-preview")).to_contain_text("usermod")
+        await page.locator("#host-setup-next").click()
         assert (
             "Portal | https://portal.example.invalid/ui"
             in await page.locator("#host-websites").input_value()

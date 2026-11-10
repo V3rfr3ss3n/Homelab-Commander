@@ -251,7 +251,9 @@ async def test_migration_preserves_legacy_tasks_hosts_and_jobs(tmp_path: Path) -
     assert result.assigned
     assert result.enabled
     assert result.state == "unchecked"
-    assert (await JobRepository(database).async_get(UUID(job_id))).state == "success"
+    migrated_job = await JobRepository(database).async_get(UUID(job_id))
+    assert migrated_job.state == "success"
+    assert migrated_job.reviewed_at is None
     new_host = await HostRepository(database).async_create(
         HostCreate(
             name="Node 02", address="node-02.example.invalid", username="automation"
@@ -408,9 +410,9 @@ def test_setup_template_is_idempotent_and_only_touches_synthetic_account(
 ) -> None:
     key = "ssh-ed25519 AAAA synthetic"
     command = setup_command(system, "automation", 2222, key).command
-    script = command.split("\n", 1)[1].rsplit("\n", 1)[0]
+    script = command.split("HLC_SETUP'\n", 1)[1].rsplit("\n", 1)[0]
     account = SimpleNamespace(
-        pw_dir=str(tmp_path), pw_uid=os.getuid(), pw_gid=os.getgid()
+        pw_dir=str(tmp_path), pw_uid=max(1, os.getuid()), pw_gid=os.getgid()
     )
     real_open = builtins.open
 
@@ -424,6 +426,7 @@ def test_setup_template_is_idempotent_and_only_touches_synthetic_account(
     with (
         patch("builtins.open", fake_open),
         patch("os.geteuid", return_value=0),
+        patch("os.fchown"),
         patch(
             "pwd.getpwnam",
             side_effect=[account, account]
@@ -446,7 +449,7 @@ def test_setup_template_is_idempotent_and_only_touches_synthetic_account(
                 ["useradd", "--create-home", "--shell", "/bin/sh", "--", "automation"],
                 check=True,
             )
-    assert (tmp_path / ".ssh/authorized_keys").read_text() == key + "\n"
+    assert (tmp_path / ".ssh/authorized_keys").read_text().endswith(key + "\n")
     assert (tmp_path / ".ssh/authorized_keys").stat().st_mode & 0o777 == 0o600
     output = capsys.readouterr().out
     data = json.loads(output.split("HLC_HOST_BEGIN\n")[1].split("\nHLC_HOST_END")[0])

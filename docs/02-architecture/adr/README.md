@@ -24,6 +24,8 @@ tags: [architecture, adr, index]
 
 | [[0013-visible-dashboard-checks-and-websites]] | accepted | Sichtbare UI-Statusprüfungen und Host-Weblinks |
 
+| [[0014-guided-setup-and-failure-review]] | accepted | Geführtes Benutzer-Setup und persistente Jobprüfung |
+
 Neue ADRs verwenden [[../../templates/adr-template|die ADR-Vorlage]]. Akzeptierte
 ADRs werden nicht rückwirkend umgeschrieben; eine neue ADR ersetzt die alte und
 verlinkt sie als `superseded`.

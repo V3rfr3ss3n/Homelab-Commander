@@ -453,6 +453,7 @@ def test_inventory_uses_silent_discovery_without_python_path_assumptions(
     inventory = _inventory(_host(), tmp_path / "known_hosts")
     host_values = inventory["all"]["hosts"][str(_host().id)]  # type: ignore[index]
     assert host_values["ansible_python_interpreter"] == "auto_silent"
+    assert host_values["ansible_ssh_use_tty"] is False
     assert "/usr/bin/python" not in json.dumps(inventory)
 
 
