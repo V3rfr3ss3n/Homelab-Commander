@@ -1,5 +1,5 @@
 name: Homelab Commander Backend
-version: 0.3.0-dev.2
+version: 0.3.0-dev.3
 slug: homelab_updates
 description: Native homelab management backend and UI for Homelab Commander
 url: https://github.com/V3rfr3ss3n/Homelab-Commander

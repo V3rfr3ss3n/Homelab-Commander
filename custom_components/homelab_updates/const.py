@@ -7,7 +7,7 @@ from homeassistant.const import Platform
 
 DOMAIN: Final = "homelab_updates"
 NAME: Final = "Homelab Commander"
-VERSION: Final = "0.3.0-dev.2"
+VERSION: Final = "0.3.0-dev.3"
 
 PLATFORMS: Final = (
     Platform.UPDATE,
