@@ -42,7 +42,7 @@ function hasActiveJobs(){return (state.dashboard?.running_jobs||state.dashboard?
 function stopJobPolling(){if(jobPollTimer!==null)window.clearTimeout(jobPollTimer);jobPollTimer=null;jobPollFailureCount=0}
 function scheduleJobPolling(delay=ACTIVE_JOB_POLL_INTERVAL_MS){if(!connected||!hasActiveJobs()||jobPollTimer!==null||jobPollInFlight)return;jobPollTimer=window.setTimeout(pollJobs,delay)}
 function syncJobPolling(){if(connected&&hasActiveJobs())scheduleJobPolling();else stopJobPolling()}
-function clearProtectedData(){stopJobPolling();stopVisibleChecks();document.querySelectorAll("dialog[open]").forEach(d=>d.close());state={info:null,hosts:[],custom_tasks:[],jobs:[],public_key:""};selectedJobId=null;selectedJobLog=null;for(const id of ["backend-status","job-highlights","dashboard","key","hosts","tasks","jobs","job-metadata","log","notices","history","activity","host-info","host-tasks","host-jobs"])element(id).replaceChildren();element("job-detail").hidden=true;element("protected-content").hidden=true;element("connect-placeholder").hidden=false}
+function clearProtectedData(){clearWebsiteIcons();stopJobPolling();stopVisibleChecks();document.querySelectorAll("dialog[open]").forEach(d=>d.close());state={info:null,hosts:[],custom_tasks:[],jobs:[],public_key:""};selectedJobId=null;selectedJobLog=null;for(const id of ["backend-status","job-highlights","dashboard","key","hosts","tasks","jobs","job-metadata","log","notices","history","activity","host-info","host-tasks","host-jobs"])element(id).replaceChildren();element("job-detail").hidden=true;element("protected-content").hidden=true;element("connect-placeholder").hidden=false}
 function setDisconnected(hint="Enter your API token to load backend data."){connected=false;element("token").value="";element("token").disabled=ingress;clearProtectedData();element("connection-state").className="connection-state";element("connection-label").textContent="Not connected";element("connection-hint").textContent=hint;element("connect").textContent=ingress?"Retry":"Connect";element("disconnect").hidden=true;element("token-field").hidden=ingress}
 function setConnecting(){element("connection-state").className="connection-state connecting";element("connection-label").textContent="Connecting…";element("connection-hint").textContent="Loading backend data."}
 function setConnected(){connected=true;element("token").disabled=true;element("connection-state").className="connection-state connected";element("connection-label").textContent="Connected";element("connection-hint").textContent="Backend data is loaded.";element("protected-content").hidden=false;element("connect-placeholder").hidden=true;element("connect").textContent="Refresh";element("token-field").hidden=true;element("disconnect").hidden=ingress;syncJobPolling();syncVisibleChecks()}
@@ -97,7 +97,37 @@ function timeLabel(value){
   const text=units?new Intl.RelativeTimeFormat(navigator.language,{numeric:"auto"}).format(...units):new Intl.DateTimeFormat(navigator.language,{dateStyle:"medium",timeStyle:"short"}).format(date);
   return `<time datetime="${escapeHtml(value)}" title="${escapeHtml(value)}">${escapeHtml(text)}</time>`;
 }
-function websiteLinks(host){return (host.websites||[]).map(site=>{const url=new URL(site.url);return `<a class="website-icon" href="${escapeHtml(url.href)}" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" title="${escapeHtml(site.name)}" aria-label="Open ${escapeHtml(site.name)}"><span aria-hidden="true">${escapeHtml(site.name.slice(0,1).toUpperCase())}</span><img src="${escapeHtml(url.origin)}/favicon.ico" alt="" loading="lazy" referrerpolicy="no-referrer"></a>`}).join("")}
+// Keep the same image nodes and failure state throughout this authenticated page.
+const websiteIcons=new Map();
+const FAVICON_PATHS=["/favicon.ico","/favicon.svg","/favicon.png","/apple-touch-icon.png","/favicons/favicon-32x32.png"];
+function websiteIconKey(host,site,index){return JSON.stringify([host.id,index,site.url,site.icon_url||""])}
+function websiteLinks(host){return (host.websites||[]).map((site,index)=>`<span data-website-icon="${escapeHtml(websiteIconKey(host,site,index))}"></span>`).join("")}
+function clearWebsiteIcons(hostId=null){
+  for(const [key,entry] of websiteIcons){if(hostId&&entry.hostId!==hostId)continue;entry.cancelled=true;entry.image.removeAttribute("src");websiteIcons.delete(key)}
+}
+function syncWebsiteIcons(visible){
+  const sites=new Map(state.hosts.flatMap(host=>(host.websites||[]).map((site,index)=>[websiteIconKey(host,site,index),{host,site}])));
+  for(const [key,entry] of websiteIcons){if(!sites.has(key)){entry.cancelled=true;entry.image.removeAttribute("src");websiteIcons.delete(key)}}
+  if(!visible)return;
+  for(const placeholder of document.querySelectorAll("[data-website-icon]")){
+    const key=placeholder.dataset.websiteIcon,value=sites.get(key);if(!value)continue;
+    let entry=websiteIcons.get(key);
+    if(!entry){
+      const {host,site}=value,url=new URL(site.url),anchor=document.createElement("a"),initial=document.createElement("span"),image=new Image(18,18);
+      anchor.className="website-icon";anchor.href=url.href;anchor.target="_blank";anchor.rel="noopener noreferrer";anchor.referrerPolicy="no-referrer";anchor.dataset.iconStatus="loading";
+      initial.setAttribute("aria-hidden","true");image.alt="";image.loading="eager";image.referrerPolicy="no-referrer";image.hidden=true;anchor.append(initial,image);
+      entry={hostId:host.id,anchor,initial,image,cancelled:false,index:0,sources:site.icon_url?[site.icon_url]:FAVICON_PATHS.map(path=>new URL(path,url.origin).href)};
+      const current=entry;
+      image.addEventListener("load",()=>{if(current.cancelled)return;image.hidden=false;anchor.dataset.iconStatus="loaded";anchor.title=current.name});
+      image.addEventListener("error",()=>{if(current.cancelled)return;image.hidden=true;if(++current.index<current.sources.length){image.src=current.sources[current.index]}else{anchor.dataset.iconStatus="unavailable";image.removeAttribute("src");anchor.title=current.name+" — Icon unavailable. Check the icon URL, certificate or site access rules. Retry from Edit host."}});
+      websiteIcons.set(key,entry);image.src=entry.sources[0];
+    }
+    entry.name=value.site.name;entry.initial.textContent=value.site.name.slice(0,1).toUpperCase();entry.anchor.setAttribute("aria-label","Open "+value.site.name);
+    entry.anchor.title=value.site.name+(entry.anchor.dataset.iconStatus==="unavailable"?" — Icon unavailable. Check the icon URL, certificate or site access rules. Retry from Edit host.":"");
+    placeholder.replaceWith(entry.anchor);
+  }
+}
+
 function renderBackendStatus(){const online=Boolean(state.info&&!state.unavailable);element("backend-status").className=`backend-status ${online?"online":"offline"}`;element("backend-status").textContent=online?"Backend online":"Backend unavailable"}
 function highlightJob(job,label){
   if(!job)return `<article class="job-highlight"><small>${label}</small><p class="empty">No job yet</p></article>`;
@@ -172,6 +202,7 @@ function render(){
   element("tasks").innerHTML=state.custom_tasks.map(task=>`<div class="row"><span>${escapeHtml(task.name)}<small>${escapeHtml(task.description)} · ${task.enabled?"Enabled":"Globally disabled"} · ${task.host_ids.length} enabled host assignment(s)</small></span><span class="actions"><button data-edit-task="${task.id}">Edit</button><button data-toggle-task="${task.id}">${task.enabled?"Disable globally":"Enable globally"}</button><button class="danger" data-delete-task="${task.id}">Delete</button></span></div>`).join("")||'<p class="empty">No custom tasks yet. Use + to create one.</p>';
   if(page==="host"){element("hosts").replaceChildren();renderHostDetail(route.id)}
   else{element("host-info").replaceChildren();element("host-tasks").replaceChildren();element("host-jobs").replaceChildren()}
+  syncWebsiteIcons(["dashboard","hosts","host"].includes(page));
   renderSelectedJob();
   syncJobPolling();
   syncVisibleChecks();
@@ -214,9 +245,9 @@ function hostStep(step){
   if(step===1)generateSetup();else{setupRequest++;setupCommand="";element("copy-setup").disabled=true}
 }
 function openHostDialog(host=null){
-  editingHost=host;element("host-form").reset();element("host-name").value=host?.name||"";element("host-address").value=host?.address||"";element("host-user").value=host?.username||"automation";element("host-port").value=host?.port||22;element("host-websites").value=(host?.websites||[]).map(site=>`${site.name} | ${site.url}`).join("\n");
+  editingHost=host;element("host-form").reset();element("host-name").value=host?.name||"";element("host-address").value=host?.address||"";element("host-user").value=host?.username||"automation";element("host-port").value=host?.port||22;element("host-websites").value=(host?.websites||[]).map(site=>`${site.name} | ${site.url}${site.icon_url?" | "+site.icon_url:""}`).join("\n");
   element("setup-system").value=host?.distribution?.toLowerCase()==="ubuntu"?"ubuntu":"debian";element("setup-mode").value=host?"update":"create";
-  element("host-delete").dataset.deleteHost=host?.id||"";
+  element("host-delete").dataset.deleteHost=host?.id||"";element("host-retry-icons").hidden=!host;element("website-icon-status").textContent="";
   element("host-dialog-title").textContent=host?"Edit host":"Add host";element("host-form").querySelector("button[type=submit]").textContent=host?"Save host":"Add host";element("address-choice").hidden=true;element("setup-preview").textContent="";hostStep(host?2:0);element("host-dialog").showModal();
 }
 function updateSetupConsent(){const full=element("setup-sudo").value==="full";element("setup-root-warning").hidden=!full;element("setup-root-consent").hidden=!full;element("copy-setup").disabled=!setupCommand||(full&&!element("setup-root-confirm").checked)}
@@ -229,7 +260,7 @@ async function generateSetup(){
   catch(error){if(generation===setupRequest)element("setup-status").textContent="Could not prepare script. Check the username, port and optional source IP/CIDR."}
 }
 
-async function addHost(event){event.preventDefault();const name=element("host-name").value.trim(),address=element("host-address").value.trim(),username=element("host-user").value.trim(),port=Number(element("host-port").value);if(!validHost({name,address,username,port})){element("host-form-error").textContent="Complete all fields with a valid SSH address, user and port.";return}let websites;try{websites=element("host-websites").value.split("\n").filter(line=>line.trim()).map(line=>{const split=line.indexOf("|");if(split<1)throw Error("Use name | https://address for each website.");const name=line.slice(0,split).trim(),url=new URL(line.slice(split+1).trim());if(!["http:","https:"].includes(url.protocol)||url.username||url.password)throw Error("Websites require HTTP(S) URLs without credentials.");return {name,url:url.href}})}catch(error){element("host-form-error").textContent=error.message;return}const result=await mutate(event.submitter,editingHost?`hosts/${editingHost.id}`:"hosts",editingHost?"PATCH":"POST",{name,address,username,port,websites},editingHost?"Host updated":"Host added");if(result){element("host-dialog").close();element("host-form").reset()}else element("host-form-error").textContent=element("message").textContent}
+async function addHost(event){event.preventDefault();const name=element("host-name").value.trim(),address=element("host-address").value.trim(),username=element("host-user").value.trim(),port=Number(element("host-port").value);if(!validHost({name,address,username,port})){element("host-form-error").textContent="Complete all fields with a valid SSH address, user and port.";return}let websites;try{websites=element("host-websites").value.split("\n").filter(line=>line.trim()).map(line=>{const parts=line.split("|").map(value=>value.trim());if(parts.length<2||parts.length>3||!parts[0])throw Error("Use name | website URL | optional icon URL for each website.");const [name,address,icon]=parts,url=new URL(address),iconUrl=icon?new URL(icon):null;for(const value of [url,iconUrl])if(value&&(!["http:","https:"].includes(value.protocol)||value.username||value.password))throw Error("Websites and icons require HTTP(S) URLs without credentials.");return {name,url:url.href,...(iconUrl?{icon_url:iconUrl.href}:{})}})}catch(error){element("host-form-error").textContent=error.message;return}const result=await mutate(event.submitter,editingHost?`hosts/${editingHost.id}`:"hosts",editingHost?"PATCH":"POST",{name,address,username,port,websites},editingHost?"Host updated":"Host added");if(result){element("host-dialog").close();element("host-form").reset()}else element("host-form-error").textContent=element("message").textContent}
 function validHost(h){return typeof h.name==="string"&&h.name.trim().length>0&&h.name.length<=100&&typeof h.address==="string"&&/^[A-Za-z0-9][A-Za-z0-9.:-]{0,254}$/.test(h.address)&&typeof h.username==="string"&&/^[a-z_][a-z0-9_-]{0,31}$/.test(h.username)&&Number.isInteger(h.port)&&h.port>0&&h.port<65536}
 function importHost(event){const text=event.clipboardData?.getData("text")||"";if(!text.includes("HLC_HOST_BEGIN")&&!text.trim().startsWith("{"))return;event.preventDefault();try{if(text.length>16384)throw Error("Import is too large");const match=text.match(/HLC_HOST_BEGIN\s*([\s\S]*?)\s*HLC_HOST_END/);const data=JSON.parse(match?match[1]:text);if(data.format!=="homelab-commander-host"||data.version!==1)throw Error("Unsupported host import format or version");if(!Array.isArray(data.addresses)||data.addresses.length===0||data.addresses.length>64||data.addresses.some(address=>!validHost({...data,address})))throw Error("Invalid host import fields");element("host-name").value=data.name;element("host-user").value=data.username;element("host-port").value=data.port;element("import-address").replaceChildren(...data.addresses.map(address=>new Option(address,address)));element("address-choice").hidden=data.addresses.length===1;element("host-address").value=data.addresses.length===1?data.addresses[0]:"";if(data.addresses.length>1)element("import-address").prepend(new Option("Choose a reachable address","",true,true));element("host-form-error").textContent=data.addresses.length>1?"Choose one of the reported addresses before saving.":""}catch(error){element("host-form-error").textContent=error.message}}
 function openTaskDialog(task=null){editingTask=task;taskTargetHost=view().name==="hosts"?view().id:null;element("task-form").reset();element("task-name").value=task?.name||"";element("task-description").value=task?.description||"";element("task-mode").value=task?.mode||"command";element("task-argv").value=task?.argv?JSON.stringify(task.argv):"";element("task-shell").value=task?.shell_command||"";for(const field of ["distributions","versions","programs","packages"])element(`task-${field}`).value=(task?.requirements?.[field]||[]).join(", ");element("task-sudo").checked=task?.requirements?.requires_sudo||false;element("task-enabled").checked=task?.enabled??true;element("task-form-error").textContent="";element("task-target").textContent=taskTargetHost?"After saving, check compatibility and assign this task to the current host.":"After saving, open a host to check compatibility and assign this task.";element("task-dialog-title").textContent=task?"Edit task":"Create task";element("task-dialog").showModal()}
@@ -264,6 +295,7 @@ async function previewLog(button){
 document.addEventListener("DOMContentLoaded",()=>{
   element("connect-form").addEventListener("submit",connect);element("disconnect").addEventListener("click",disconnect);
   element("host-form").addEventListener("submit",addHost);element("task-form").addEventListener("submit",addTask);
+  element("host-retry-icons").addEventListener("click",()=>{if(!editingHost)return;clearWebsiteIcons(editingHost.id);render();element("website-icon-status").textContent="Retrying saved website icons. Unsaved changes are not used."});
   element("host-system-next").addEventListener("click",()=>hostStep(1));
   element("host-skip-setup").addEventListener("click",()=>hostStep(2));
   element("host-setup-back").addEventListener("click",()=>hostStep(0));
@@ -282,7 +314,6 @@ document.addEventListener("DOMContentLoaded",()=>{
   element("auto-host-checks").addEventListener("change",event=>{stopVisibleChecks();state.preferences={enabled:event.target.checked};return run(event.target,async()=>{state.preferences=await request("preferences/host-checks",{method:"PATCH",body:{enabled:event.target.checked}});stopVisibleChecks();render()},"Host check preference saved")});
   document.addEventListener("visibilitychange",syncVisibleChecks);
   element("log-preview-link").addEventListener("click",()=>element("log-preview").close());
-  document.addEventListener("error",event=>{if(event.target.matches?.(".website-icon img"))event.target.hidden=true},true);
   window.addEventListener("hashchange",()=>{if(connected)run(null,async()=>{await loadView();render();await loadJobRoute()})});initialize();
 });
 window.addEventListener("pagehide",()=>{stopJobPolling();stopVisibleChecks()});
