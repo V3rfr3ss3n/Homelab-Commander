@@ -17,7 +17,7 @@ Compatibility identifiers, authentication and `/api/v1` remain unchanged.
 
 ## Automated preparation evidence
 
-`UV_NO_SYNC=1 make release-check` passed: 367 tests, independent 98.43% line and
+`UV_NO_SYNC=1 make release-check` passed: 368 tests, independent 98.43% line and
 95.89% branch coverage, formatting/lint/strict types/docs/audit/privacy and release
 metadata checks. Initial version-pin assertions still expected dev.2; they were
 updated to dev.3 before the full successful rerun, without weakening any gate.
@@ -43,3 +43,14 @@ A full fresh HA OS/Supervisor installation walkthrough remains manual acceptance
 this development candidate does not claim that production-install milestone.
 No automatic rollback or new backup mechanism is introduced. Older binaries may
 not understand saved icon overrides; normal backup/recovery guidance still applies.
+
+
+## CI teardown follow-up
+
+A redundant retarget pipeline exposed a pinned Uvicorn H11 timer leak when a
+browser connection resets: `connection_lost(exc)` does not cancel keep-alive for
+non-null exceptions. A direct synthetic protocol regression reproduced it before
+fixing the isolated browser-server subclass to always cancel its owned timer in
+`finally`. Normal protocol handling remains delegated to Uvicorn. No production
+runtime patch, timer-check suppression or arbitrary sleep is introduced. The full
+release gate is rerun with that regression and all browser tests.
