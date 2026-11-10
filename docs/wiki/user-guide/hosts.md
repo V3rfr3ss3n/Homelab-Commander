@@ -1,7 +1,7 @@
 ---
 title: Host onboarding
 status: active
-updated: 2026-11-09
+updated: 2026-11-10
 tags: [wiki, user-guide]
 ---
 
@@ -62,6 +62,12 @@ than package maintenance. Key restrictions disable forwarding and interactive
 terminals by default; an optional IP/CIDR restricts that key's source, not the
 firewall. Verify that the source matches what the target sees.
 
+Open **Hosts → Details → Edit host**. The management actions at the top of the
+dialog include **Update SSH user setup** and **Remove host**, before the connection
+fields. Updating user setup does not submit the connection form; unsaved connection
+values remain available when returning from setup. **Copy script** copies the visible
+preview and confirms success inside the dialog.
+
 **Edit host → Update SSH user setup** generates a script for an existing account.
 Update mode applies the selected shell, replaces restrictions on this backend key
 without duplicating it, and creates or removes only its own managed sudoers file.
@@ -91,3 +97,14 @@ host and open in a separate tab. The browser loads the site's origin favicon wit
 sending a referrer; an unavailable icon falls back to the site's initial. The backend
 never fetches website content or icons. Adding a site lets your browser contact that
 site when its icon is displayed; avoid putting credentials in links.
+
+
+## Remove a host
+
+Open **Hosts → Details → Remove host**, or use **Remove host** at the top of
+**Edit host**. Confirm the named host to remove its inventory entry and task
+assignments. The UI closes the edit dialog and returns to Hosts; it does not reload
+the removed host's detail endpoints. Cancelling keeps the host and view unchanged;
+a failed request keeps the host available and shows an error (inside Edit host if
+open). Removal does not delete the remote user, revoke its installed SSH key or run
+an SSH command. Review remote access separately when retiring a host.

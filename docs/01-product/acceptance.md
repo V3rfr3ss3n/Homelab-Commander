@@ -194,3 +194,16 @@ tags: [product, acceptance, release]
   firewall/sshd. Key source and forwarding restrictions are configurable.
 - Changed choices invalidate previews; one click copies the rendered script. The
   existing marked v1 JSON import and multiple-address selection remain compatible.
+
+
+## Host management actions acceptance
+
+- Removing a host from details or the top of Edit host identifies the host in an
+  explicit confirmation. Success returns to Hosts before refreshing, closes any
+  host dialog and never requests the removed host's detail endpoints again.
+- Cancellation/error preserves the current host/view; errors in an open edit
+  dialog are shown there. Removal is inventory-only and revokes no remote access.
+- Existing-user setup is visible above Edit host connection fields. Users can
+  configure/copy an update script without submitting or completing those fields;
+  unsaved values survive setup navigation. Copy feedback is visible in the dialog.
+- Mobile standalone and nested Ingress regressions cover both management paths.
