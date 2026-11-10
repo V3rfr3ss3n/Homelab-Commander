@@ -1,7 +1,7 @@
 ---
 title: Backup, recovery and removal
 status: active
-updated: 2026-10-31
+updated: 2026-11-10
 tags: [wiki, user-guide]
 ---
 
@@ -26,6 +26,14 @@ Verify health and inventory before deliberately testing a host. A backend restar
 invalidates standalone UI sessions; sign in again. Interrupted running jobs are
 requeued on startup, so review job state and recovery behavior before restarting
 a deployment with in-flight operations.
+
+## Remove one managed host
+
+Use **Hosts → Details → Remove host** or the same action at the top of **Edit host**.
+Confirm the displayed host name. This removes the inventory entry and task
+assignments, then returns to the host list. It does not delete the SSH account or
+revoke the public key installed on that host. No remote command is executed by
+removal; revoke access separately if needed. Cancelling does not change anything.
 
 ## Remove components
 

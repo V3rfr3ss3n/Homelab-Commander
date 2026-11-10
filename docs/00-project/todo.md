@@ -18,6 +18,10 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## Weitere Änderungen zur Review
 
+- [x] Hostentfernung navigiert vor dem Refresh aus gelöschten Details; Edit host
+  zeigt Benutzer-Setup/Entfernen oberhalb der Felder. Abhängig vom offenen !26.
+  Prüfstand: [Hostverwaltung](../05-reviews/2026-11-10-host-management-review.md).
+
 - [x] Geführte Host-Einrichtung mit konfigurierbaren Benutzer-/Key-/sudo-Skripten
   und Updatepfad sowie persistente Bestätigung fehlgeschlagener Jobs umgesetzt.
   Entscheidung: [ADR-0014](../02-architecture/adr/0014-guided-setup-and-failure-review.md).

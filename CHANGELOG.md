@@ -5,6 +5,12 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- Return to the host list after removal without reloading a deleted host's details.
+- Expose removal and existing-user setup above Edit host connection fields, with
+  in-dialog copy/error feedback and explicit inventory-only removal confirmation.
+
 ### Added
 
 - Persistent **Mark as reviewed** for failed-job notices, keeping outcomes and logs.
