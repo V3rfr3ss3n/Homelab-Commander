@@ -1,7 +1,7 @@
 ---
 title: Host onboarding
 status: active
-updated: 2026-11-10
+updated: 2026-11-11
 tags: [wiki, user-guide]
 ---
 
@@ -42,6 +42,26 @@ missing temporarily from status becomes unavailable rather than immediately
 being deleted from the registry.
 
 Next: [updates and jobs](updates-and-jobs.md).
+
+## Inspect and maintain a host
+
+Host rows show the stored distribution with an inline OS icon. Hosts with known
+pending updates have a subtle accent; security updates have their own count. A
+positive **Restart required** flag is prominent. There is no routine "reboot not
+required" text. Unchecked hosts retain an explicit unknown status.
+
+Open **Details** for a host workspace with system/version/kernel and package-provider
+facts, SSH endpoint and user, last-check freshness, task assignment/readiness counts,
+recent jobs and inventory dates. Links open this host's jobs and task configuration.
+Connection testing, checking updates, updating, rebooting, editing and removing remain
+explicit actions. **Copy address** copies only the configured address. The workspace
+shows existing backend facts; it does not infer hardware capacity or virtualization
+type. A **PVE kernel** marker refers to the reported kernel, not proof of the host's
+virtualization role. Icons do not fetch external logos.
+
+On Dashboard, the compact host list sits below Important notices in the right-hand
+column, even when no notices are active. On narrow screens the column follows the
+job history. The full Hosts tab keeps search, status filters and sorting.
 
 ## Guided setup and paste import
 

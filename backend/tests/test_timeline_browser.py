@@ -151,6 +151,7 @@ async def test_timeline_group_opens_exact_table_window(
                 )
             )["count"] == 0
             await page.locator("#update-shown").click()
+            await page.locator("#confirm-ack").check()
             await page.locator("#confirm-accept").click()
             await expect(page.locator("#message-text")).to_have_text("Updates queued")
             assert (
