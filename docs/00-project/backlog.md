@@ -1,7 +1,7 @@
 ---
 title: Backlog
 status: active
-updated: 2026-10-31
+updated: 2026-11-11
 tags: [project, backlog]
 ---
 
@@ -16,7 +16,7 @@ und eine Privacy-Prüfung.
 - [ ] Auswahl oder getrennte Panel-Pfade für mehrere gleichzeitig geladene
   Native-Config-Entries bewerten; `0.2` übergibt das globale Panel beim Unload
   an den nächsten geladenen Eintrag
-- [ ] letzter Command-Status und Laufzeit je Host
+- [x] letzter Command-Status und Laufzeit je Host im dev.4-Host-Workspace
 - [ ] Security-only Update als optionale Backend-Capability
 - [ ] Paketliste mit begrenzter, datenschutzfreundlicher Darstellung
 - [ ] Reparaturhinweise über Home Assistant Repairs
@@ -26,10 +26,8 @@ und eine Privacy-Prüfung.
 
 ## Backends
 
-- [ ] automatische Supervisor-interne App-Adressierung über einen begrenzten
-  Discovery-/Config-Flow-Handoff bewerten; bis dahin wird der installierte
-  `<repository-id>_homelab_updates`-Identifier manuell ermittelt und als interner
-  DNS-Name verwendet, ohne einen Repository-Hash fest zu codieren
+- [x] automatische lokale App-Erkennung im Native Config Flow umgesetzt; der
+  reale Supervisor-Installations-/Upgradepfad bleibt unter T-032 abzunehmen
 - [ ] kontrollierbares Job-Cancelling mit persistentem Zustand ergänzen
 - [ ] Custom-Task-Policy um Become, Timeout, Bestätigung und optionale
   Host-/Gruppenfreigaben erweitern

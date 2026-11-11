@@ -90,8 +90,22 @@ backup/recovery strategy; older binaries may not parse stored custom icon overri
 
 ## 0.3.0-dev.4 candidate (unpublished)
 
-The next candidate includes the timestamp job timeline, compact list controls and
-explicit update of eligible displayed hosts. Its version is bumped separately from
-dev.3 so the Backend App can present an actual upgrade after the image is published.
-Source alignment is checked in CI. Publication and an isolated Supervisor Store
-upgrade from dev.3 remain open; this source branch is not an installable release.
+This candidate combines the timestamp timeline, job inspection/log tools, host
+workspace, consistent action/system icons, compact filter reset and overlay
+notifications. Active host guards and scoped counts cover all queued/running jobs,
+including those outside recent history. **Update all** includes every eligible
+host across the inventory, even when filters hide some targets; confirmation lists
+the targets and requires maintenance/restart-review acknowledgement. Reboots remain
+separate explicit actions.
+
+The integration advertises update progress throughout queued/running jobs and
+refreshes status at completion. Update the Backend App and integration separately,
+then reload the integration and browser UI. Existing data/identities remain intact;
+there is no new schema migration or production dependency for this candidate.
+
+Source versions are aligned to dev.4. The combined revision still requires green
+quality, HA/HACS, security and native multi-architecture gates. An actual isolated
+dev.3 image upgrade and Supervisor Store discovery/one-button upgrade must pass
+before release acceptance. A timeout or missing `version_latest` is a blocker.
+See the [candidate evidence](../../05-reviews/2026-11-11-dev4-stabilization.md) for
+completed checks and remaining limits; individual MR runs are not release evidence.

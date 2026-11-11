@@ -1,7 +1,7 @@
 ---
 title: TODO
 status: active
-updated: 2026-10-31
+updated: 2026-11-11
 tags: [project, todo]
 ---
 
@@ -17,6 +17,10 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
   den App-Store-Upgrade von dev.3 auf dev.4 mit erhaltener `/data` und
   automatischer lokaler App-Erkennung bestätigen. Ein Store-Timeout oder
   `version_latest` auf dev.3 bleibt ein offener Release-Blocker.
+
+- [x] dev.4-Stabilisierung: explizite Browser-Lokalisierung und vollständige aktive
+  Jobseiten für Hostzähler/Aktionssperren; gemeinsamer Stand aus !30–!33.
+  Prüfungen und offene Release-Gates: [dev.4-Nachweis](../05-reviews/2026-11-11-dev4-stabilization.md).
 
 ## Weitere Änderungen zur Review
 
