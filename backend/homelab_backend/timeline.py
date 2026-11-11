@@ -6,7 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 from .database import Database
-from .jobs import JOB_TIME, JobRepository, job_filter
+from .jobs import JOB_TIME, NEEDS_REVIEW, JobRepository, job_filter
 from .models import Job, JobAction, JobState
 
 
@@ -17,6 +17,7 @@ class TimelinePoint(BaseModel):
     timestamp: datetime
     counts: dict[JobState, int]
     total: int
+    review_required: int
     jobs: tuple[Job, ...]
 
 
@@ -56,14 +57,19 @@ class TimelineService:
         rows = await self._database.async_fetch_all(
             f"SELECT CAST((unixepoch({JOB_TIME}, 'subsec') - ?) / ? AS INTEGER) "
             f"AS bucket, jobs.state, COUNT(*) AS count, "
+            f"SUM({NEEDS_REVIEW}) AS review_required, "
             f"AVG(unixepoch({JOB_TIME}, 'subsec')) AS timestamp "
             f"FROM jobs{clause} GROUP BY bucket,jobs.state ORDER BY bucket",
             (start.timestamp(), width, *parameters),
         )
         grouped: dict[int, dict[JobState, int]] = {}
         timestamps: dict[int, float] = {}
+        review_counts: dict[int, int] = {}
         for row in rows:
             bucket = row["bucket"]
+            review_counts[bucket] = (
+                review_counts.get(bucket, 0) + row["review_required"]
+            )
             grouped.setdefault(bucket, {})[JobState(row["state"])] = row["count"]
             timestamps[bucket] = timestamps.get(bucket, 0.0) + (
                 row["timestamp"] * row["count"]
@@ -80,6 +86,7 @@ class TimelineService:
                     timestamp=datetime.fromtimestamp(timestamps[bucket] / total, UTC),
                     counts=counts,
                     total=total,
+                    review_required=review_counts[bucket],
                     jobs=await self._jobs.async_list(
                         start=first,
                         end=last,

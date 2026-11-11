@@ -21,12 +21,20 @@ from .task_compatibility import TaskCompatibilityService
 MAX_JOB_LOG_BYTES = 64 * 1024
 _MUTATING_ACTIONS = frozenset({JobAction.UPDATE, JobAction.REBOOT})
 JOB_TIME = "COALESCE(jobs.finished_at,jobs.started_at,jobs.created_at)"
+NEEDS_REVIEW = (
+    "(jobs.state='failed' AND jobs.reviewed_at IS NULL "
+    "AND NOT EXISTS(SELECT 1 FROM jobs later WHERE later.state='success' "
+    "AND later.host_id IS jobs.host_id AND later.action=jobs.action "
+    "AND later.custom_task_id IS jobs.custom_task_id "
+    "AND later.created_at>jobs.created_at))"
+)
 JobSort = Literal["newest", "oldest", "host", "action", "state"]
 
 _SELECT = (
     "SELECT jobs.id, jobs.action, jobs.host_id, hosts.name AS host_name, jobs.state, "
     "jobs.created_at, jobs.started_at, jobs.finished_at, jobs.exit_code, "
     "jobs.error_code, jobs.reboot_required, jobs.custom_task_id, jobs.reviewed_at, "
+    f"{NEEDS_REVIEW} AS needs_review, "
     "EXISTS(SELECT 1 FROM job_logs WHERE job_logs.job_id = jobs.id) "
     "AS log_available FROM jobs LEFT JOIN hosts ON hosts.id = jobs.host_id"
 )
@@ -123,13 +131,8 @@ class JobRepository:
 
     async def async_unresolved_failure(self) -> Job | None:
         row = await self._database.async_fetch_one(
-            "SELECT failed.id FROM jobs failed WHERE failed.state='failed' "
-            "AND failed.reviewed_at IS NULL "
-            "AND NOT EXISTS(SELECT 1 FROM jobs later WHERE later.state='success' "
-            "AND later.host_id IS failed.host_id AND later.action=failed.action "
-            "AND later.custom_task_id IS failed.custom_task_id "
-            "AND later.created_at>failed.created_at) ORDER BY "
-            "failed.created_at DESC LIMIT 1"
+            f"SELECT jobs.id FROM jobs WHERE {NEEDS_REVIEW} "
+            "ORDER BY jobs.created_at DESC LIMIT 1"
         )
         return await self.async_get(UUID(row["id"])) if row else None
 
@@ -433,6 +436,7 @@ def _job_from_row(row: sqlite3.Row) -> Job:
         exit_code=row["exit_code"],
         error_code=row["error_code"],
         log_available=bool(row["log_available"]),
+        needs_review=bool(row["needs_review"]),
         reviewed_at=(
             datetime.fromisoformat(row["reviewed_at"])
             if row["reviewed_at"] is not None

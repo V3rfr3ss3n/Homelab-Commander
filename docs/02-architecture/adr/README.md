@@ -30,6 +30,8 @@ tags: [architecture, adr, index]
 
 | [[0016-timestamp-job-timeline]] | accepted | Zeitgenauer Jobverlauf und gefilterte Verwaltungslisten |
 
+| [[0017-timeline-review-attention]] | accepted | Rote Timeline-Punkte nur bei offener Fehlerprüfung |
+
 Neue ADRs verwenden [[../../templates/adr-template|die ADR-Vorlage]]. Akzeptierte
 ADRs werden nicht rückwirkend umgeschrieben; eine neue ADR ersetzt die alte und
 verlinkt sie als `superseded`.

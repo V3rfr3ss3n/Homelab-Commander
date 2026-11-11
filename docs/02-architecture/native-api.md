@@ -160,3 +160,8 @@ credentials. It is stored in existing website JSON and returned when set; absent
 or null values retain the legacy `{name,url}` serialized shape. No image is fetched
 by the backend. It may reference another explicitly operator-selected origin.
 See [ADR-0015](adr/0015-stable-website-icons.md).
+
+Job responses include additive `needs_review`: an unreviewed failure without a
+later successful job matching host, action and custom task. Timeline points include
+`review_required`, counted across the complete bucket rather than just previews.
+These values share the dashboard notice predicate and do not alter stored outcomes.

@@ -1,7 +1,7 @@
 ---
 title: Updates and jobs
 status: active
-updated: 2026-11-09
+updated: 2026-11-11
 tags: [wiki, user-guide]
 ---
 
@@ -124,5 +124,9 @@ Follow **Review the job** from Important notices, inspect the log, then select
 this backend and persists across reloads/restarts. It removes that job from notice
 selection without deleting history, changing failure status or retrying work.
 Older unreviewed failures can then appear; new failures always need their own
-review. The last-failed-job highlight remains historical. Security, reboot and
+review. Timeline points and group previews are red only while a failed job still needs
+review. Reviewed failures and failures resolved by a later successful matching job
+use a neutral point color; their recorded outcome and the historical failure curve
+remain unchanged. A group is red if any matching job needs review, including jobs
+beyond the six previews. The last-failed-job highlight remains historical. Security, reboot and
 stale-host notices still reflect host state and are not dismissed by job review.

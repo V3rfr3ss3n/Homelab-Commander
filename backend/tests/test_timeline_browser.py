@@ -78,7 +78,7 @@ async def test_timeline_group_opens_exact_table_window(
                 "VALUES(?,?,?,?,?,?)",
                 (
                     str(uuid4()),
-                    "test_connection",
+                    "check_updates" if index == 3 else "test_connection",
                     str(first.id),
                     "failed" if index == 1 else "success",
                     when.isoformat(),
@@ -113,6 +113,9 @@ async def test_timeline_group_opens_exact_table_window(
             group = page.locator("#history a[data-point]").first
             assert await group.get_attribute("data-anchor-state") == "success"
             assert await group.get_attribute("data-anchor-count") == "2"
+            await expect(group.locator("circle")).to_have_css(
+                "fill", "rgb(237, 140, 152)"
+            )
             await group.hover(force=True)
             await expect(page.locator("#history-popover .orbit-job")).to_have_count(3)
             await page.locator("#history-popover .orbit-center").evaluate(

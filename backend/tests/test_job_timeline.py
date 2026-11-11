@@ -55,6 +55,34 @@ async def test_timestamp_buckets_match_bounded_table_and_full_count(
     assert first <= timeline.points[0].timestamp <= first + timedelta(minutes=1)
     assert second <= timeline.points[1].timestamp <= second + timedelta(minutes=1)
     assert sum(point.total for point in timeline.points) == 150
+    assert [point.review_required for point in timeline.points] == [0, 15]
+    assert all(
+        job.needs_review == (job.state == "failed") for job in timeline.points[1].jobs
+    )
+    await database.async_execute("UPDATE jobs SET reviewed_at=?", (end.isoformat(),))
+    reviewed = await TimelineService(database, JobRepository(database)).async_read(
+        start, end, bins=24
+    )
+    assert all(point.review_required == 0 for point in reviewed.points)
+    assert all(not job.needs_review for point in reviewed.points for job in point.jobs)
+    await database.async_execute("UPDATE jobs SET reviewed_at=NULL")
+    await database.async_execute(
+        "INSERT INTO jobs(id,action,host_id,state,created_at,finished_at) "
+        "VALUES(?,?,?,?,?,?)",
+        (
+            str(uuid4()),
+            "check_updates",
+            str(host.id),
+            "success",
+            end.isoformat(),
+            end.isoformat(),
+        ),
+    )
+    resolved = await TimelineService(database, JobRepository(database)).async_read(
+        start, end, bins=24
+    )
+    assert all(point.review_required == 0 for point in resolved.points)
+    assert all(not job.needs_review for point in resolved.points for job in point.jobs)
     for point in timeline.points:
         assert (
             await JobRepository(database).async_count(
