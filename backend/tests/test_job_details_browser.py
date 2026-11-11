@@ -1,5 +1,6 @@
 """Job inspection, redacted log tools and deliberate reruns in both UI modes."""
 
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -63,7 +64,9 @@ async def test_job_workspace_log_tools_and_confirmed_rerun(
             error_code="sudo_unavailable",
         )
         browser = await api.chromium.launch()
-        context = await browser.new_context(viewport={"width": 1440, "height": 1050})
+        context = await browser.new_context(
+            viewport={"width": 1440, "height": 1050}, timezone_id="UTC"
+        )
         await context.grant_permissions(
             ["clipboard-read", "clipboard-write"], origin=base
         )
@@ -75,6 +78,14 @@ async def test_job_workspace_log_tools_and_confirmed_rerun(
             await page.locator("#token").fill(TOKEN)
             await page.locator("#connect").click()
         await _wait_for_connection(page)
+        await expect(page.locator("#job-metadata h2")).to_have_text(
+            "Connection test · Node 01"
+        )
+        assert await page.locator(".job-workspace-toolbar #copy-job-log").count() == 1
+        assert (
+            await page.locator(".job-workspace-toolbar #download-job-log").count() == 1
+        )
+        await expect(page.locator("#review-job")).to_be_visible()
         await expect(page.locator("#job-result")).to_contain_text(
             "Non-interactive sudo"
         )
@@ -231,7 +242,7 @@ async def test_custom_task_name_and_missing_assignment_block_rerun(
         await page.goto(base + f"/nested/task-job/#/jobs/{job.id}")
         await _wait_for_connection(page)
         await expect(page.locator("#job-metadata h2")).to_have_text(
-            "Inspect service health"
+            "Inspect service health · Node 01"
         )
         await expect(page.locator("#rerun-job")).to_be_disabled()
         await expect(page.locator("#job-rerun-note")).to_contain_text("assignment")
@@ -242,4 +253,69 @@ async def test_custom_task_name_and_missing_assignment_block_rerun(
         await page.screenshot(
             path="/tmp/commander-job-details-success.png", full_page=True
         )
+        await browser.close()
+
+
+async def test_job_duration_units_and_precise_lifecycle_times(
+    tmp_path: Path, socket_enabled: None
+) -> None:
+    settings = Settings(data_dir=tmp_path, api_token=TOKEN, ingress_mode=True)
+    app = create_app(
+        settings,
+        executor=FakeExecutor(),
+        ingress_proxy_addresses=frozenset({"supervisor-proxy"}),
+    )
+    async with (
+        _live_server(_PrefixProxy(app, "/nested/timing")) as base,
+        async_playwright() as api,
+    ):
+        database = Database(settings.database_path)
+        host = await HostRepository(database).async_create(
+            HostCreate(
+                name="Node 01", address="node-01.example.invalid", username="automation"
+            )
+        )
+        await database.async_execute("UPDATE ui_preferences SET auto_check_enabled=0")
+        jobs = JobRepository(database)
+        job = await jobs.async_create(JobAction.CHECK_UPDATES, host.id)
+        await jobs.async_finish(
+            job.id,
+            state=JobState.SUCCESS,
+            output="Synthetic output",
+            truncated=False,
+            exit_code=0,
+        )
+        browser = await api.chromium.launch()
+        page = await browser.new_page(timezone_id="UTC")
+        start = datetime(2026, 11, 11, 10, 0, 0, 123000, tzinfo=UTC)
+        for index, (seconds, expected) in enumerate([
+            (0.0002, "<1 ms"),
+            (0.0087, "8.7 ms"),
+            (1.234, "1.23 s"),
+            (62.125, "1 min 2 s"),
+            (3601, "1 h 0 min 1 s"),
+        ]):
+            await database.async_execute(
+                "UPDATE jobs SET created_at=?,started_at=?,finished_at=? WHERE id=?",
+                (
+                    (start - timedelta(milliseconds=20)).isoformat(),
+                    start.isoformat(),
+                    (start + timedelta(seconds=seconds)).isoformat(),
+                    str(job.id),
+                ),
+            )
+            if index == 0:
+                await page.goto(base + f"/nested/timing/#/jobs/{job.id}")
+                await _wait_for_connection(page)
+            else:
+                await page.locator("#refresh-job").click()
+            await expect(page.locator("#job-duration")).to_have_text(expected)
+            await expect(page.locator("#job-timeline li").nth(1)).to_contain_text(
+                "10:00:00.123"
+            )
+            await expect(page.locator("#job-timeline li").nth(1)).to_contain_text("UTC")
+            await expect(page.locator("#review-job")).to_be_hidden()
+            await expect(page.locator("#job-metadata h2")).to_have_text(
+                "Check for updates · Node 01"
+            )
         await browser.close()

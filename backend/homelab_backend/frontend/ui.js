@@ -360,7 +360,25 @@ async function loadView(){
 }
 
 function routeJobId(){const match=location.hash.match(/^#\/jobs\/([0-9a-f-]{36})$/i);return match?match[1].toLowerCase():null}
-function formatDuration(value){if(typeof value!=="number")return "Not available";return value<60?`${value.toFixed(1)} seconds`:`${Math.floor(value/60)} min ${Math.round(value%60)} sec`}
+function formatDuration(value){
+  if(typeof value!=="number"||!Number.isFinite(value)||value<0)return "Not available";
+  const ms=Math.round(value*1000),number=(value,digits)=>new Intl.NumberFormat(navigator.language,{maximumFractionDigits:digits}).format(value);
+  if(value>0&&value<0.001)return "<1 ms";
+  if(ms<1000)return `${number(value*1000,1)} ms`;
+  if(Math.round(value*100)/100<60)return `${number(ms/1000,2)} s`;
+  const seconds=Math.round(ms/1000),minutes=Math.floor(seconds/60),hours=Math.floor(minutes/60);
+  return hours?`${hours} h ${minutes%60} min ${seconds%60} s`:`${minutes} min ${seconds%60} s`;
+}
+function jobTimeLabel(value){
+  const date=new Date(value);if(Number.isNaN(date.getTime()))return "Not recorded";
+  const clock=new Intl.DateTimeFormat(navigator.language,{hour:"2-digit",minute:"2-digit",second:"2-digit",fractionalSecondDigits:3,timeZoneName:"short",hourCycle:"h23"}).format(date);
+  const day=new Intl.DateTimeFormat(navigator.language,{dateStyle:"medium"}).format(date);
+  return `<time datetime="${escapeHtml(value)}" title="${escapeHtml(value)}"><span class="job-clock">${escapeHtml(clock)}</span><span class="job-date">${escapeHtml(day)}</span></time>`;
+}
+function buttonIcon(name){
+  const paths={copy:'<rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>',download:'<path d="M12 3v12m-5-5 5 5 5-5M4 16v4h16v-4"/>',refresh:'<path d="M20 7v5h-5M4 17v-5h5M5 8a8 8 0 0 1 13-3l2 2M4 17l2 2a8 8 0 0 0 13-3"/>',run:'<path d="m8 5 11 7-11 7Z"/>',review:'<path d="m5 12 4 4L19 6"/>'};
+  return `<svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${paths[name]||""}</svg>`;
+}
 function jobRerunReason(job){
   if(ACTIVE_JOB_STATES.has(job.state))return "Wait for this job to finish.";
   if(!state.hosts.some(host=>host.id===job.host_id))return "The original host is no longer available.";
@@ -375,16 +393,17 @@ function renderSelectedJob(){
   const detail=element("job-detail");detail.hidden=!selectedJobId;
   if(!selectedJobId)return;
   const job=selectedJob;
-  if(!job){element("job-rerun-note").hidden=true;element("job-metadata").innerHTML=`<h2>Job details</h2><p class="${selectedJobError?"error":"sub"}">${escapeHtml(selectedJobError||"Loading job…")}</p>`;element("log").textContent="";element("job-log-note").textContent=selectedJobError?"Job output is unavailable.":"Loading job…";for(const id of ["rerun-job","copy-job-log","download-job-log"])element(id).disabled=true;return}
+  if(!job){element("review-job").hidden=true;element("job-rerun-note").hidden=true;element("job-metadata").innerHTML=`<h2>${selectedJobError?"Job unavailable":"Loading job…"}</h2><p class="${selectedJobError?"error":"sub"}">${escapeHtml(selectedJobError||"Loading job…")}</p>`;element("log").textContent="";element("job-log-note").textContent=selectedJobError?"Job output is unavailable.":"Loading job…";for(const id of ["rerun-job","copy-job-log","download-job-log"])element(id).disabled=true;return}
   const task=state.custom_tasks.find(item=>item.id===job.custom_task_id),host=state.hosts.find(item=>item.id===job.host_id);
   const title=task?.name||actionName(job.action),active=ACTIVE_JOB_STATES.has(job.state);
-  const outcome=job.state==="success"?"Completed successfully":job.state==="failed"?(job.reviewed_at?"Failure reviewed":job.needs_review?"This job needs attention":"Failure resolved by a later run"):job.state==="cancelled"?"Job cancelled":job.state==="running"?"Work is in progress":"Waiting for a worker";
+  const outcome=job.state==="success"?"Completed successfully":job.state==="failed"?(job.reviewed_at?"Reviewed failure":job.needs_review?"This job needs attention":"Failure resolved by a later run"):job.state==="cancelled"?"Job cancelled":job.state==="running"?"Work is in progress":"Waiting for a worker";
   const explanation=job.short_error||(job.error_code?jobError(job.error_code):job.state==="success"?"The command completed. Check the output below for its results.":job.state==="running"?"Status updates automatically while this job is active. Output is available after completion.":job.state==="queued"?"The backend will start this job when the host and a worker are available.":job.state==="cancelled"?"This job stopped before completing.":"Inspect the redacted log before deciding what to do next.");
   const elapsed=job.duration??(active&&job.started_at?Math.max(0,(Date.now()-Date.parse(job.started_at))/1000):null);
   const duration=elapsed===null?(active?"Not started":"Not recorded"):formatDuration(elapsed);
-  const review=job.state!=="failed"?"Not required":job.reviewed_at?`Reviewed ${timeLabel(job.reviewed_at)}`:job.needs_review?`<button type="button" data-review-job="${job.id}">Mark as reviewed</button>`:"Resolved by a later successful job";
   const steps=[["Queued",job.created_at],["Started",job.started_at],[active?"Finished":job.state==="failed"?"Failed":job.state==="cancelled"?"Cancelled":"Finished",job.finished_at]];
-  element("job-metadata").innerHTML=`<div class="job-hero"><div><p class="eyebrow">Job details · <span class="mono">${escapeHtml(job.id.slice(0,8))}</span></p><h2>${escapeHtml(title)}</h2><p class="sub">${escapeHtml(job.host_name||"Host unavailable")} · ${escapeHtml(actionName(job.action))}</p></div><span id="job-state-badge" class="job-state-badge state-${job.state}">${escapeHtml(job.state)}</span></div><div id="job-result" class="job-result state-${job.state}" role="status"><strong>${outcome}</strong><p>${escapeHtml(explanation)}</p>${job.reboot_required?'<p>A restart is required. Open the host to review and confirm it separately.</p>':""}${selectedJobError?`<p class="error">Could not refresh: ${escapeHtml(selectedJobError)}</p>`:""}</div><div class="job-facts"><div><small>${active&&job.started_at?"Running time":"Duration"}</small><strong>${duration}</strong></div><div><small>Exit code</small><strong>${job.exit_code??(active?"Pending":"Not recorded")}</strong></div><div><small>Review</small><span>${review}</span></div></div><ol id="job-timeline" class="job-timeline">${steps.map(([label,time])=>`<li class="${time?"complete":"pending"}"><strong>${label}</strong><span>${time?timeLabel(time):active?"Not yet":"Not recorded"}</span></li>`).join("")}</ol><div class="job-related">${host?`<a id="job-host-link" href="#/hosts/${host.id}">Open host →</a><a href="#/jobs?host_id=${host.id}">Host job history →</a>`:'<span class="sub">Original host no longer available</span>'}${job.custom_task_id&&host?`<a href="#/tasks?host_id=${host.id}">Review host tasks →</a>`:""}</div><details class="technical-details"><summary>Technical details and identifiers</summary><dl class="job-identifiers"><dt>Job ID</dt><dd class="mono">${escapeHtml(job.job_id||job.id)}</dd><dt>Error code</dt><dd>${escapeHtml(job.error_code||"None")}</dd></dl><pre>${escapeHtml(JSON.stringify(job,null,2))}</pre></details>`;
+  const description=[outcome,job.state==="failed"?explanation:"",job.reboot_required?"A restart is required; review and confirm it on the host.":""].filter(Boolean).join(". ");
+  element("job-metadata").innerHTML=`<div class="job-hero"><div><h2>${escapeHtml(title)} <span class="job-title-host">· ${escapeHtml(job.host_name||"Host unavailable")}</span></h2><p id="job-result" class="job-description state-${job.state}" role="status">${escapeHtml(description)}${selectedJobError?`<span class="error"> · Could not refresh: ${escapeHtml(selectedJobError)}</span>`:""}</p></div><span id="job-state-badge" class="job-state-badge state-${job.state}">${escapeHtml(job.state)}</span></div><div class="job-facts"><div><small>${active&&job.started_at?"Running time":"Duration"}</small><strong id="job-duration">${duration}</strong></div><div><small>Exit code</small><strong>${job.exit_code??(active?"Pending":"Not recorded")}</strong></div></div><ol id="job-timeline" class="job-timeline">${steps.map(([label,time])=>`<li class="${time?"complete":"pending"}"><strong>${label}</strong><span>${time?jobTimeLabel(time):active?"Not yet":"Not recorded"}</span></li>`).join("")}</ol><div class="job-related">${host?`<a id="job-host-link" href="#/hosts/${host.id}">Open host →</a><a href="#/jobs?host_id=${host.id}">Host job history →</a>`:'<span class="sub">Original host no longer available</span>'}${job.custom_task_id&&host?`<a href="#/tasks?host_id=${host.id}">Review host tasks →</a>`:""}</div><details class="technical-details"><summary>Technical details and identifiers</summary><dl class="job-identifiers"><dt>Job ID</dt><dd class="mono">${escapeHtml(job.job_id||job.id)}</dd><dt>Action</dt><dd>${escapeHtml(actionName(job.action))}</dd><dt>Error code</dt><dd>${escapeHtml(job.error_code||"None")}</dd>${job.reviewed_at?`<dt>Reviewed</dt><dd>${jobTimeLabel(job.reviewed_at)}</dd>`:""}</dl><pre>${escapeHtml(JSON.stringify(job,null,2))}</pre></details>`;
+  element("review-job").hidden=!(job.state==="failed"&&job.needs_review&&!job.reviewed_at);element("review-job").dataset.reviewJob=job.id;
   const reason=jobRerunReason(job);element("rerun-job").disabled=jobRerunPending||Boolean(reason);element("rerun-job").title=reason||"Confirm a new run with the same action and host";element("job-rerun-note").hidden=!reason;element("job-rerun-note").textContent=reason;
   for(const id of ["copy-job-log","download-job-log"])element(id).disabled=selectedJobLog===null;
   const note=element("job-log-note");note.className=selectedJobLogError?"error":"sub";
@@ -509,6 +528,7 @@ async function previewLog(button){
   try{const log=await request(`jobs/${id}/log`);element("log-preview-output").textContent=log.output.slice(0,3000)+(log.output.length>3000||log.truncated?"\n… Open the full job for more.":"")||"No output recorded."}catch(error){element("log-preview-output").textContent=error.message}
 }
 document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll("[data-icon]").forEach(button=>button.insertAdjacentHTML("afterbegin",buttonIcon(button.dataset.icon)));
   element("connect-form").addEventListener("submit",connect);element("disconnect").addEventListener("click",disconnect);
   element("host-form").addEventListener("submit",addHost);element("task-form").addEventListener("submit",addTask);
   element("host-retry-icons").addEventListener("click",()=>{if(!editingHost)return;clearWebsiteIcons(editingHost.id);render();element("website-icon-status").textContent="Retrying saved website icons. Unsaved changes are not used."});

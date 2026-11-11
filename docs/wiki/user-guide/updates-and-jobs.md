@@ -126,9 +126,12 @@ A failed first check leaves status unknown. Open its job for the failure reason.
 ## Inspect one job
 
 Open a job from its history point, table row or action notification. The detail
-workspace leads with the task/action name, host and outcome, followed by duration,
-exit code, review state and a queued/started/finished timeline. Exact timestamps
-and identifiers remain available in tooltips and **Technical details**. Host and
+workspace combines the task/action name and host in one title, with a short outcome
+description immediately below. Duration uses milliseconds, seconds, minutes or hours
+as appropriate. The queued/started/finished timeline shows local clock times to
+millisecond precision, date and time zone; original ISO values remain in tooltips.
+Only failures needing acknowledgement show a prominent **Mark as reviewed** button
+in the top action bar. Identifiers and review metadata remain in **Technical details**. Host and
 host-history links keep investigation close to the affected system; custom jobs
 also link to the host's task configuration.
 
@@ -136,7 +139,7 @@ also link to the host's task configuration.
 list. Active jobs update automatically. Logs appear when the backend has recorded
 them. A log-fetch failure leaves the job summary available and can be retried with
 **Refresh job**. Search output locally, move between matches, toggle line wrapping,
-or explicitly **Copy log** / **Download .txt**. These tools use only the bounded,
+or use the **Copy log** / **Download .txt** icon buttons in the top action bar. These tools use only the bounded,
 redacted output already returned by the backend. A truncation notice means the
 export is also incomplete. Inspect exported logs before sharing them. **Copy link**
 copies the authenticated job URL without a token.

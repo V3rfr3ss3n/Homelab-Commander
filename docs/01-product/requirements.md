@@ -262,7 +262,11 @@ wird beim Parser in Tests festgeschrieben.
 ## Job inspection workspace
 
 - **REQ-UI-JOB-DETAIL MUST:** A job detail presents outcome, host/task context,
-  duration and lifecycle before technical identifiers. It refreshes the selected
+  duration and lifecycle before technical identifiers. Job and host share one
+  title with an inline outcome description. Lifecycle times show milliseconds,
+  date and time zone; elapsed durations scale from ms through s/min to h. Only
+  outstanding reviews expose a prominent top action, alongside icon-labelled
+  copy/download controls. It refreshes the selected
   persisted job even outside recent history, and active jobs update automatically.
 - **REQ-UI-JOB-LOG MUST:** Local search, wrapping, copy and explicit text download
   operate on bounded redacted output. Truncation and fetch errors remain visible;
