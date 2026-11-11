@@ -113,7 +113,7 @@ async def test_icons_keep_nodes_and_failures_stable_between_refreshes(
         )
         count = len(requests)
         for _ in range(3):
-            await page.locator("#connect").click()
+            await page.locator("#refresh").click()
             await _wait_for_connection(page)
         assert await page.evaluate(
             "window.originalIcon===document.querySelector('.website-icon img')"
@@ -125,12 +125,11 @@ async def test_icons_keep_nodes_and_failures_stable_between_refreshes(
             "data-icon-status", "loaded"
         )
         assert len(requests) == count
-        await page.locator('nav a[href="#/hosts"]').click()
-        await expect(page.locator("#hosts .website-icon").first).to_have_attribute(
+        await page.locator('nav a[data-tab="hosts"]').click()
+        await expect(page.locator("#host-info .website-icon").first).to_have_attribute(
             "data-icon-status", "loaded"
         )
         assert len(requests) == count
-        await page.get_by_role("link", name="Details", exact=True).click()
         await page.locator("[data-edit-host]").click()
         assert (
             " | https://assets.example.invalid/portal.svg"

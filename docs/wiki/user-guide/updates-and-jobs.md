@@ -66,14 +66,19 @@ Hover or focus a point to see job previews. A single point opens its job; the
 center of a group opens the table filtered to that time window, including jobs
 beyond the preview. The table button swaps graph and table in place. Job table
 rows show local date/time, host, outcome, duration and safe error summary. The
-exact timestamp remains in the tooltip. The last job and last failed job also have
+exact timestamp remains in the tooltip. When a host is selected, the Dashboard, Hosts, Tasks and Jobs tabs retain that host
+context. Dashboard and job history are scoped to it; Tasks shows its assignment and
+compatibility controls; Jobs shows its recent work. The context banner lets you
+change hosts or return to the full fleet. The last job and last failed job also have
 shortcuts below the graph. Counts use the full database rather than the limited
 recent-job list.
 
 Hosts, Tasks and Jobs have small find/filter/sort controls above their lists.
 The dashboard shows up to five hosts and the full Hosts view shows all matches.
-**Update shown** lists eligible visible hosts with known pending updates in a
-confirmation before queuing their normal per-host update jobs. If a target cannot
+**Update all (N)** counts every eligible host across the full host list, even when
+search or filters hide some hosts. The confirmation names the exact targets before
+queuing their normal per-host update jobs. Hosts with unknown update status or an
+active update are skipped and shown beside the count. If a target cannot
 be queued, the message names it; verify its status before retrying. Restarts remain
 separate actions. Each host row offers a **Check for updates** refresh icon,
 **Update**, **Reboot** and **Details**.
@@ -85,8 +90,9 @@ explicit operations remain visible.
 
 ## Calmer overview and checks while viewing
 
-The header is centered; a compact green/red status dot indicates backend connectivity.
-Hosts, running jobs and queued jobs share the top row. Latest-job highlights show
+The header has a compact manual refresh icon at the upper right. A compact green/red
+status dot indicates backend connectivity, followed by linked host, running-job and
+queued-job counts in the toolbar. Latest-job highlights show
 readable metadata previews and **Open job** / **Log preview** shortcuts. Log previews
 are retrieved only after a click. Important notices sit beside the content on wide
 screens, move into the flow on mobile and disappear when resolved. A successful
@@ -99,9 +105,11 @@ or Hosts is visible, it requests status checks at opening/resumption and every f
 minutes. Recent hosts, hosts with active work and hosts within a shared five-minute
 cooldown are skipped. Multiple open tabs do not duplicate work. Hidden/disconnected
 pages and other views stop starting checks; accepted jobs may finish. Disable the
-checkbox to opt out. The small refresh icon beside each host starts a manual check.
+checkbox to opt out. The smaller refresh icon beside each host starts a manual check.
 Status checks may refresh APT metadata; they never install updates or reboot.
-Updates, reboots and custom tasks still require explicit confirmation.
+Updates, reboots, host removal and custom task execution/deletion use accessible
+in-app confirmations with a safe cancel action. Updates, reboots and custom tasks
+still require explicit confirmation.
 
 Until a host has a successful stored check, update and reboot status are shown as
 unknown. Dashboard totals include only checked hosts and label any unchecked

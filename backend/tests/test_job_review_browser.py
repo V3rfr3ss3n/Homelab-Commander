@@ -70,7 +70,7 @@ async def test_notice_review_survives_reload(
         await expect(page.get_by_role("button", name="Mark as reviewed")).to_have_count(
             0
         )
-        await page.locator('nav a[href="#/dashboard"]').click()
+        await page.locator('nav a[data-tab="dashboard"]').click()
         await expect(page.locator("#notices-panel")).to_be_hidden()
         await expect(page.locator("#job-highlights")).to_contain_text("Last failed job")
         assert (await jobs.async_get(failure.id)).state == JobState.FAILED

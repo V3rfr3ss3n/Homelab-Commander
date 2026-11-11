@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 
 import pytest
 import uvicorn
-from playwright.async_api import Dialog, Page, Route, async_playwright, expect
+from playwright.async_api import Page, Route, async_playwright, expect
 from uvicorn.protocols.http.h11_impl import H11Protocol
 from uvicorn.server import ServerState
 
@@ -153,10 +153,6 @@ async def _wait_for_connection(page: Page) -> None:
     await expect(page.locator("#connection-label")).to_have_text("Connected")
 
 
-async def _accept_dialog(dialog: Dialog) -> None:
-    await dialog.accept()
-
-
 async def _connect_standalone(page: Page, base_url: str) -> None:
     await page.goto(f"{base_url}/")
     await page.locator("#token").fill(TOKEN)
@@ -256,7 +252,7 @@ async def test_standalone_ui_buttons_work_and_errors_are_visible(
         assert await page.locator('[data-action="update"]').is_visible()
         assert await page.locator('[data-action="reboot"]').is_visible()
 
-        await page.locator('nav a[href="#/tasks"]').click()
+        await page.locator('nav a[data-tab="tasks"]').click()
         await page.locator("[data-add-task]").first.click()
         await page.locator("#task-name").fill("Read uptime")
         await page.locator("#task-argv").fill('["uptime"]')
@@ -264,22 +260,27 @@ async def test_standalone_ui_buttons_work_and_errors_are_visible(
         await _wait_for_message(page, "Task added")
         assert await page.locator("#tasks").get_by_text("Read uptime").is_visible()
 
-        await page.locator('nav a[href="#/hosts"]').click()
-        await page.get_by_role("link", name="Details", exact=True).first.click()
+        await page.locator('nav a[data-tab="hosts"]').click()
+        await expect(page.locator("#host-section")).to_be_visible()
+        await expect(page.locator("#hosts")).to_contain_text("Node 01")
+        await page.locator('#hosts a[href^="#/hosts/"]').first.evaluate(
+            "anchor => anchor.click()"
+        )
         await page.locator('[data-action="test_connection"]').click()
         await _wait_for_message(page, "test connection queued")
-        await page.locator('nav a[href="#/dashboard"]').click()
+        await page.locator('nav a[data-tab="dashboard"]').click()
         await page.locator('[data-action="check_updates"]').click()
         await _wait_for_message(page, "check updates queued")
-        page.on("dialog", _accept_dialog)
-        await page.get_by_role("link", name="Details", exact=True).first.click()
+        await page.locator('#hosts a[href^="#/hosts/"]').first.click(force=True)
+        await page.locator('nav a[data-tab="tasks"]').click()
         await page.locator("[data-check-task]").click()
         await _wait_for_message(page, "Compatibility checked")
         await page.locator("[data-assign-task]").click()
         await _wait_for_message(page, "Assignment updated")
         await page.locator("#host-tasks button[data-task][data-host]").click()
+        await page.locator("#confirm-accept").click()
         await _wait_for_message(page, "Task queued")
-        await page.locator('nav a[href="#/dashboard"]').click()
+        await page.locator('nav a[data-tab="dashboard"]').click()
         relative_requests = {url.removeprefix(base_url) for url in request_paths}
         assert any("/actions/test_connection" in path for path in relative_requests)
         assert any("/actions/check_updates" in path for path in relative_requests)
@@ -299,9 +300,12 @@ async def test_standalone_ui_buttons_work_and_errors_are_visible(
             )
 
         await page.route("**/ui-api/jobs", failed_jobs, times=1)
-        await page.route(
-            "**/ui-api/jobs/page?**",
-            lambda route: route.fulfill(
+
+        async def failed_job_page(route: Route) -> None:
+            if "limit=5" in route.request.url:
+                await route.continue_()
+                return
+            await route.fulfill(
                 json={
                     "items": [
                         {
@@ -316,18 +320,19 @@ async def test_standalone_ui_buttons_work_and_errors_are_visible(
                     "limit": 25,
                     "offset": 0,
                 }
-            ),
-            times=1,
-        )
-        await page.locator("#connect").click()
+            )
+
+        await page.route("**/ui-api/jobs/page*", failed_job_page)
+        await page.locator("#all-hosts").click()
+        await page.locator("#refresh").click()
         await _wait_for_connection(page)
-        await page.locator('nav a[href="#/jobs"]').click()
+        await page.locator('nav a[data-tab="jobs"]').click()
         await expect(page.locator("#jobs")).to_contain_text(
             "Check updates failed during APT cache refresh"
         )
 
         await page.route("**/ui-api/info", _reject_authentication, times=1)
-        await page.locator("#connect").click()
+        await page.locator("#refresh").click()
         await _wait_for_message(page, "Authentication expired")
         assert await page.locator("#connection-label").inner_text() == "Not connected"
         assert await page.locator("#protected-content").is_hidden()
@@ -336,7 +341,7 @@ async def test_standalone_ui_buttons_work_and_errors_are_visible(
         await page.locator("#token").fill(TOKEN)
         await page.locator("#connect").click()
         await _wait_for_connection(page)
-        await page.locator('nav a[href="#/dashboard"]').click()
+        await page.locator('nav a[data-tab="dashboard"]').click()
         await expect(page.locator("#hosts")).to_contain_text("Node 01")
 
         await page.reload()
@@ -348,9 +353,9 @@ async def test_standalone_ui_buttons_work_and_errors_are_visible(
         assert "Hosts" in await page.locator("#dashboard").inner_text()
         assert (
             await page
-            .locator("#dashboard .metric")
+            .locator("#dashboard .toolbar-metric")
             .nth(0)
-            .locator(".value")
+            .locator("strong")
             .inner_text()
             == "1"
         )
@@ -435,11 +440,15 @@ async def test_ingress_ui_keeps_assets_and_api_calls_under_prefix(
         await page.locator("#host-form button[type=submit]").click()
         await _wait_for_message(page, "Host added")
         await expect(page.locator("#hosts")).to_contain_text("Node 01")
-        await page.locator('nav a[href="#/hosts"]').click()
-        await page.get_by_role("link", name="Details", exact=True).first.click()
+        await page.locator('nav a[data-tab="hosts"]').click()
+        await expect(page.locator("#host-section")).to_be_visible()
+        await expect(page.locator("#hosts")).to_contain_text("Node 01")
+        await page.locator('#hosts a[href^="#/hosts/"]').first.evaluate(
+            "anchor => anchor.click()"
+        )
         await page.locator('[data-action="test_connection"]').click()
         await _wait_for_message(page, "test connection queued")
-        await page.locator('nav a[href="#/dashboard"]').click()
+        await page.locator('nav a[data-tab="dashboard"]').click()
         await page.locator(
             "#job-highlights .job-preview.state-success"
         ).first.wait_for()
@@ -462,7 +471,7 @@ async def test_ingress_ui_keeps_assets_and_api_calls_under_prefix(
         assert all(path.startswith(prefix) for path in relevant)
 
         await page.route("**/ui-api/info", _reject_ingress_authorization, times=1)
-        await page.locator("#connect").click()
+        await page.locator("#refresh").click()
         await _wait_for_message(page, "Ingress authorization expired")
         assert await page.locator("#connection-label").inner_text() == "Not connected"
         assert await page.locator("#protected-content").is_hidden()
@@ -496,11 +505,11 @@ async def test_standalone_job_deep_link_requires_session_and_survives_reload(
         await setup_page.locator("#host-user").fill("automation")
         await setup_page.locator("#host-form button[type=submit]").click()
         await _wait_for_message(setup_page, "Host added")
-        await setup_page.locator('nav a[href="#/hosts"]').click()
+        await setup_page.locator('nav a[data-tab="hosts"]').click()
         await setup_page.get_by_role("link", name="Details", exact=True).first.click()
         await setup_page.locator('[data-action="test_connection"]').click()
         await _wait_for_message(setup_page, "test connection queued")
-        await setup_page.locator('nav a[href="#/dashboard"]').click()
+        await setup_page.locator('nav a[data-tab="dashboard"]').click()
         await setup_page.locator(
             "#job-highlights .job-preview.state-success"
         ).first.wait_for()
@@ -735,11 +744,15 @@ async def test_job_polling_tracks_terminal_states_and_refreshes_hosts(
         assert "Running jobs\n0" in await page.locator("#dashboard").inner_text()
         assert "Queued jobs\n0" in await page.locator("#dashboard").inner_text()
 
-        await page.locator('nav a[href="#/hosts"]').click()
-        await page.get_by_role("link", name="Details", exact=True).first.click()
+        await page.locator('nav a[data-tab="hosts"]').click()
+        await expect(page.locator("#host-section")).to_be_visible()
+        await expect(page.locator("#hosts")).to_contain_text("Node 01")
+        await page.locator('#hosts a[href^="#/hosts/"]').first.evaluate(
+            "anchor => anchor.click()"
+        )
         await page.locator('[data-action="test_connection"]').click()
         await _wait_for_message(page, "test connection queued")
-        await page.locator('nav a[href="#/dashboard"]').click()
+        await page.locator('nav a[data-tab="dashboard"]').click()
         await page.locator(
             "#job-highlights .job-preview.state-running"
         ).first.wait_for()
@@ -747,11 +760,15 @@ async def test_job_polling_tracks_terminal_states_and_refreshes_hosts(
             "#job-highlights .job-preview.state-success"
         ).first.wait_for()
 
-        await page.locator('nav a[href="#/hosts"]').click()
-        await page.get_by_role("link", name="Details", exact=True).first.click()
+        await page.locator('nav a[data-tab="hosts"]').click()
+        await expect(page.locator("#host-section")).to_be_visible()
+        await expect(page.locator("#hosts")).to_contain_text("Node 01")
+        await page.locator('#hosts a[href^="#/hosts/"]').first.evaluate(
+            "anchor => anchor.click()"
+        )
         await page.locator('[data-action="test_connection"]').click()
         await _wait_for_message(page, "test connection queued")
-        await page.locator('nav a[href="#/dashboard"]').click()
+        await page.locator('nav a[data-tab="dashboard"]').click()
         await (
             page
             .locator("#job-highlights")
@@ -907,7 +924,7 @@ async def test_expired_and_invalid_sessions_return_to_safe_login_state(
         await _connect_standalone(page, base_url)
 
         clock.now = 11
-        await page.locator("#connect").click()
+        await page.locator("#refresh").click()
         await (
             page
             .locator("#connection-label")

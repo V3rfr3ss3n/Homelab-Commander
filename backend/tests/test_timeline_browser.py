@@ -111,9 +111,13 @@ async def test_timeline_group_opens_exact_table_window(
             await expect(page.locator("#history-total")).to_have_text("4 jobs")
             assert await page.locator("#history .timeline-point").count() == 2
             group = page.locator("#history a[data-point]").first
+            assert await group.get_attribute("data-anchor-state") == "success"
+            assert await group.get_attribute("data-anchor-count") == "2"
             await group.hover(force=True)
             await expect(page.locator("#history-popover .orbit-job")).to_have_count(3)
-            await page.locator("#history-popover .orbit-center").click()
+            await page.locator("#history-popover .orbit-center").evaluate(
+                "anchor => anchor.click()"
+            )
             await expect(page.locator("#jobs-section")).to_be_visible()
             await expect(page.locator("#history-total")).to_have_text("3 jobs")
             assert "display=table" in page.url
@@ -125,38 +129,35 @@ async def test_timeline_group_opens_exact_table_window(
             await expect(page.locator("#history-total")).to_have_text("4 jobs")
             await page.locator("#history-toggle").click()
             await expect(page.locator("#history-chart")).to_be_visible()
-            await page.locator('nav a[href="#/dashboard"]').click()
+            await page.locator('nav a[data-tab="dashboard"]').click()
             await page.screenshot(
                 path=f"/tmp/timeline-dashboard-{ingress}.png", full_page=True
             )
-            await page.locator('nav a[href="#/hosts"]').click()
+            await page.locator('nav a[data-tab="hosts"]').click()
             await page.locator("#host-search").fill("Node B")
             await page.locator("#host-search").press("Enter")
             await expect(page.locator("#host-count")).to_have_text("1 of 2 hosts")
             assert await page.locator("#hosts .row").count() == 1
             await expect(page.locator("#update-shown")).to_be_enabled()
 
-            async def reject_update(dialog):
-                assert "Node B" in dialog.message
-                await dialog.dismiss()
-
-            page.on("dialog", reject_update)
             await page.locator("#update-shown").click()
+            await expect(page.locator("#confirm-dialog")).to_be_visible()
+            await expect(page.locator("#confirm-targets")).to_contain_text("Node B")
+            await page.locator("#confirm-cancel").click()
             assert (
                 await db.async_fetch_one(
                     "SELECT COUNT(*) AS count FROM jobs WHERE action='update'"
                 )
             )["count"] == 0
-            page.remove_listener("dialog", reject_update)
-            page.once("dialog", lambda dialog: dialog.accept())
             await page.locator("#update-shown").click()
+            await page.locator("#confirm-accept").click()
             await expect(page.locator("#message")).to_have_text("Updates queued")
             assert (
                 await db.async_fetch_one(
                     "SELECT COUNT(*) AS count FROM jobs WHERE action='update'"
                 )
             )["count"] == 1
-            await page.locator('nav a[href="#/tasks"]').click()
+            await page.locator('nav a[data-tab="tasks"]').click()
             await page.locator("#task-filter").select_option("disabled")
             await expect(page.locator("#task-count")).to_have_text("1 of 2 tasks")
             await expect(page.locator("#tasks")).to_contain_text("Disabled task")

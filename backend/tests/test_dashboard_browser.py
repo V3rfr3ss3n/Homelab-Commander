@@ -10,7 +10,6 @@ from backend.homelab_backend.app import create_app
 from backend.homelab_backend.config import Settings
 from backend.tests.test_backend_api import TOKEN, FakeExecutor
 from backend.tests.test_ui_browser import (
-    _accept_dialog,
     _live_server,
     _PrefixProxy,
     _wait_for_connection,
@@ -41,7 +40,6 @@ async def test_dashboard_host_import_and_task_assignment(
             "**/ui-api/preferences/host-checks",
             lambda route: route.fulfill(json={"enabled": False}),
         )
-        page.on("dialog", _accept_dialog)
         errors: list[str] = []
         console_errors: list[str] = []
         page.on("pageerror", lambda error: errors.append(str(error)))
@@ -62,15 +60,14 @@ async def test_dashboard_host_import_and_task_assignment(
         await expect(page.locator("#connection-state")).to_be_hidden()
         await expect(page.locator("#message")).to_be_hidden()
         await expect(page.get_by_text("Backend online", exact=True)).to_have_count(1)
-        await page.locator('nav a[href="#/tasks"]').click()
+        await page.locator('nav a[data-tab="tasks"]').click()
         await page.locator("#tasks").wait_for(state="visible")
         await expect(page.locator("#message")).to_be_hidden()
-        await page.locator('nav a[href="#/dashboard"]').click()
+        await page.locator('nav a[data-tab="dashboard"]').click()
         await page.locator("#dashboard").wait_for(state="visible")
         await expect(page.locator("#message")).to_be_hidden()
-        await page.locator("#connect").click()
-        await _wait_for_connection(page)
-        await expect(page.locator("#message")).to_be_hidden()
+        await page.locator("#refresh").click()
+        await expect(page.locator("#message")).to_have_text("Data refreshed")
         assert not await page.locator("#host-dialog").is_visible()
         assert not await page.locator("#task-dialog").is_visible()
         assert await page.locator("#history .timeline-point circle").count() == 0
@@ -134,9 +131,9 @@ async def test_dashboard_host_import_and_task_assignment(
         await expect(page.locator("#hosts")).to_contain_text("Update status unknown")
         await expect(page.locator("#hosts")).not_to_contain_text("0 updates")
         await expect(page.locator("#hosts")).not_to_contain_text("reboot not required")
-        await expect(page.locator("#dashboard .metric-detail").first).to_contain_text(
-            "Update status unknown · 1 unchecked host"
-        )
+        await expect(
+            page.locator("#dashboard .toolbar-metric span").first
+        ).to_contain_text("Update status unknown · 1 unchecked host")
         assert (
             await page
             .locator("#history")
@@ -146,7 +143,9 @@ async def test_dashboard_host_import_and_task_assignment(
         await page.locator('a.notice[href="#/hosts?filter=stale"]').click()
         await expect(page.locator("#host-filter")).to_have_value("stale")
         await page.get_by_role("link", name="Details", exact=True).click()
-        await page.locator("#host-detail [data-add-task]").click()
+        await page.locator('nav a[data-tab="tasks"]').click()
+        await expect(page.locator("#context-host-tasks")).to_be_visible()
+        await page.locator("#context-host-tasks [data-add-task]").click()
         await page.locator("#task-name").fill("Read uptime")
         await page.locator("#task-argv").fill('["uptime"]')
         await page.locator("#task-distributions").fill("debian, ubuntu")
@@ -160,13 +159,27 @@ async def test_dashboard_host_import_and_task_assignment(
         await page.locator("[data-assign-task]").click()
         await _wait_for_message(page, "Assignment updated")
         await page.locator("#host-tasks [data-task]").click()
+        await page.locator("#confirm-accept").click()
         await _wait_for_message(page, "Task queued")
         await page.locator("[data-assign-task]").click()
         await _wait_for_message(page, "Assignment updated")
         assert await page.locator("#host-tasks [data-task]").is_disabled()
         await page.locator("[data-unassign-task]").click()
         await _wait_for_message(page, "Task unassigned")
-        await page.locator('nav a[href="#/tasks"]').click()
+        await page.locator('nav a[data-tab="tasks"]').click()
+        await expect(page.locator("#host-context")).to_contain_text(
+            "Selected host: Node 01"
+        )
+        await expect(page.locator("#context-host-tasks")).to_be_visible()
+        await page.locator('nav a[data-tab="jobs"]').click()
+        await expect(page.locator("#context-host-jobs")).to_be_visible()
+        await expect(page.locator("#context-host-jobs")).to_contain_text("Node 01")
+        await page.locator('nav a[data-tab="dashboard"]').click()
+        await expect(page.locator("#host-context")).to_contain_text(
+            "Selected host: Node 01"
+        )
+        await expect(page.locator("#hosts .row")).to_have_count(1)
+        await page.locator('nav a[data-tab="tasks"]').click()
         await page.locator("#tasks [data-toggle-task]").click()
         await _wait_for_message(page, "Task updated")
         assert "Globally disabled" in await page.locator("#tasks").inner_text()
@@ -174,7 +187,7 @@ async def test_dashboard_host_import_and_task_assignment(
         await page.locator("#task-description").fill("Updated synthetic description")
         await page.locator("#task-form button[type=submit]").click()
         await _wait_for_message(page, "Task updated")
-        await page.locator('nav a[href="#/jobs"]').click()
+        await page.locator('nav a[data-tab="jobs"]').click()
         await page.locator("#job-state").select_option("success")
         await page.locator("#job-filters button[type=submit]").click()
         await page.locator("#jobs").get_by_text("success", exact=True).first.wait_for()
@@ -185,7 +198,7 @@ async def test_dashboard_host_import_and_task_assignment(
         await page.reload()
         await _wait_for_connection(page)
         assert await page.locator("#job-detail").is_visible()
-        await page.locator('nav a[href="#/dashboard"]').click()
+        await page.locator('nav a[data-tab="dashboard"]').click()
         await expect(page.locator("#job-highlights")).to_contain_text("Last job")
         assert await page.evaluate(
             "document.documentElement.scrollWidth <= window.innerWidth"

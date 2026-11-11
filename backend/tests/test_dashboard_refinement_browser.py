@@ -106,13 +106,24 @@ async def test_readable_dashboard_shortcuts_graph_and_visible_checks(
         await expect(page.locator("#backend-status")).to_have_class(
             "backend-status online"
         )
+        await expect(page.locator("#refresh")).to_have_attribute(
+            "aria-label", "Refresh data"
+        )
+        assert await page.evaluate(
+            "() => {const dashboard=document.querySelector('#dashboard');"
+            "const history=document.querySelector('#history-section');"
+            "return Boolean(dashboard.compareDocumentPosition(history) & "
+            "Node.DOCUMENT_POSITION_FOLLOWING);}"
+        )
         assert await page.get_by_text("HC", exact=True).count() == 0
-        assert await page.locator("#dashboard .metric small").all_text_contents() == [
+        assert await page.locator(
+            "#dashboard .toolbar-metric small"
+        ).all_text_contents() == [
             "Hosts",
             "Running jobs",
             "Queued jobs",
         ]
-        assert await page.locator("#history polyline").count() == 5
+        assert await page.locator("#history path").count() == 5
         assert await page.locator("#history rect").count() == 0
         assert await page.locator("#history .timeline-point circle").count() == 1
         await expect(page.locator("#notices-panel")).to_be_visible()
@@ -168,13 +179,13 @@ async def test_readable_dashboard_shortcuts_graph_and_visible_checks(
             )
             await page.clock.run_for(1)
         assert len(auto_requests) == 3
-        await page.locator('nav a[href="#/tasks"]').click()
+        await page.locator('nav a[data-tab="tasks"]').click()
         await page.locator("#tasks").wait_for(state="visible")
         await page.clock.run_for(300001)
         assert len(auto_requests) == 3
         await page.locator("#auto-host-checks").uncheck()
         await _wait_for_message(page, "Host check preference saved")
-        await page.locator('nav a[href="#/dashboard"]').click()
+        await page.locator('nav a[data-tab="dashboard"]').click()
         await page.locator("#dashboard").wait_for(state="visible")
         await page.clock.run_for(300001)
         assert len(auto_requests) == 3
@@ -191,7 +202,7 @@ async def test_readable_dashboard_shortcuts_graph_and_visible_checks(
             "reboot_required=0,checked_at=?",
             (datetime.now(UTC).isoformat(),),
         )
-        await page.locator("#connect").click()
+        await page.locator("#refresh").click()
         await _wait_for_connection(page)
         await expect(page.locator("#notices-panel")).to_be_hidden()
         await expect(page.locator("#hosts")).to_contain_text("0 updates")
@@ -228,7 +239,7 @@ async def test_readable_dashboard_shortcuts_graph_and_visible_checks(
         shortcut = page.locator("#host-info .website-icon")
         assert await shortcut.get_attribute("onclick") is None
         assert await shortcut.get_attribute("title") == 'Portal " onclick="alert(1)'
-        await page.locator('nav a[href="#/dashboard"]').click()
+        await page.locator('nav a[data-tab="dashboard"]').click()
         await page.locator("#dashboard").wait_for(state="visible")
         await page.set_viewport_size({"width": 390, "height": 844})
         assert await page.evaluate(
