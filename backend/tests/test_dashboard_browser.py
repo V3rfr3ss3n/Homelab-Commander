@@ -189,7 +189,6 @@ async def test_dashboard_host_import_and_task_assignment(
         await _wait_for_message(page, "Task updated")
         await page.locator('nav a[data-tab="jobs"]').click()
         await page.locator("#job-state").select_option("success")
-        await page.locator("#job-filters button[type=submit]").click()
         await page.locator("#jobs").get_by_text("success", exact=True).first.wait_for()
         assert "of 1" in await page.locator("#jobs-count").inner_text()
         await page.locator("#jobs [data-job-log]").first.click()

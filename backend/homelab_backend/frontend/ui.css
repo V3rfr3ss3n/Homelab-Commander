@@ -110,3 +110,75 @@ button[data-action=check_updates]:hover{border-color:var(--line);color:var(--tex
 .job-timeline .job-clock{color:var(--text);font-size:12px;white-space:nowrap}
 .job-timeline .job-date{color:var(--muted);font-size:10px}
 @media(max-width:750px){.job-timeline{grid-template-columns:1fr;gap:0;margin-top:4px;padding-bottom:14px}.job-timeline li{display:grid;grid-template-columns:75px minmax(0,1fr);border-top:0;border-left:1px solid var(--line);padding:0 0 20px 16px}.job-timeline li:before{left:-4px;top:5px}.job-timeline li:last-child{border-left-color:transparent;padding-bottom:0}.job-workspace-toolbar .actions{gap:6px}.job-title-host{display:inline;font-size:.8em}.job-hero h2{line-height:1.35}}
+/* Compact selection control with grouped filter count and explicit reset. */
+.selection-context{position:relative;gap:2px}
+.filter-toggle{position:relative;width:34px;height:32px;padding:7px;border:0;background:transparent}
+.filter-count{position:absolute;top:-2px;right:-3px;min-width:16px;height:16px;display:flex;align-items:center;justify-content:center;background:var(--accent);color:var(--bg);font-size:10px;font-weight:700;border-radius:10px;padding:0 3px}
+#reset-view{width:27px;height:29px;padding:5px;background:transparent;border:0}
+#reset-view:disabled{cursor:default;opacity:.3}
+.selection-panel{position:absolute;right:0;top:calc(100% + 8px);width:285px;max-width:calc(100vw - 28px);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;box-shadow:0 8px 28px #0008;font-size:12px}
+#selection-info{display:block;max-width:none;margin-top:8px;white-space:pre-line;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;color:var(--muted)}
+/* A permanent dashboard side column keeps hosts beside the timeline. */
+.content-grid.is-dashboard,.content-grid.is-dashboard.has-notices{grid-template-columns:minmax(0,1fr) minmax(300px,350px);gap:18px}
+.dashboard-sidebar{grid-column:2;grid-row:1;display:flex;flex-direction:column;gap:16px;min-width:0}
+.dashboard-sidebar #notices-panel{position:static;grid-column:auto;grid-row:auto;padding:16px}
+.is-dashboard #host-section{padding:16px}
+.is-dashboard #host-section .section-heading{flex-wrap:wrap;align-items:flex-start}
+.is-dashboard #host-section h2{font-size:16px}
+.is-dashboard #host-section .actions{gap:6px}
+.is-dashboard #host-controls label:not(:first-child),.is-dashboard #host-count{display:none}
+.is-dashboard #host-controls label:first-child{flex-basis:100%}
+.is-dashboard #host-section .row{align-items:flex-start;flex-direction:column;gap:10px}
+.is-dashboard .host-row .actions .action-label{display:none}
+.is-dashboard .host-row .actions button{padding:6px}
+.is-dashboard #all-hosts{display:block;font-size:12px;margin-top:12px}
+.host-row{gap:14px;border-radius:8px;padding:16px 8px}
+.host-row.has-updates{background:#eed17f07;box-shadow:inset 3px 0 #eed17f70;padding-left:12px}
+.host-row-main{display:flex;gap:10px;align-items:flex-start;min-width:0}
+.host-row-main>div{min-width:0}
+.host-name{font-weight:550}
+.host-row small{font-size:11px;margin-top:2px}
+.system-icon{display:inline-flex;flex:none;width:30px;height:30px;align-items:center;justify-content:center;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:8px}
+.system-icon .button-icon{width:21px;height:21px}
+.system-icon[data-os=debian]{color:#ed8c98}.system-icon[data-os=ubuntu]{color:#f3a56a}.system-icon[data-os=proxmox]{color:#f6bb62}
+.host-maintenance{display:flex;align-items:center;gap:5px 9px;flex-wrap:wrap;font-size:11px;margin-top:5px}
+.pending-updates{color:#eed17f}
+.security-count{color:#f6bb62}
+.restart-required,.job-restart-required{display:inline-flex;align-items:center;gap:5px;color:#ffd29b;background:#9c5a2026;border:1px solid #c2884866;border-radius:5px;padding:2px 6px;font-size:11px;font-weight:600}
+.unknown-status{color:var(--muted)}
+.job-restart-required{display:flex;width:fit-content;margin-top:9px;font-size:12px}
+.host-row .actions{flex-shrink:0}
+.host-row [data-action=check_updates] .action-label{display:none}
+.maintenance-ack{font-size:13px;align-items:flex-start;padding:12px;border:1px solid #c2884866;border-radius:8px;background:#9c5a2012;margin:14px 0}
+.maintenance-ack input{margin:4px 0 0;flex:none}
+.host-backlink{font-size:12px;margin-bottom:20px}
+.host-identity{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.host-identity .system-icon{width:48px;height:48px;border-radius:12px}
+.host-identity .system-icon .button-icon{width:32px;height:32px}
+.host-identity h2{font-size:27px;margin:0}
+.host-identity p{color:var(--muted);font-size:12px;margin:4px 0 0}
+.host-detail-actions{margin-bottom:20px}
+.restart-alert{display:flex;align-items:flex-start;gap:12px;background:#9c5a201a;border:1px solid #c2884877;border-left:4px solid #f6bb62;padding:14px 16px;border-radius:9px;margin:16px 0;color:#ffd29b}
+.restart-alert>.button-icon{width:23px;height:23px}
+.restart-alert p{font-size:12px;margin:4px 0 0;color:var(--text)}
+.host-overview-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:20px 0}
+.host-metric{display:flex;flex-direction:column;gap:6px;padding:14px 16px;background:var(--bg);border:1px solid var(--line);border-radius:10px;color:var(--text)}
+.host-metric strong{font-size:21px;font-weight:550}.host-metric span{color:var(--muted);font-size:11px}.host-metric.pending-updates strong{color:#eed17f}
+.host-metric .status-stale{color:#eed17f}
+.host-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.host-info-card{border-radius:10px;padding:16px}
+.host-info-card h3{display:flex;align-items:center;gap:8px;margin:0 0 15px}
+.host-info-card dl,.host-inventory{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px 20px;font-size:12px}
+.host-info-card dt,.host-inventory dt{color:var(--muted)}
+.host-info-card dd,.host-inventory dd{margin:0;overflow-wrap:anywhere}
+.host-info-card time .job-date{display:block;color:var(--muted);font-size:11px}
+.host-websites{display:flex;gap:8px;margin-top:12px}
+.host-recent{grid-column:1/-1}
+.host-recent .section-heading a{font-size:12px}
+.host-retire{border-top:1px solid var(--line);margin-top:24px;padding-top:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:11px}
+@media(max-width:1050px){.content-grid.is-dashboard,.content-grid.is-dashboard.has-notices{grid-template-columns:minmax(0,1fr) 300px}.host-overview-metrics{gap:8px}.host-metric{padding:12px}.host-metric strong{font-size:18px}}
+@media(max-width:750px){.content-grid.is-dashboard,.content-grid.is-dashboard.has-notices{grid-template-columns:minmax(0,1fr)}.dashboard-sidebar{grid-column:1;grid-row:2}.host-overview-metrics,.host-detail-grid{grid-template-columns:1fr}.host-metric{padding:14px}.host-info-card dl,.host-inventory{grid-template-columns:1fr;gap:4px}.host-info-card dd,.host-inventory dd{margin-bottom:9px}.host-identity h2{font-size:23px}.host-retire{align-items:flex-start;flex-direction:column}.host-row .actions{flex-wrap:wrap}.host-recent{grid-column:1}.host-info-card .row{padding:12px 0}.host-inventory time .job-date{display:block}}
+
+.filter-count.empty{background:var(--line);color:var(--muted)}
+
+.restart-notice{border-left-color:#f6bb62;background:#9c5a201a}.restart-notice .button-icon{vertical-align:middle;margin-right:5px}

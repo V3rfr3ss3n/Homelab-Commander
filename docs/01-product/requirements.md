@@ -274,3 +274,20 @@ wird beim Parser in Tests festgeschrieben.
 - **REQ-UI-JOB-RERUN MUST:** A rerun creates a distinct job only after explicit
   action/host confirmation, preserving original state and output. Existing host
   serialization and task activation/assignment/prerequisite checks apply.
+
+## Host workspace and maintenance controls
+
+- **REQ-UI-HOST-WORKSPACE MUST:** Host details show available system, SSH, freshness,
+  task assignment/readiness, recent-job and inventory facts with scoped links.
+  Missing facts remain unknown; OS/kernel markers do not assert unreported hardware
+  or virtualization roles. Icons use local SVG rather than external discovery.
+- **REQ-UI-MAINTENANCE-ATTENTION MUST:** Known pending updates receive a subtle host
+  accent. Positive restart requirements are prominent in host rows/details and job
+  details. Routine negative restart text is omitted; unknown status remains explicit.
+- **REQ-UI-BULK-ACK MUST:** Bulk updates list exact targets and existing restart flags,
+  require explicit maintenance/restart-review acknowledgement, and queue update
+  actions only. Cancelling or reopening clears acknowledgement; no reboot is inferred.
+- **REQ-UI-FILTER-CONTEXT MUST:** A compact funnel/count exposes active scopes and
+  filters with a one-action reset. Custom time windows count once. Graph filters
+  apply valid changes directly; sort controls belong to table mode. Dashboard hosts
+  occupy the side column below notices and reflow on mobile.

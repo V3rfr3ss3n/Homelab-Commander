@@ -77,17 +77,30 @@ beyond the preview. The table button swaps graph and table in place. Job table
 rows show local date/time, host, outcome, duration and safe error summary. The
 exact timestamp remains in the tooltip. When a host is selected, the Dashboard, Hosts, Tasks and Jobs tabs retain that host
 context. Dashboard and job history are scoped to it; Tasks shows its assignment and
-compatibility controls; Jobs shows its recent work. The selection summary beside the header refresh button shows the selected host,
-job detail or active filters. **Reset** clears them and returns the current tab to
-its default view; it stays reachable while scrolling. The last job and last failed job also have
+compatibility controls; Jobs shows its recent work. A funnel beside the header refresh button shows the number of active scopes and
+filters. Open it to inspect the selected host/job and filters; a custom date window
+counts once. The adjacent cross clears selection and filters and restores the
+current tab's default view. Both remain reachable while scrolling. Sort/display
+changes are reported separately rather than counted as data filters. The last job and last failed job also have
 shortcuts below the graph. Counts use the full database rather than the limited
 recent-job list.
 
+Host-scoped active counts and maintenance guards fetch all queued/running pages
+independently of recent history. An older active job still locks the host after
+more than 100 newer jobs have completed. Backend serialization remains authoritative.
+
 Hosts, Tasks and Jobs have small find/filter/sort controls above their lists.
-The dashboard shows up to five hosts and the full Hosts view shows all matches.
+The dashboard shows up to five hosts below notices in its right-hand column; the
+full Hosts view shows all matches. Graph controls apply selection and valid custom
+date changes automatically. Sorting is available in table mode; there is no Apply
+button for the graph.
 **Update all (N)** counts every eligible host across the full host list, even when
 search or filters hide some hosts. The confirmation names the exact targets before
-queuing their normal per-host update jobs. Hosts with unknown update status or an
+queuing their normal per-host update jobs. Bulk confirmation also requires an
+explicit acknowledgement to review completion and restart requirements during a
+suitable maintenance window. Existing restart requirements are listed per target.
+No host reboot is requested by Update all. Required-restart notices and host badges
+remain visible until the backend reports the requirement cleared. Hosts with unknown update status or an
 active update are skipped and shown beside the count. If a target cannot
 be queued, the message names it; verify its status before retrying. Restarts remain
 separate actions. Each host row offers a **Check for updates** refresh icon,
@@ -102,7 +115,7 @@ and sign-in guidance appear when needed.
 ## Calmer overview and checks while viewing
 
 The product title remains centered. Refresh and the selection/reset controls are
-at the upper right. Between the primary tabs and **Auto-check hosts**, a compact
+at the upper right as a compact funnel/count and reset cross. Between the primary tabs and **Auto-check hosts**, a compact
 status dot indicates backend connectivity, followed by linked host, running-job and
 queued-job counts. These links retain the selected host and open the matching views
 from every tab. Latest-job highlights show

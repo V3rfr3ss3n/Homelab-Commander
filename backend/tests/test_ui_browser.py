@@ -740,10 +740,9 @@ async def test_job_polling_tracks_terminal_states_and_refreshes_hosts(
             "#job-highlights .job-preview.state-success"
         ).first.wait_for()
         assert "Example Linux 2.0" in await page.locator("#hosts").inner_text()
-        assert (
-            "7 updates · 2 security · reboot required"
-            in await page.locator("#hosts").inner_text()
-        )
+        assert "7 updates" in await page.locator("#hosts").inner_text()
+        await expect(page.locator("#hosts .security-count")).to_have_text("2 security")
+        await expect(page.locator("#hosts .restart-required")).to_be_visible()
         assert "Running jobs\n0" in await page.locator("#dashboard").inner_text()
         assert "Queued jobs\n0" in await page.locator("#dashboard").inner_text()
 

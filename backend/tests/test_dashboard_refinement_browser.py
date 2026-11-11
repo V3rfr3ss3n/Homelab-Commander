@@ -127,9 +127,7 @@ async def test_readable_dashboard_shortcuts_graph_and_visible_checks(
         assert await page.locator("#history rect").count() == 0
         assert await page.locator("#history .timeline-point circle").count() == 1
         await expect(page.locator("#notices-panel")).to_be_visible()
-        assert await page.locator(
-            "#hosts .row > span:first-child > a"
-        ).all_text_contents() == [
+        assert await page.locator("#hosts .host-name").all_text_contents() == [
             "Node 01",
             "Node 02",
         ]
@@ -213,8 +211,8 @@ async def test_readable_dashboard_shortcuts_graph_and_visible_checks(
         assert await last_failure.locator("[data-preview-log]").count() == 1
         await page.get_by_role("link", name="Details", exact=True).first.click()
         await page.locator("#host-detail").wait_for(state="visible")
-        assert await page.locator("#host-info time").get_attribute("title")
-        assert "T" not in await page.locator("#host-info time").inner_text()
+        assert await page.locator("#host-last-checked time").get_attribute("title")
+        assert "T" not in await page.locator("#host-last-checked time").inner_text()
         await page.locator("[data-edit-host]").click()
         await page.locator("#host-update-setup").click()
         await page.locator("#host-system-next").click()

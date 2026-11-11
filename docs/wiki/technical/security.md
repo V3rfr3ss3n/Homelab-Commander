@@ -1,7 +1,7 @@
 ---
 title: Security and privacy
 status: active
-updated: 2026-11-10
+updated: 2026-11-11
 tags: [wiki, technical]
 ---
 
@@ -78,3 +78,13 @@ See [ADR-0015](../../02-architecture/adr/0015-stable-website-icons.md).
 The shared auto-check preference is authenticated,
 mutations require CSRF, and an atomic cooldown prevents duplicate multi-tab checks.
 Only status checks run from a visible UI; package installation/reboot remains explicit.
+
+## UI maintenance guards and inline symbols
+
+Bulk UI updates require an operator acknowledgement to review completion and
+restart requirements. This is an accidental-action guard; authenticated API callers
+retain the existing explicit action contract and server-side host serialization.
+The UI queues no reboot as part of updates. Positive restart reminders reflect
+stored backend state and remain until a later status clears them. Navigation,
+action and OS symbols are inline SVG and introduce no external logo requests or
+new production dependency.

@@ -7,7 +7,7 @@ const ACTIVE_JOB_POLL_INTERVAL_MS = 1500;
 const JOB_POLL_BACKOFF_MS = [1500, 3000, 5000];
 const ACTIVE_JOB_STATES = new Set(["queued", "running"]);
 const MUTATING_JOB_ACTIONS = new Set(["update", "reboot", "custom_task"]);
-let state = {info:null, hosts:[], custom_tasks:[], jobs:[], public_key:""};
+let state = {info:null, hosts:[], custom_tasks:[], jobs:[], active_jobs:[], public_key:""};
 let connected = false;
 let jobPollTimer = null;
 let jobPollInFlight = false;
@@ -53,15 +53,24 @@ function message(value,kind="",link=null){
   anchor.hidden=!link;if(link){anchor.href=link.href;anchor.textContent=link.label||"Open job"}else{anchor.removeAttribute("href");anchor.textContent=""}
   if(value&&kind==="success")messageTimer=setTimeout(()=>{target.hidden=true;messageTimer=null},8000);
 }
-function confirmAction(title,description,targets=[],confirmLabel="Confirm"){return new Promise(resolve=>{const dialog=element("confirm-dialog"),accept=element("confirm-accept"),cancel=element("confirm-cancel");element("confirm-title").textContent=title;element("confirm-description").textContent=description;element("confirm-targets").replaceChildren(...targets.map(value=>{const item=document.createElement("div");item.textContent=value;return item}));accept.textContent=confirmLabel;const finish=value=>{dialog.close();accept.removeEventListener("click",yes);cancel.removeEventListener("click",no);dialog.removeEventListener("cancel",escape);resolve(value)};const yes=()=>finish(true),no=()=>finish(false),escape=event=>{event.preventDefault();finish(false)};accept.addEventListener("click",yes);cancel.addEventListener("click",no);dialog.addEventListener("cancel",escape);dialog.showModal();cancel.focus()})}
+function confirmAction(title,description,targets=[],confirmLabel="Confirm",options={}){return new Promise(resolve=>{
+  const dialog=element("confirm-dialog"),accept=element("confirm-accept"),cancel=element("confirm-cancel"),ack=element("confirm-ack");
+  element("confirm-title").textContent=title;element("confirm-description").textContent=description;element("confirm-targets").replaceChildren(...targets.map(value=>{const item=document.createElement("div");item.textContent=value;return item}));
+  element("confirm-ack-label").hidden=!options.acknowledgement;element("confirm-ack-text").textContent=options.acknowledgement||"";ack.checked=false;accept.disabled=Boolean(options.acknowledgement);accept.textContent=confirmLabel;
+  const changed=()=>accept.disabled=Boolean(options.acknowledgement)&&!ack.checked;
+  const finish=value=>{dialog.close();accept.removeEventListener("click",yes);cancel.removeEventListener("click",no);dialog.removeEventListener("cancel",escape);ack.removeEventListener("change",changed);resolve(value)};
+  const yes=()=>{if(!accept.disabled)finish(true)},no=()=>finish(false),escape=event=>{event.preventDefault();finish(false)};
+  accept.addEventListener("click",yes);cancel.addEventListener("click",no);dialog.addEventListener("cancel",escape);ack.addEventListener("change",changed);dialog.showModal();cancel.focus();
+})}
 function setBusy(button,busy){if(button)button.disabled=busy}
 function backendUnavailable(){state.unavailable=true;element("connection-hint").textContent="Backend unavailable. Displayed data may be out of date.";renderBackendStatus()}
 function jobError(errorCode){const labels={apt_lock_unavailable:"APT is locked by another process",check_updates_apt_cache_refresh_failed:"Check updates failed during APT cache refresh",check_updates_facts_failed:"Check updates failed while collecting system facts",check_updates_package_list_failed:"Check updates failed while listing packages",check_updates_reboot_status_failed:"Check updates failed while reading reboot status",invalid_ansible_output:"Ansible returned an invalid structured result",python_interpreter_unavailable:"Python 3 is not available on the host",reboot_failed:"Reboot failed",sudo_unavailable:"Non-interactive sudo is not available",test_connection_failed:"SSH connection test failed",test_connection_facts_failed:"Connection test failed while collecting system facts",update_packages_failed:"Package update failed"};return labels[errorCode]||errorCode.replaceAll("_"," ")}
-function hasActiveJobs(){return Boolean(selectedJob&&ACTIVE_JOB_STATES.has(selectedJob.state))||(state.dashboard?.running_jobs||state.dashboard?.queued_jobs||0)>0||state.jobs.some(job=>ACTIVE_JOB_STATES.has(job.state))}
+function activeJobs(){const jobs=new Map(state.active_jobs.map(job=>[job.id,job]));for(const job of state.jobs)jobs.set(job.id,job);return [...jobs.values()].filter(job=>ACTIVE_JOB_STATES.has(job.state))}
+function hasActiveJobs(){return Boolean(selectedJob&&ACTIVE_JOB_STATES.has(selectedJob.state))||(state.dashboard?.running_jobs||state.dashboard?.queued_jobs||0)>0||activeJobs().length>0}
 function stopJobPolling(){if(jobPollTimer!==null)window.clearTimeout(jobPollTimer);jobPollTimer=null;jobPollFailureCount=0}
 function scheduleJobPolling(delay=ACTIVE_JOB_POLL_INTERVAL_MS){if(!connected||!hasActiveJobs()||jobPollTimer!==null||jobPollInFlight)return;jobPollTimer=window.setTimeout(pollJobs,delay)}
 function syncJobPolling(){if(connected&&hasActiveJobs())scheduleJobPolling();else stopJobPolling()}
-function clearProtectedData(){clearWebsiteIcons();stopJobPolling();stopVisibleChecks();document.querySelectorAll("dialog[open]").forEach(d=>d.close());state={info:null,hosts:[],custom_tasks:[],jobs:[],public_key:""};selectedJobId=null;selectedJob=null;selectedJobLog=null;selectedJobError=null;selectedJobLogError=null;jobDetailRequest++;for(const id of ["backend-status","job-highlights","dashboard","key","hosts","tasks","jobs","job-metadata","log","notices","history","activity","host-info","host-tasks","host-jobs"])element(id).replaceChildren();element("job-detail").hidden=true;element("protected-content").hidden=true;element("connect-placeholder").hidden=false;element("host-context").hidden=true;closeTimelinePoint()}
+function clearProtectedData(){stateRequest++;clearWebsiteIcons();stopJobPolling();stopVisibleChecks();document.querySelectorAll("dialog[open]").forEach(d=>d.close());state={info:null,hosts:[],custom_tasks:[],jobs:[],active_jobs:[],public_key:""};selectedJobId=null;selectedJob=null;selectedJobLog=null;selectedJobError=null;selectedJobLogError=null;jobDetailRequest++;viewRequest++;for(const id of ["backend-status","job-highlights","dashboard","key","hosts","tasks","jobs","job-metadata","log","notices","history","activity","host-info","host-tasks","host-jobs"])element(id).replaceChildren();element("job-detail").hidden=true;element("protected-content").hidden=true;element("connect-placeholder").hidden=false;element("host-context").hidden=true;element("selection-info").textContent="";element("filter-count").textContent="0";closeSelection();closeTimelinePoint()}
 function setDisconnected(hint="Enter your API token to load backend data."){connected=false;element("token").value="";element("token").disabled=ingress;clearProtectedData();element("connection-state").className="connection-state";element("connection-label").textContent="Not connected";element("connection-hint").textContent=hint;element("connect").hidden=false;element("refresh").hidden=true;element("connect").textContent=ingress?"Retry":"Connect";element("disconnect").hidden=true;element("token-field").hidden=ingress}
 function setConnecting(){element("connection-state").className="connection-state connecting";element("connection-label").textContent="Connecting…";element("connection-hint").textContent="Loading backend data."}
 function setConnected(){connected=true;element("token").disabled=true;element("connection-state").className="connection-state connected";element("connection-label").textContent="Connected";element("connection-hint").textContent="Backend data is loaded.";element("protected-content").hidden=false;element("connect-placeholder").hidden=true;element("connect").hidden=true;element("refresh").hidden=false;element("token-field").hidden=true;element("disconnect").hidden=ingress;syncJobPolling();syncVisibleChecks()}
@@ -77,13 +86,25 @@ async function request(path,{method="GET",body}={}){
   return response.status===204?null:response.json();
 }
 
+let stateRequest=0;
+async function loadActiveJobs(){
+  const groups=await Promise.all([...ACTIVE_JOB_STATES].map(async status=>{
+    const jobs=[],params=new URLSearchParams({state:status,sort:"oldest",limit:"100",offset:"0"});
+    let total=null;
+    do{params.set("offset",String(jobs.length));const page=await request(`jobs/page?${params}`);if(total===null)total=page.total;jobs.push(...page.items);if(!page.items.length)break}while(jobs.length<total);
+    return jobs;
+  }));
+  return [...new Map(groups.flat().map(job=>[job.id,job])).values()];
+}
 async function refreshDashboard(){
-  const [info,hosts,key,tasks,jobs,dashboard,preferences]=await Promise.all([request("info"),request("hosts"),request("public-key"),request("custom-tasks"),request("jobs"),request("dashboard"),request("preferences/host-checks")]);
-  state={info,hosts,custom_tasks:tasks,jobs,public_key:key.public_key,dashboard,preferences};
+  const generation=++stateRequest;
+  const [info,hosts,key,tasks,jobs,dashboard,preferences,active_jobs]=await Promise.all([request("info"),request("hosts"),request("public-key"),request("custom-tasks"),request("jobs"),request("dashboard"),request("preferences/host-checks"),loadActiveJobs()]);
+  if(generation!==stateRequest)return;
+  state={info,hosts,custom_tasks:tasks,jobs,active_jobs,public_key:key.public_key,dashboard,preferences};
   await loadView();render();await loadJobRoute(true);
 }
 
-async function refreshLiveState(){const [hosts,jobs,dashboard]=await Promise.all([request("hosts"),request("jobs"),request("dashboard")]);state={...state,hosts,jobs,dashboard,unavailable:false};await loadView();render();if(routeJobId())await loadJobRoute(true,false)}
+async function refreshLiveState(){const generation=++stateRequest;const [hosts,jobs,dashboard,active_jobs]=await Promise.all([request("hosts"),request("jobs"),request("dashboard"),loadActiveJobs()]);if(generation!==stateRequest)return;state={...state,hosts,jobs,dashboard,active_jobs,unavailable:false};await loadView();render();if(routeJobId())await loadJobRoute(true,false)}
 
 async function pollJobs(){jobPollTimer=null;if(!connected||!hasActiveJobs())return;jobPollInFlight=true;try{const recovered=jobPollFailureCount>0;await refreshLiveState();jobPollFailureCount=0;if(recovered)message("Live job updates recovered.","success")}catch(error){if(connected){if(jobPollFailureCount===0)message("Live job refresh failed; retrying automatically.","error");jobPollFailureCount+=1}}finally{jobPollInFlight=false;if(connected&&hasActiveJobs()){const index=Math.min(jobPollFailureCount,JOB_POLL_BACKOFF_MS.length-1);scheduleJobPolling(JOB_POLL_BACKOFF_MS[index])}}}
 
@@ -95,6 +116,7 @@ async function disconnect(){const button=element("disconnect");stopJobPolling();
 
 async function initialize(){setDisconnected();if(ingress){setConnecting();const success=await run(element("connect"),refreshDashboard);if(success)setConnected();return}let response;try{response=await fetch(new URL("auth/session",apiBase),{headers:{Accept:"application/json"},credentials:"same-origin",cache:"no-store"})}catch{message("Could not check the existing UI session.","error");return}if(response.status===401)return;if(!response.ok){message(`Session check failed (${response.status}).`,"error");return}setConnecting();const success=await run(element("connect"),refreshDashboard);if(success)setConnected();else setDisconnected("Session recovery failed. Please connect again.")}
 
+let viewRequest = 0;
 let currentHostTasks = [];
 let currentHostJobs = [];
 let currentJobPage = {items:[], total:0, offset:0, limit:25};
@@ -108,19 +130,25 @@ function view(){
   return {name:parts[0]||"dashboard",id:parts[1]||null,params:new URLSearchParams(query||"")};
 }
 function renderSelection(){
-  const route=view(),hostId=route.name==="hosts"&&route.id?route.id:route.params.get("host_id"),host=state.hosts.find(item=>item.id===hostId);
-  const labels=[];
-  if(host)labels.push(`Selected host: ${host.name}`);
-  if(route.name==="jobs"&&route.id)labels.push(`Job: ${actionName(state.jobs.find(job=>job.id===route.id)?.action)}`);
-  const defaults={range:route.name==="jobs"?"all":"7d",display:route.name==="jobs"?"table":"graph",sort:"newest",h_sort:"name",t_sort:"name",offset:"0"};
-  const filters=[...route.params].filter(([key,value])=>key!=="host_id"&&value&&value!==defaults[key]);
-  if(filters.length)labels.push(`${filters.length} active ${filters.length===1?"filter":"filters"}`);
-  const context=element("host-context");context.hidden=!state.info||!labels.length;
-  element("selection-info").textContent=labels.join(" · ");element("selection-info").title=labels.join(" · ");
+  const route=view(),hostId=route.name==="hosts"&&route.id?route.id:route.params.get("host_id"),host=state.hosts.find(item=>item.id===hostId),labels=[];
+  let count=0;
+  if(host){labels.push(`Selected host: ${host.name}`);count++}
+  if(route.name==="jobs"&&route.id){labels.push(`Job: ${actionName(state.jobs.find(job=>job.id===route.id)?.action)}`);count++}
+  const names={state:"State",action:"Action",filter:"Host status",h_search:"Find host",t_filter:"Tasks",t_search:"Find task"};
+  for(const [key,label] of Object.entries(names)){const value=route.params.get(key);if(value){labels.push(`${label}: ${key==="action"?actionName(value):value}`);count++}}
+  const range=route.params.get("range"),defaultRange=route.name==="jobs"?"all":"7d";
+  if(route.params.has("start")||route.params.has("end")||(range&&range!==defaultRange)){labels.push(`Period: ${range||"custom"}`);count++}
+  const defaults={range:defaultRange,display:route.name==="jobs"?"table":"graph",sort:"newest",h_sort:"name",t_sort:"name",offset:"0"};
+  const viewOptions=["display","sort","h_sort","t_sort","offset"].filter(key=>route.params.has(key)&&route.params.get(key)!==defaults[key]);
+  if(viewOptions.length)labels.push("View options changed");
+  const active=Boolean(count||viewOptions.length);element("host-context").hidden=!state.info;element("filter-count").textContent=count;element("filter-count").classList.toggle("empty",count===0);
+  element("reset-view").disabled=!active;element("selection-info").textContent=labels.join("\n")||"Default view · no active filters";
+  element("selection-toggle").title=labels.join(" · ")||"No active filters";element("selection-toggle").setAttribute("aria-label",`Selection and filters: ${count} active`);
 }
+
 function resetView(){
   const route=view(),tab=["dashboard","hosts","tasks","jobs"].includes(route.name)?route.name:"dashboard";
-  location.hash=`/${tab}`;
+  closeSelection();location.hash=`/${tab}`;
 }
 function actionName(value){return ({check_updates:"Check for updates",test_connection:"Connection test",update:"System update",reboot:"Restart host",custom_task:"Custom task"})[value]||String(value||"Job").replaceAll("_"," ")}
 function timeLabel(value){
@@ -218,10 +246,11 @@ function pointStatus(job){return job.needs_review?"needs-review":job.state==="fa
 function renderHistory(){
   const graph=historyMode()==="graph",period=historyPeriod(),params=view().params;
   element("history-toggle").textContent=graph?"▤":"⌁";element("history-toggle").setAttribute("aria-label",graph?"Show table":"Show graph");element("history-toggle").title=graph?"Show table":"Show graph";
+  element("job-sort-label").hidden=graph;
   element("history-chart").hidden=!graph;element("jobs-section").hidden=graph;closeTimelinePoint();
   element("history-range").value=params.get("range")||(view().name==="jobs"?"all":"7d");
   element("history-custom").hidden=element("history-range").value!=="custom";
-  if(period){element("history-start").value=localDateInput(period.start);element("history-end").value=localDateInput(period.end)}
+  if(period){syncSearch("history-start",localDateInput(period.start));syncSearch("history-end",localDateInput(period.end))}
   const dateFormat=new Intl.DateTimeFormat(navigator.language,{dateStyle:"medium",timeStyle:"short"});
   element("history-period").textContent=period?`${dateFormat.format(new Date(period.start))} – ${dateFormat.format(new Date(period.end))}`:"All stored jobs";
   const historyCount=graph?currentTimeline.total:currentJobPage.total;
@@ -240,6 +269,7 @@ function closeTimelinePoint(){const preview=element("history-popover");if(previe
 function showTimelinePoint(target){
   const anchor=target.closest?.("[data-point]");if(!anchor)return;
   const point=currentTimeline.points[Number(anchor.dataset.point)],preview=element("history-popover");if(!point||!preview)return;
+  if(!preview.hasAttribute("hidden")&&preview.dataset.sourcePoint===anchor.dataset.point)return;
   const circle=anchor.querySelector("circle"),cx=Number(circle.getAttribute("cx")),cy=Number(circle.getAttribute("cy"));
   preview.setAttribute("transform",`translate(${cx} ${cy})`);preview.dataset.sourcePoint=anchor.dataset.point;
   if(point.total===1){
@@ -258,29 +288,60 @@ function showTimelinePoint(target){
 }
 
 async function updateShown(button){
-  const targets=state.hosts.filter(h=>h.checked_at&&h.updates>0&&!state.jobs.some(j=>j.host_id===h.id&&ACTIVE_JOB_STATES.has(j.state)&&MUTATING_JOB_ACTIONS.has(j.action)));
+  const targets=state.hosts.filter(h=>h.checked_at&&h.updates>0&&!activeJobs().some(j=>j.host_id===h.id&&ACTIVE_JOB_STATES.has(j.state)&&MUTATING_JOB_ACTIONS.has(j.action)));
   if(!targets.length)return;
-  if(!await confirmAction(`Update all (${targets.length}) hosts?`,`Run regular system updates on these hosts? No restart is requested.`,targets.map(host=>host.name),"Queue updates"))return;
+  if(!await confirmAction(`Update all (${targets.length}) hosts?`,`Run regular system updates on these hosts during a suitable maintenance window? No host reboot is requested. Review restart requirements after completion.`,targets.map(host=>`${host.name} · ${host.updates} updates${host.reboot_required?" · Restart already required":""}`),"Queue updates",{acknowledgement:"I will review completed updates and restart requirements. Any host reboot must be confirmed separately."}))return;
   await run(button,async()=>{let count=0;const failed=[];for(const host of targets){try{await request(hostActionPath(host.id,"update"),{method:"POST"});count++}catch{failed.push(host.name)}}await refreshDashboard();if(failed.length)throw Error(`${count} updates queued. Could not queue: ${failed.join(", ")}. Review host status before retrying.`);return {notification:{href:"#/jobs?action=update",label:"Open jobs"}}},"Updates queued");
 }
-function hostRow(host,detail=false){
-  const jobs=state.jobs.filter(job=>job.host_id===host.id&&ACTIVE_JOB_STATES.has(job.state));
-  const locked=jobs.some(job=>MUTATING_JOB_ACTIONS.has(job.action));
-  const action=(name,label,danger=false)=>`<button type="button" ${danger?'class="danger" ':""}data-host="${host.id}" data-action="${name}" aria-label="${name==="check_updates"?"Check for updates":label}" title="${name==="check_updates"?"Check for updates":label}" ${jobs.some(job=>job.action===name)||(MUTATING_JOB_ACTIONS.has(name)&&locked)?"disabled":""}>${name==="check_updates"?`<span class="refresh-glyph ${jobs.some(job=>job.action===name)?"spinning":""}" aria-hidden="true">↻</span>`:jobs.some(job=>job.action===name)?"Running…":label}</button>`;
-  const system=[host.distribution,host.distribution_version].filter(Boolean).join(" ")||host.status||"Not checked";
-  return `<div class="row"><span>${detail?"":`<a href="#/hosts/${host.id}">${escapeHtml(host.name)}</a>`}<span class="website-links">${websiteLinks(host)}</span><small>${escapeHtml(system)} · ${host.checked_at?`${host.updates} updates · ${host.security_updates} security · reboot ${host.reboot_required?"required":"not required"}`:"Update status unknown · reboot status unknown"}</small></span><span class="actions">${action("check_updates","↻")}${action("update","Update")}${action("reboot","Reboot",true)}${detail?"":`<a href="#/hosts/${host.id}">Details</a>`}</span></div>`;
+function hostSystem(host){
+  const distribution=(host.distribution||"").toLowerCase();
+  const icon=distribution.includes("proxmox")||(host.kernel||"").includes("-pve")?"proxmox":distribution.includes("ubuntu")?"ubuntu":distribution.includes("debian")?"debian":"linux";
+  const label=[host.distribution,host.distribution_version].filter(Boolean).join(" ")||"System not checked";
+  return {icon,label:icon==="proxmox"&&!distribution.includes("proxmox")?`${label} · PVE kernel`:label};
 }
+function systemIcon(host){const system=hostSystem(host);return `<span class="system-icon" data-os="${system.icon}" title="${escapeHtml(system.label)}" aria-hidden="true">${buttonIcon(system.icon)}</span>`}
+function hostActions(host,details=false){
+  const jobs=activeJobs().filter(job=>job.host_id===host.id),locked=jobs.some(job=>MUTATING_JOB_ACTIONS.has(job.action));
+  const action=(name,label,icon,danger=false)=>{const busy=jobs.some(job=>job.action===name);return `<button type="button" ${danger?'class="danger" ':""}data-host="${host.id}" data-action="${name}" aria-label="${label}" title="${label}" ${busy||(MUTATING_JOB_ACTIONS.has(name)&&locked)?"disabled":""}>${name==="check_updates"?`<span class="refresh-glyph ${busy?"spinning":""}">${buttonIcon(icon)}</span>`:buttonIcon(icon)}<span class="action-label">${busy&&name!=="check_updates"?"Running…":label}</span></button>`};
+  return action("check_updates","Check for updates","refresh")+action("update","Update","update")+action("reboot","Reboot","reboot",true)+(details?"":`<a href="#/hosts/${host.id}" data-icon="info">Details</a>`);
+}
+function hostMaintenance(host){
+  return `${host.checked_at?`<span class="update-count ${host.updates>0?"pending-updates":""}">${host.updates} updates</span>${host.security_updates>0?`<span class="security-count">${host.security_updates} security</span>`:""}`:'<span class="unknown-status">Update status unknown</span>'}${host.reboot_required?`<span class="restart-required">${buttonIcon("warning")}Restart required</span>`:!host.checked_at?'<span class="unknown-status">Reboot status unknown</span>':""}`;
+}
+function hostRow(host){
+  const system=hostSystem(host),updates=Boolean(host.checked_at&&(host.updates>0||host.security_updates>0));
+  return `<div class="row host-row ${updates?"has-updates":""} ${host.reboot_required?"needs-reboot":""}"><div class="host-row-main">${systemIcon(host)}<div><a class="host-name" href="#/hosts/${host.id}">${escapeHtml(host.name)}</a><span class="website-links">${websiteLinks(host)}</span><small>${escapeHtml(system.label)}</small><div class="host-maintenance">${hostMaintenance(host)}</div></div></div><div class="actions">${hostActions(host)}</div></div>`;
+}
+function hostOverview(host){
+  const system=hostSystem(host),assigned=currentHostTasks.filter(task=>task.assigned),enabled=assigned.filter(task=>task.enabled),unready=assigned.filter(task=>task.state!=="suitable");
+  const value=text=>escapeHtml(text??"Not recorded");
+  const field=(label,text)=>`<dt>${label}</dt><dd>${value(text)}</dd>`;
+  return `<div class="host-identity">${systemIcon(host)}<div><h2 id="host-title">${escapeHtml(host.name)}</h2><p>${escapeHtml(system.label)} · ${escapeHtml(host.status||(!host.checked_at?"Not checked":"Stored status"))}</p></div></div><div class="host-detail-actions actions">${hostActions(host,true)}<button data-edit-host="${host.id}">${buttonIcon("edit")}Edit host</button></div>${host.reboot_required?`<div class="restart-alert" role="status">${buttonIcon("warning")}<div><strong>Restart required</strong><p>Plan downtime before restarting. Review running services and confirm the reboot separately.</p></div></div>`:""}<div class="host-overview-metrics"><a class="host-metric ${host.checked_at&&host.updates>0?"pending-updates":""}" href="#/jobs?host_id=${host.id}&action=check_updates"><small>Available updates</small><strong>${host.checked_at?host.updates:"Unknown"}</strong><span>${host.checked_at?`${host.security_updates} security ${host.security_updates===1?"update":"updates"}`:"Run a check to populate status"}</span></a><a class="host-metric" href="#/tasks?host_id=${host.id}"><small>Task assignments</small><strong>${enabled.length} enabled</strong><span>${assigned.length} assigned · ${unready.length} need a compatibility check</span></a><div class="host-metric"><small>Last checked</small><strong id="host-last-checked">${host.checked_at?timeLabel(host.checked_at):"Never"}</strong><span class="${staleHost(host)?"status-stale":""}">${staleHost(host)?"Status missing or older than 24 hours":"Stored status is recent"}</span></div></div><div class="host-detail-grid"><section class="host-info-card"><h3>${buttonIcon("linux")}System</h3><dl>${field("Distribution",host.distribution)}${field("Version",host.distribution_version)}${field("Kernel",host.kernel)}${field("Package provider",host.package_provider==="debian_apt"?"APT (Debian / Ubuntu)":host.package_provider)}<dt>Last status time</dt><dd>${host.checked_at?jobTimeLabel(host.checked_at):"No successful check recorded"}</dd></dl></section><section class="host-info-card"><h3>${buttonIcon("connection")}Connection</h3><dl>${field("SSH address",host.address)}${field("SSH port",host.port)}${field("Automation user",host.username)}</dl><div class="actions"><button data-host="${host.id}" data-action="test_connection">${buttonIcon("connection")}Test connection</button><button data-copy-address="${host.id}" data-icon="copy">Copy address</button></div><div class="host-websites">${websiteLinks(host)}</div></section><section class="host-info-card host-recent"><div class="section-heading"><h3>${buttonIcon("jobs")}Recent jobs</h3><a href="#/jobs?host_id=${host.id}">All host jobs →</a></div>${currentHostJobs.map(job=>jobRow(job,true)).join("")||'<p class="empty">No recorded jobs for this host.</p>'}</section></div><details class="technical-details"><summary>Inventory details</summary><dl class="host-inventory">${field("Host ID",host.id)}<dt>Registered</dt><dd>${jobTimeLabel(host.created_at)}</dd><dt>Last configuration change</dt><dd>${jobTimeLabel(host.updated_at)}</dd></dl></details><div class="host-retire"><span class="sub">Remove only this inventory entry and its task assignments.</span><button class="danger" data-delete-host="${host.id}">${buttonIcon("trash")}Remove host</button></div>`;
+}
+function decorateIcons(){
+  const groups={reboot:"[data-action=reboot]",update:"[data-action=update]",connection:"[data-action=test_connection]",refresh:"[data-action=check_updates]",trash:"[data-delete-host],[data-delete-task],#host-delete",edit:"[data-edit-host],[data-edit-task]",plus:"[data-add-host],[data-add-task]",run:"[data-task]",review:"[data-check-task]",link:"[data-assign-task]",unlink:"[data-unassign-task]",power:"[data-toggle-task]",jobs:"[data-job-log],[data-preview-log]"};
+  for(const [icon,selector] of Object.entries(groups))document.querySelectorAll(selector).forEach(node=>node.dataset.icon=icon);
+  document.querySelectorAll("[data-add-host],[data-add-task]").forEach(node=>{for(const child of node.childNodes)if(child.nodeType===Node.TEXT_NODE)child.textContent=child.textContent.replace(/^\+\s*/,"")});
+  document.querySelectorAll("[data-icon]").forEach(node=>{if(!node.querySelector(".button-icon"))node.insertAdjacentHTML("afterbegin",buttonIcon(node.dataset.icon))});
+}
+function closeSelection(){element("selection-panel").hidden=true;element("selection-toggle").setAttribute("aria-expanded","false")}
+
 function jobRow(job,detailed=false){
   const type=escapeHtml(actionName(job.type||job.action)),host=escapeHtml(job.host_name||"No host");
   const when=job.finished_at||job.started_at||job.created_at;
   const absolute=when?new Intl.DateTimeFormat(navigator.language,{dateStyle:"medium",timeStyle:"short"}).format(new Date(when)):"Not yet";
-  const detail=detailed?`<small title="${escapeHtml(when||"")}">${escapeHtml(absolute)} · ${escapeHtml(job.state)}${typeof job.duration==="number"?` · ${formatDuration(job.duration)}`:""}</small>${job.short_error?`<small class="state-failed">${escapeHtml(job.short_error)}</small>`:""}`:`<small>${host} · ${timeLabel(when)}</small>`;
+  const detail=detailed?`<small title="${escapeHtml(when||"")}">${escapeHtml(absolute)} · ${escapeHtml(job.state)}${typeof job.duration==="number"?` · ${formatDuration(job.duration)}`:""}</small>${job.reboot_required?`<small class="restart-required">${buttonIcon("warning")}Restart required</small>`:""}${job.short_error?`<small class="state-failed">${escapeHtml(job.short_error)}</small>`:""}`:`<small>${host} · ${timeLabel(when)}</small>`;
   return `<div class="row"><span><span title="${escapeHtml(job.type||job.action)}">${type}</span>${detailed?`<small>${host}</small>`:""}${detail}</span><span class="actions"><span class="state-${escapeHtml(job.state)}" title="${escapeHtml(job.error_code||job.state)}">${escapeHtml(job.state==="failed"&&job.error_code?jobError(job.error_code):job.state)}</span><button type="button" data-job-log="${job.id}">Open</button></span></div>`;
 }
 function staleHost(host){return !host.checked_at||Date.now()-Date.parse(host.checked_at)>86400000}
 function render(){
   const route=view(),page=route.name==="hosts"&&route.id?"host":route.name==="jobs"&&route.id?"job":route.name;
+  element("dashboard-layout").classList.toggle("is-dashboard",page==="dashboard");
+  const hostContainer=page==="dashboard"?element("dashboard-sidebar"):element("host-list-slot"),hostSection=element("host-section");
+  const focused=hostSection.parentElement!==hostContainer&&hostSection.contains(document.activeElement)?document.activeElement:null;
+  if(hostSection.parentElement!==hostContainer)hostContainer.append(hostSection);
   document.querySelectorAll("[data-views]").forEach(section=>section.hidden=!section.dataset.views.split(" ").includes(page));
+  if(focused)focused.focus({preventScroll:true});
   const contextId=route.id&&route.name==="hosts"?route.id:route.params.get("host_id");
   const contextHost=state.hosts.find(host=>host.id===contextId);
   document.querySelectorAll("nav a").forEach(link=>{const tab=link.dataset.tab;if(tab){link.href=tab==="hosts"?(contextId?`#/hosts/${encodeURIComponent(contextId)}`:"#/hosts"):`#/${tab}${contextId?`?host_id=${encodeURIComponent(contextId)}`:""}`}if(link.dataset.tab===route.name)link.setAttribute("aria-current","page");else link.removeAttribute("aria-current")});
@@ -291,7 +352,7 @@ function render(){
   const scopedHosts=contextHost?[contextHost]:state.hosts,checkedHosts=scopedHosts.filter(host=>host.checked_at),unchecked=scopedHosts.length-checkedHosts.length;
   const updates=checkedHosts.reduce((total,host)=>total+host.updates,0),securityCount=checkedHosts.reduce((total,host)=>total+host.security_updates,0);
   const updateStatus=checkedHosts.length?`${updates} ${unchecked?"known ":""}updates · ${securityCount} ${unchecked?"known ":""}security updates`:scopedHosts.length?"Update status unknown":"No hosts yet";
-  const metrics=[["Hosts",contextHost?1:state.hosts.length,updateStatus+(unchecked?` · ${unchecked} unchecked ${unchecked===1?"host":"hosts"}`:"")],["Running jobs",contextHost?state.jobs.filter(job=>job.host_id===contextHost.id&&job.state==="running").length:summary?.running_jobs??0,"Being processed now"],["Queued jobs",contextHost?state.jobs.filter(job=>job.host_id===contextHost.id&&job.state==="queued").length:summary?.queued_jobs??0,"Waiting for a worker"]];
+  const metrics=[["Hosts",contextHost?1:state.hosts.length,updateStatus+(unchecked?` · ${unchecked} unchecked ${unchecked===1?"host":"hosts"}`:"")],["Running jobs",contextHost?activeJobs().filter(job=>job.host_id===contextHost.id&&job.state==="running").length:summary?.running_jobs??0,"Being processed now"],["Queued jobs",contextHost?activeJobs().filter(job=>job.host_id===contextHost.id&&job.state==="queued").length:summary?.queued_jobs??0,"Waiting for a worker"]];
   element("dashboard").innerHTML=metrics.map(([label,value,detail],index)=>{const params=new URLSearchParams();if(contextId)params.set("host_id",contextId);if(index)params.set("state",index===1?"running":"queued");const href=index===0?(contextId?`#/hosts/${encodeURIComponent(contextId)}`:"#/hosts"):`#/jobs?${params}`;return `<a class="toolbar-metric" href="${href}" title="${escapeHtml(detail)}"><small>${label}</small><strong>${escapeHtml(value)}</strong><span class="sr-only">${escapeHtml(detail)}</span></a>`}).join("");
   element("job-highlights").innerHTML=highlightJob(latest,"Last job")+highlightJob(failed,"Last failed job");
   element("job-highlights").hidden=page!=="dashboard";
@@ -300,7 +361,7 @@ function render(){
   const notices=[];
   const security=state.hosts.filter(h=>h.security_updates>0),reboot=state.hosts.filter(h=>h.reboot_required),stale=state.hosts.filter(staleHost);
   if(security.length)notices.push(`<a class="notice urgent" href="#/hosts?filter=security">${security.length} ${security.length===1?"host has":"hosts have"} security updates. Review affected hosts and run a regular system update.</a>`);
-  if(reboot.length)notices.push(`<a class="notice" href="#/hosts?filter=reboot">${reboot.length} ${reboot.length===1?"host needs":"hosts need"} a restart. Review and confirm separately.</a>`);
+  if(reboot.length)notices.push(`<a class="notice restart-notice" href="#/hosts?filter=reboot">${buttonIcon("warning")}${reboot.length} ${reboot.length===1?"host needs":"hosts need"} a restart. Review and confirm separately.</a>`);
   const attention=summary?.attention_job===undefined?failed:summary.attention_job;
   if(attention)notices.push(`<a class="notice urgent" href="#/jobs/${attention.id}">Last failed job: ${escapeHtml(attention.short_error||jobError(attention.error_code||attention.action))}. Review the job.</a>`);
   if(stale.length)notices.push(`<a class="notice" href="#/hosts?filter=stale">${stale.length} ${stale.length===1?"host needs":"hosts need"} a fresh status check. No check in the last 24 hours.</a>`);
@@ -314,8 +375,8 @@ function render(){
   element("context-host-tasks").hidden=!contextHost||page!=="tasks";element("context-host-jobs").hidden=!contextHost||page!=="jobs";
   if(contextHost){element("context-tasks-title").textContent=`Tasks for ${contextHost.name}`;element("context-jobs-title").textContent=`Recent jobs for ${contextHost.name}`}
   element("host-count").textContent=`${shownHosts.length} of ${state.hosts.length} hosts`;
-  const eligible=state.hosts.filter(h=>h.checked_at&&h.updates>0&&!state.jobs.some(j=>j.host_id===h.id&&ACTIVE_JOB_STATES.has(j.state)&&MUTATING_JOB_ACTIONS.has(j.action)));
-  const unknown=state.hosts.filter(h=>!h.checked_at).length,active=state.hosts.filter(h=>state.jobs.some(j=>j.host_id===h.id&&ACTIVE_JOB_STATES.has(j.state)&&MUTATING_JOB_ACTIONS.has(j.action))).length;
+  const eligible=state.hosts.filter(h=>h.checked_at&&h.updates>0&&!activeJobs().some(j=>j.host_id===h.id&&ACTIVE_JOB_STATES.has(j.state)&&MUTATING_JOB_ACTIONS.has(j.action)));
+  const unknown=state.hosts.filter(h=>!h.checked_at).length,active=state.hosts.filter(h=>activeJobs().some(j=>j.host_id===h.id&&ACTIVE_JOB_STATES.has(j.state)&&MUTATING_JOB_ACTIONS.has(j.action))).length;
   element("update-shown").textContent=`Update all (${eligible.length})`;element("update-shown").disabled=eligible.length===0;element("update-shown").title=`${unknown} hosts have unknown update status; ${active} hosts have an update already running. Only hosts with known pending updates are included.`;element("update-skipped").textContent=unknown||active?`${unknown} unknown · ${active} already updating (skipped)`:"";
   element("hosts").innerHTML=shownHosts.map(host=>hostRow(host)).join("")||`<p class="empty">${state.hosts.length?"No hosts match these filters.":"No hosts to show."}</p>`;
   element("all-hosts").hidden=page!=="dashboard";
@@ -332,6 +393,7 @@ function render(){
   if(page==="host"){element("hosts").replaceChildren();renderHostDetail(route.id)}
   else if(contextHost){renderHostDetail(contextHost.id)}
   else{element("host-info").replaceChildren();element("host-tasks").replaceChildren();element("host-jobs").replaceChildren()}
+  decorateIcons();
   syncWebsiteIcons(["dashboard","hosts","host"].includes(page));
   renderSelectedJob();
   syncJobPolling();
@@ -339,23 +401,24 @@ function render(){
 }
 function renderHostDetail(id){
   const host=state.hosts.find(h=>h.id===id);
-  element("host-title").textContent=host?.name||"Host not found";
-  if(!host){element("host-info").replaceChildren();element("host-tasks").replaceChildren();element("host-jobs").replaceChildren();return}
-  element("host-info").innerHTML=hostRow(host,true)+`<p>${escapeHtml(host.address)}:${host.port} · ${escapeHtml(host.username)} · Kernel ${escapeHtml(host.kernel||"unknown")}</p><p>Last checked: ${timeLabel(host.checked_at)}</p><div class="actions"><button data-host="${id}" data-action="test_connection">Test connection</button><button data-edit-host="${id}">Edit host</button><button class="danger" data-delete-host="${id}">Remove host</button></div>`;
-  element("host-tasks").innerHTML=state.custom_tasks.map(task=>{const result=currentHostTasks.find(c=>c.task_id===task.id)||{state:"unchecked",reasons:[],assigned:false,enabled:false};const suitable=result.state==="suitable",busy=state.jobs.some(j=>j.host_id===id&&ACTIVE_JOB_STATES.has(j.state)&&MUTATING_JOB_ACTIONS.has(j.action));return `<div class="host-task"><strong>${escapeHtml(task.name)}</strong> <span class="state-${result.state}">${result.state}</span><p>${result.assigned?(result.enabled?"Assigned and enabled":"Assigned and disabled"):"Not assigned"} · ${task.enabled?"Globally enabled":"Globally disabled"}</p><p>${escapeHtml(result.reasons.join("; "))||(suitable?"Prerequisites verified. Ready when assigned and enabled.":"Check prerequisites before assigning or running this task.")}</p><small>${result.checked_at?`Checked ${timeLabel(result.checked_at)} · valid up to 24 hours`:"Not checked"}</small><div class="actions"><button data-check-task="${task.id}" data-host="${id}">Check compatibility</button><button data-assign-task="${task.id}" data-host="${id}" ${!suitable&&!result.enabled?"disabled":""}>${result.enabled?"Disable for host":result.assigned?"Enable for host":"Assign to host"}</button>${result.assigned?`<button data-unassign-task="${task.id}" data-host="${id}">Unassign</button>`:""}<button data-task="${task.id}" data-host="${id}" ${!suitable||!result.enabled||!task.enabled||busy?"disabled":""}>Run task</button><button data-edit-task="${task.id}">Edit</button></div></div>`}).join("")||'<p class="empty">No tasks yet. Create a task for this host above.</p>';
+  if(!host){element("host-info").innerHTML="<h2>Host not found</h2>";element("host-tasks").replaceChildren();element("host-jobs").replaceChildren();return}
+  element("host-info").innerHTML=hostOverview(host);
+
+  element("host-tasks").innerHTML=state.custom_tasks.map(task=>{const result=currentHostTasks.find(c=>c.task_id===task.id)||{state:"unchecked",reasons:[],assigned:false,enabled:false};const suitable=result.state==="suitable",busy=activeJobs().some(j=>j.host_id===id&&ACTIVE_JOB_STATES.has(j.state)&&MUTATING_JOB_ACTIONS.has(j.action));return `<div class="host-task"><strong>${escapeHtml(task.name)}</strong> <span class="state-${result.state}">${result.state}</span><p>${result.assigned?(result.enabled?"Assigned and enabled":"Assigned and disabled"):"Not assigned"} · ${task.enabled?"Globally enabled":"Globally disabled"}</p><p>${escapeHtml(result.reasons.join("; "))||(suitable?"Prerequisites verified. Ready when assigned and enabled.":"Check prerequisites before assigning or running this task.")}</p><small>${result.checked_at?`Checked ${timeLabel(result.checked_at)} · valid up to 24 hours`:"Not checked"}</small><div class="actions"><button data-check-task="${task.id}" data-host="${id}">Check compatibility</button><button data-assign-task="${task.id}" data-host="${id}" ${!suitable&&!result.enabled?"disabled":""}>${result.enabled?"Disable for host":result.assigned?"Enable for host":"Assign to host"}</button>${result.assigned?`<button data-unassign-task="${task.id}" data-host="${id}">Unassign</button>`:""}<button data-task="${task.id}" data-host="${id}" ${!suitable||!result.enabled||!task.enabled||busy?"disabled":""}>Run task</button><button data-edit-task="${task.id}">Edit</button></div></div>`}).join("")||'<p class="empty">No tasks yet. Create a task for this host above.</p>';
   element("host-jobs").innerHTML=currentHostJobs.map(jobRow).join("")||'<p class="empty">No jobs for this host.</p>';
   element("host-all-jobs").href=`#/jobs?host_id=${id}`;
 }
 async function loadView(){
-  const route=view(),contextId=route.name==="hosts"&&route.id?route.id:route.params.get("host_id");
+  const generation=++viewRequest,routeHash=location.hash,route=view(),contextId=route.name==="hosts"&&route.id?route.id:route.params.get("host_id");
+  const current=()=>generation===viewRequest&&routeHash===location.hash;
   if(contextId){
     const [checks,jobs]=await Promise.all([request(`hosts/${encodeURIComponent(contextId)}/task-compatibility`),request(`jobs/page?host_id=${encodeURIComponent(contextId)}&limit=5`)]);
-    currentHostTasks=checks;currentHostJobs=jobs.items;
+    if(!current())return;currentHostTasks=checks;currentHostJobs=jobs.items;
   }
   if(["dashboard","jobs"].includes(route.name)&&!route.id){
     const params=jobQuery();
-    if(historyMode()==="graph"){params.delete("offset");params.delete("sort");currentTimeline=await request(`jobs/timeline?${params}`)}
-    else currentJobPage=await request(`jobs/page?${params}`);
+    if(historyMode()==="graph"){params.delete("offset");params.delete("sort");const timeline=await request(`jobs/timeline?${params}`);if(current())currentTimeline=timeline}
+    else{const page=await request(`jobs/page?${params}`);if(current())currentJobPage=page}
   }
 }
 
@@ -376,13 +439,35 @@ function jobTimeLabel(value){
   return `<time datetime="${escapeHtml(value)}" title="${escapeHtml(value)}"><span class="job-clock">${escapeHtml(clock)}</span><span class="job-date">${escapeHtml(day)}</span></time>`;
 }
 function buttonIcon(name){
-  const paths={copy:'<rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>',download:'<path d="M12 3v12m-5-5 5 5 5-5M4 16v4h16v-4"/>',refresh:'<path d="M20 7v5h-5M4 17v-5h5M5 8a8 8 0 0 1 13-3l2 2M4 17l2 2a8 8 0 0 0 13-3"/>',run:'<path d="m8 5 11 7-11 7Z"/>',review:'<path d="m5 12 4 4L19 6"/>'};
+  const paths={
+trash:'<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/>',
+edit:'<path d="m15 4 5 5M4 20l5-1L21 7a2 2 0 0 0-5-5L4 14Z"/>',
+plus:'<path d="M12 4v16M4 12h16"/>',
+update:'<path d="m3 7 9-4 9 4v10l-9 4-9-4ZM3 7l9 4 9-4m-9 4v10M7 5l10 4"/>',
+reboot:'<path d="M4 9a8 8 0 1 1 0 7M4 3v6h6M12 6v6"/>',
+power:'<path d="M12 2v9M6 5a9 9 0 1 0 12 0"/>',
+warning:'<path d="m12 3 10 18H2Z"/><path d="M12 9v5m0 3v1"/>',
+info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v1"/>',
+filter:'<path d="M3 4h18l-7 8v7l-4 2v-9Z"/>',
+close:'<path d="m6 6 12 12M18 6 6 18"/>',
+dashboard:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+hosts:'<rect x="3" y="3" width="18" height="7" rx="2"/><rect x="3" y="14" width="18" height="7" rx="2"/><path d="M7 6h1m-1 11h1m5-11h5m-5 11h5"/>',
+tasks:'<path d="m3 6 2 2 4-4M12 6h9M3 14l2 2 4-4m3 2h9M3 21h18"/>',
+jobs:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8m-8 5h8m-8 5h5"/>',
+connection:'<path d="M4 5h16v12H4ZM8 21h8m-4-4v4M7 9l3 3-3 3m6-1h4"/>',
+link:'<path d="m10 13 4-4m-6 7-2 2a4 4 0 0 1-6-6l5-5a4 4 0 0 1 6 0m2 1 2-2a4 4 0 0 1 6 6l-5 5a4 4 0 0 1-6 0"/>',
+unlink:'<path d="m4 4 16 16M10 5l2-2a4 4 0 0 1 6 6l-2 2M8 13l-2 2a4 4 0 0 0 6 6l2-2"/>',
+linux:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3m6 0h4"/>',
+debian:'<path d="M19 8c-2-6-12-6-14 1-3 9 10 14 15 7 4-6-3-12-7-8-4 4 2 8 4 4M7 19l-2 3"/>',
+ubuntu:'<circle cx="12" cy="12" r="6"/><circle cx="12" cy="3" r="2"/><circle cx="4" cy="17" r="2"/><circle cx="20" cy="17" r="2"/><path d="M12 5v3m-6 8 3-2m9 2-3-2"/>',
+proxmox:'<path d="m3 4 9 8-9 8m18-16-9 8 9 8M8 4l4 4 4-4M8 20l4-4 4 4"/>',
+copy:'<rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>',download:'<path d="M12 3v12m-5-5 5 5 5-5M4 16v4h16v-4"/>',refresh:'<path d="M20 7v5h-5M4 17v-5h5M5 8a8 8 0 0 1 13-3l2 2M4 17l2 2a8 8 0 0 0 13-3"/>',run:'<path d="m8 5 11 7-11 7Z"/>',review:'<path d="m5 12 4 4L19 6"/>'};
   return `<svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${paths[name]||""}</svg>`;
 }
 function jobRerunReason(job){
   if(ACTIVE_JOB_STATES.has(job.state))return "Wait for this job to finish.";
   if(!state.hosts.some(host=>host.id===job.host_id))return "The original host is no longer available.";
-  if(state.jobs.some(item=>item.host_id===job.host_id&&ACTIVE_JOB_STATES.has(item.state)&&MUTATING_JOB_ACTIONS.has(item.action)))return "The host already has work in progress.";
+  if(activeJobs().some(item=>item.host_id===job.host_id&&ACTIVE_JOB_STATES.has(item.state)&&MUTATING_JOB_ACTIONS.has(item.action)))return "The host already has work in progress.";
   if(job.action==="custom_task"){
     const task=state.custom_tasks.find(item=>item.id===job.custom_task_id);
     if(!task?.enabled||!task.host_ids.includes(job.host_id))return "Review this task's activation and host assignment first.";
@@ -401,8 +486,8 @@ function renderSelectedJob(){
   const elapsed=job.duration??(active&&job.started_at?Math.max(0,(Date.now()-Date.parse(job.started_at))/1000):null);
   const duration=elapsed===null?(active?"Not started":"Not recorded"):formatDuration(elapsed);
   const steps=[["Queued",job.created_at],["Started",job.started_at],[active?"Finished":job.state==="failed"?"Failed":job.state==="cancelled"?"Cancelled":"Finished",job.finished_at]];
-  const description=[outcome,job.state==="failed"?explanation:"",job.reboot_required?"A restart is required; review and confirm it on the host.":""].filter(Boolean).join(". ");
-  element("job-metadata").innerHTML=`<div class="job-hero"><div><h2>${escapeHtml(title)} <span class="job-title-host">· ${escapeHtml(job.host_name||"Host unavailable")}</span></h2><p id="job-result" class="job-description state-${job.state}" role="status">${escapeHtml(description)}${selectedJobError?`<span class="error"> · Could not refresh: ${escapeHtml(selectedJobError)}</span>`:""}</p></div><span id="job-state-badge" class="job-state-badge state-${job.state}">${escapeHtml(job.state)}</span></div><div class="job-facts"><div><small>${active&&job.started_at?"Running time":"Duration"}</small><strong id="job-duration">${duration}</strong></div><div><small>Exit code</small><strong>${job.exit_code??(active?"Pending":"Not recorded")}</strong></div></div><ol id="job-timeline" class="job-timeline">${steps.map(([label,time])=>`<li class="${time?"complete":"pending"}"><strong>${label}</strong><span>${time?jobTimeLabel(time):active?"Not yet":"Not recorded"}</span></li>`).join("")}</ol><div class="job-related">${host?`<a id="job-host-link" href="#/hosts/${host.id}">Open host →</a><a href="#/jobs?host_id=${host.id}">Host job history →</a>`:'<span class="sub">Original host no longer available</span>'}${job.custom_task_id&&host?`<a href="#/tasks?host_id=${host.id}">Review host tasks →</a>`:""}</div><details class="technical-details"><summary>Technical details and identifiers</summary><dl class="job-identifiers"><dt>Job ID</dt><dd class="mono">${escapeHtml(job.job_id||job.id)}</dd><dt>Action</dt><dd>${escapeHtml(actionName(job.action))}</dd><dt>Error code</dt><dd>${escapeHtml(job.error_code||"None")}</dd>${job.reviewed_at?`<dt>Reviewed</dt><dd>${jobTimeLabel(job.reviewed_at)}</dd>`:""}</dl><pre>${escapeHtml(JSON.stringify(job,null,2))}</pre></details>`;
+  const description=[outcome,job.state==="failed"?explanation:""].filter(Boolean).join(". ");
+  element("job-metadata").innerHTML=`<div class="job-hero"><div><h2>${escapeHtml(title)} <span class="job-title-host">· ${escapeHtml(job.host_name||"Host unavailable")}</span></h2><p id="job-result" class="job-description state-${job.state}" role="status">${escapeHtml(description)}${job.reboot_required?`<span class="job-restart-required">${buttonIcon("warning")}Restart required · review and confirm on the host</span>`:""}${selectedJobError?`<span class="error"> · Could not refresh: ${escapeHtml(selectedJobError)}</span>`:""}</p></div><span id="job-state-badge" class="job-state-badge state-${job.state}">${escapeHtml(job.state)}</span></div><div class="job-facts"><div><small>${active&&job.started_at?"Running time":"Duration"}</small><strong id="job-duration">${duration}</strong></div><div><small>Exit code</small><strong>${job.exit_code??(active?"Pending":"Not recorded")}</strong></div></div><ol id="job-timeline" class="job-timeline">${steps.map(([label,time])=>`<li class="${time?"complete":"pending"}"><strong>${label}</strong><span>${time?jobTimeLabel(time):active?"Not yet":"Not recorded"}</span></li>`).join("")}</ol><div class="job-related">${host?`<a id="job-host-link" href="#/hosts/${host.id}">Open host →</a><a href="#/jobs?host_id=${host.id}">Host job history →</a>`:'<span class="sub">Original host no longer available</span>'}${job.custom_task_id&&host?`<a href="#/tasks?host_id=${host.id}">Review host tasks →</a>`:""}</div><details class="technical-details"><summary>Technical details and identifiers</summary><dl class="job-identifiers"><dt>Job ID</dt><dd class="mono">${escapeHtml(job.job_id||job.id)}</dd><dt>Action</dt><dd>${escapeHtml(actionName(job.action))}</dd><dt>Error code</dt><dd>${escapeHtml(job.error_code||"None")}</dd>${job.reviewed_at?`<dt>Reviewed</dt><dd>${jobTimeLabel(job.reviewed_at)}</dd>`:""}</dl><pre>${escapeHtml(JSON.stringify(job,null,2))}</pre></details>`;
   element("review-job").hidden=!(job.state==="failed"&&job.needs_review&&!job.reviewed_at);element("review-job").dataset.reviewJob=job.id;
   const reason=jobRerunReason(job);element("rerun-job").disabled=jobRerunPending||Boolean(reason);element("rerun-job").title=reason||"Confirm a new run with the same action and host";element("job-rerun-note").hidden=!reason;element("job-rerun-note").textContent=reason;
   for(const id of ["copy-job-log","download-job-log"])element(id).disabled=selectedJobLog===null;
@@ -528,7 +613,7 @@ async function previewLog(button){
   try{const log=await request(`jobs/${id}/log`);element("log-preview-output").textContent=log.output.slice(0,3000)+(log.output.length>3000||log.truncated?"\n… Open the full job for more.":"")||"No output recorded."}catch(error){element("log-preview-output").textContent=error.message}
 }
 document.addEventListener("DOMContentLoaded",()=>{
-  document.querySelectorAll("[data-icon]").forEach(button=>button.insertAdjacentHTML("afterbegin",buttonIcon(button.dataset.icon)));
+  decorateIcons();
   element("connect-form").addEventListener("submit",connect);element("disconnect").addEventListener("click",disconnect);
   element("host-form").addEventListener("submit",addHost);element("task-form").addEventListener("submit",addTask);
   element("host-retry-icons").addEventListener("click",()=>{if(!editingHost)return;clearWebsiteIcons(editingHost.id);render();element("website-icon-status").textContent="Retrying saved website icons. Unsaved changes are not used."});
@@ -547,8 +632,9 @@ document.addEventListener("DOMContentLoaded",()=>{
   document.addEventListener("click",event=>{const button=event.target.closest("button");if(!button)return;if(button.hasAttribute("data-add-host"))openHostDialog();if(button.hasAttribute("data-add-task"))openTaskDialog();if(button.hasAttribute("data-close-dialog"))button.closest("dialog").close();if(button.dataset.previewLog)previewLog(button);if(button.dataset.reviewJob)reviewJob(button);hostClick(event);taskClick(event);jobClick(event)});
   const applyJobFilters=()=>{const values={offset:null,state:element("job-state").value,host_id:element("job-host").value,action:element("job-action").value,sort:element("job-sort").value,range:element("history-range").value};if(values.range==="custom"){const start=new Date(element("history-start").value),end=new Date(element("history-end").value);if(!Number.isFinite(+start)||!Number.isFinite(+end)||start>=end||end-start>366*86400000){message("Choose a valid period of at most 366 days.","error");return}values.start=start.toISOString();values.end=end.toISOString()}else{values.start=null;values.end=null}if(values.range==="all")values.display="table";updateRoute(values)};
   element("job-filters").addEventListener("submit",event=>{event.preventDefault();applyJobFilters()});
+  for(const id of ["history-start","history-end"])element(id).addEventListener("change",()=>{if(element("history-start").value&&element("history-end").value)applyJobFilters()});
   for(const id of ["job-state","job-host","job-action","job-sort"])element(id).addEventListener("change",applyJobFilters);
-  element("history-range").addEventListener("change",()=>{if(element("history-range").value==="custom"){element("history-custom").hidden=false;element("history-start").focus()}else applyJobFilters()});
+  element("history-range").addEventListener("change",()=>{if(element("history-range").value==="custom"){element("history-custom").hidden=false;if(element("history-start").value&&element("history-end").value)applyJobFilters();element("history-start").focus()}else applyJobFilters()});
   element("history-toggle").addEventListener("click",()=>updateRoute({display:historyMode()==="graph"?"table":"graph",offset:null,...(element("history-range").value==="all"?{range:"7d"}:{})}));
   element("history-reset").addEventListener("click",()=>updateRoute({start:null,end:null,state:null,host_id:null,action:null,sort:null,offset:null,range:view().name==="jobs"?"all":"7d"}));
   const pageJobs=delta=>updateRoute({offset:Math.max(0,currentJobPage.offset+delta*currentJobPage.limit)});element("jobs-previous").addEventListener("click",()=>pageJobs(-1));element("jobs-next").addEventListener("click",()=>pageJobs(1));
@@ -565,6 +651,10 @@ document.addEventListener("DOMContentLoaded",()=>{
   element("job-log-search").addEventListener("input",()=>renderJobLog(true));
   for(const [id,delta] of [["job-log-next",1],["job-log-previous",-1]])element(id).addEventListener("click",()=>{jobLogMatch=(jobLogMatch+delta+jobLogMatches.length)%jobLogMatches.length;updateLogMatch(true)});
   element("job-log-wrap").addEventListener("change",event=>element("log").classList.toggle("wrap-log",event.target.checked));
+  element("selection-toggle").addEventListener("click",()=>{const panel=element("selection-panel");panel.hidden=!panel.hidden;element("selection-toggle").setAttribute("aria-expanded",String(!panel.hidden))});
+  document.addEventListener("pointerdown",event=>{if(!event.target.closest("#host-context"))closeSelection()});
+  element("host-context").addEventListener("keydown",event=>{if(event.key==="Escape"){closeSelection();element("selection-toggle").focus()}});
+  document.addEventListener("click",event=>{const button=event.target.closest("[data-copy-address]");if(button){const host=state.hosts.find(item=>item.id===button.dataset.copyAddress);if(host)run(button,()=>copyText(host.address),"Host address copied")}});
   element("reset-view").addEventListener("click",resetView);
   element("message-dismiss").addEventListener("click",()=>message(""));
   element("refresh").addEventListener("click",event=>run(event.currentTarget,refreshDashboard,"Data refreshed"));
