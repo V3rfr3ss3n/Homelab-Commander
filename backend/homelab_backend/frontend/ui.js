@@ -7,7 +7,7 @@ const ACTIVE_JOB_POLL_INTERVAL_MS = 1500;
 const JOB_POLL_BACKOFF_MS = [1500, 3000, 5000];
 const ACTIVE_JOB_STATES = new Set(["queued", "running"]);
 const MUTATING_JOB_ACTIONS = new Set(["update", "reboot", "custom_task"]);
-let state = {info:null, hosts:[], custom_tasks:[], jobs:[], public_key:""};
+let state = {info:null, hosts:[], custom_tasks:[], jobs:[], active_jobs:[], public_key:""};
 let connected = false;
 let jobPollTimer = null;
 let jobPollInFlight = false;
@@ -65,11 +65,12 @@ function confirmAction(title,description,targets=[],confirmLabel="Confirm",optio
 function setBusy(button,busy){if(button)button.disabled=busy}
 function backendUnavailable(){state.unavailable=true;element("connection-hint").textContent="Backend unavailable. Displayed data may be out of date.";renderBackendStatus()}
 function jobError(errorCode){const labels={apt_lock_unavailable:"APT is locked by another process",check_updates_apt_cache_refresh_failed:"Check updates failed during APT cache refresh",check_updates_facts_failed:"Check updates failed while collecting system facts",check_updates_package_list_failed:"Check updates failed while listing packages",check_updates_reboot_status_failed:"Check updates failed while reading reboot status",invalid_ansible_output:"Ansible returned an invalid structured result",python_interpreter_unavailable:"Python 3 is not available on the host",reboot_failed:"Reboot failed",sudo_unavailable:"Non-interactive sudo is not available",test_connection_failed:"SSH connection test failed",test_connection_facts_failed:"Connection test failed while collecting system facts",update_packages_failed:"Package update failed"};return labels[errorCode]||errorCode.replaceAll("_"," ")}
-function hasActiveJobs(){return Boolean(selectedJob&&ACTIVE_JOB_STATES.has(selectedJob.state))||(state.dashboard?.running_jobs||state.dashboard?.queued_jobs||0)>0||state.jobs.some(job=>ACTIVE_JOB_STATES.has(job.state))}
+function activeJobs(){const jobs=new Map(state.active_jobs.map(job=>[job.id,job]));for(const job of state.jobs)jobs.set(job.id,job);return [...jobs.values()].filter(job=>ACTIVE_JOB_STATES.has(job.state))}
+function hasActiveJobs(){return Boolean(selectedJob&&ACTIVE_JOB_STATES.has(selectedJob.state))||(state.dashboard?.running_jobs||state.dashboard?.queued_jobs||0)>0||activeJobs().length>0}
 function stopJobPolling(){if(jobPollTimer!==null)window.clearTimeout(jobPollTimer);jobPollTimer=null;jobPollFailureCount=0}
 function scheduleJobPolling(delay=ACTIVE_JOB_POLL_INTERVAL_MS){if(!connected||!hasActiveJobs()||jobPollTimer!==null||jobPollInFlight)return;jobPollTimer=window.setTimeout(pollJobs,delay)}
 function syncJobPolling(){if(connected&&hasActiveJobs())scheduleJobPolling();else stopJobPolling()}
-function clearProtectedData(){clearWebsiteIcons();stopJobPolling();stopVisibleChecks();document.querySelectorAll("dialog[open]").forEach(d=>d.close());state={info:null,hosts:[],custom_tasks:[],jobs:[],public_key:""};selectedJobId=null;selectedJob=null;selectedJobLog=null;selectedJobError=null;selectedJobLogError=null;jobDetailRequest++;viewRequest++;for(const id of ["backend-status","job-highlights","dashboard","key","hosts","tasks","jobs","job-metadata","log","notices","history","activity","host-info","host-tasks","host-jobs"])element(id).replaceChildren();element("job-detail").hidden=true;element("protected-content").hidden=true;element("connect-placeholder").hidden=false;element("host-context").hidden=true;element("selection-info").textContent="";element("filter-count").textContent="0";closeSelection();closeTimelinePoint()}
+function clearProtectedData(){stateRequest++;clearWebsiteIcons();stopJobPolling();stopVisibleChecks();document.querySelectorAll("dialog[open]").forEach(d=>d.close());state={info:null,hosts:[],custom_tasks:[],jobs:[],active_jobs:[],public_key:""};selectedJobId=null;selectedJob=null;selectedJobLog=null;selectedJobError=null;selectedJobLogError=null;jobDetailRequest++;viewRequest++;for(const id of ["backend-status","job-highlights","dashboard","key","hosts","tasks","jobs","job-metadata","log","notices","history","activity","host-info","host-tasks","host-jobs"])element(id).replaceChildren();element("job-detail").hidden=true;element("protected-content").hidden=true;element("connect-placeholder").hidden=false;element("host-context").hidden=true;element("selection-info").textContent="";element("filter-count").textContent="0";closeSelection();closeTimelinePoint()}
 function setDisconnected(hint="Enter your API token to load backend data."){connected=false;element("token").value="";element("token").disabled=ingress;clearProtectedData();element("connection-state").className="connection-state";element("connection-label").textContent="Not connected";element("connection-hint").textContent=hint;element("connect").hidden=false;element("refresh").hidden=true;element("connect").textContent=ingress?"Retry":"Connect";element("disconnect").hidden=true;element("token-field").hidden=ingress}
 function setConnecting(){element("connection-state").className="connection-state connecting";element("connection-label").textContent="Connecting…";element("connection-hint").textContent="Loading backend data."}
 function setConnected(){connected=true;element("token").disabled=true;element("connection-state").className="connection-state connected";element("connection-label").textContent="Connected";element("connection-hint").textContent="Backend data is loaded.";element("protected-content").hidden=false;element("connect-placeholder").hidden=true;element("connect").hidden=true;element("refresh").hidden=false;element("token-field").hidden=true;element("disconnect").hidden=ingress;syncJobPolling();syncVisibleChecks()}
@@ -85,13 +86,25 @@ async function request(path,{method="GET",body}={}){
   return response.status===204?null:response.json();
 }
 
+let stateRequest=0;
+async function loadActiveJobs(){
+  const groups=await Promise.all([...ACTIVE_JOB_STATES].map(async status=>{
+    const jobs=[],params=new URLSearchParams({state:status,sort:"oldest",limit:"100",offset:"0"});
+    let total=null;
+    do{params.set("offset",String(jobs.length));const page=await request(`jobs/page?${params}`);if(total===null)total=page.total;jobs.push(...page.items);if(!page.items.length)break}while(jobs.length<total);
+    return jobs;
+  }));
+  return [...new Map(groups.flat().map(job=>[job.id,job])).values()];
+}
 async function refreshDashboard(){
-  const [info,hosts,key,tasks,jobs,dashboard,preferences]=await Promise.all([request("info"),request("hosts"),request("public-key"),request("custom-tasks"),request("jobs"),request("dashboard"),request("preferences/host-checks")]);
-  state={info,hosts,custom_tasks:tasks,jobs,public_key:key.public_key,dashboard,preferences};
+  const generation=++stateRequest;
+  const [info,hosts,key,tasks,jobs,dashboard,preferences,active_jobs]=await Promise.all([request("info"),request("hosts"),request("public-key"),request("custom-tasks"),request("jobs"),request("dashboard"),request("preferences/host-checks"),loadActiveJobs()]);
+  if(generation!==stateRequest)return;
+  state={info,hosts,custom_tasks:tasks,jobs,active_jobs,public_key:key.public_key,dashboard,preferences};
   await loadView();render();await loadJobRoute(true);
 }
 
-async function refreshLiveState(){const [hosts,jobs,dashboard]=await Promise.all([request("hosts"),request("jobs"),request("dashboard")]);state={...state,hosts,jobs,dashboard,unavailable:false};await loadView();render();if(routeJobId())await loadJobRoute(true,false)}
+async function refreshLiveState(){const generation=++stateRequest;const [hosts,jobs,dashboard,active_jobs]=await Promise.all([request("hosts"),request("jobs"),request("dashboard"),loadActiveJobs()]);if(generation!==stateRequest)return;state={...state,hosts,jobs,dashboard,active_jobs,unavailable:false};await loadView();render();if(routeJobId())await loadJobRoute(true,false)}
 
 async function pollJobs(){jobPollTimer=null;if(!connected||!hasActiveJobs())return;jobPollInFlight=true;try{const recovered=jobPollFailureCount>0;await refreshLiveState();jobPollFailureCount=0;if(recovered)message("Live job updates recovered.","success")}catch(error){if(connected){if(jobPollFailureCount===0)message("Live job refresh failed; retrying automatically.","error");jobPollFailureCount+=1}}finally{jobPollInFlight=false;if(connected&&hasActiveJobs()){const index=Math.min(jobPollFailureCount,JOB_POLL_BACKOFF_MS.length-1);scheduleJobPolling(JOB_POLL_BACKOFF_MS[index])}}}
 
@@ -274,7 +287,7 @@ function showTimelinePoint(target){
 }
 
 async function updateShown(button){
-  const targets=state.hosts.filter(h=>h.checked_at&&h.updates>0&&!state.jobs.some(j=>j.host_id===h.id&&ACTIVE_JOB_STATES.has(j.state)&&MUTATING_JOB_ACTIONS.has(j.action)));
+  const targets=state.hosts.filter(h=>h.checked_at&&h.updates>0&&!activeJobs().some(j=>j.host_id===h.id&&ACTIVE_JOB_STATES.has(j.state)&&MUTATING_JOB_ACTIONS.has(j.action)));
   if(!targets.length)return;
   if(!await confirmAction(`Update all (${targets.length}) hosts?`,`Run regular system updates on these hosts during a suitable maintenance window? No host reboot is requested. Review restart requirements after completion.`,targets.map(host=>`${host.name} · ${host.updates} updates${host.reboot_required?" · Restart already required":""}`),"Queue updates",{acknowledgement:"I will review completed updates and restart requirements. Any host reboot must be confirmed separately."}))return;
   await run(button,async()=>{let count=0;const failed=[];for(const host of targets){try{await request(hostActionPath(host.id,"update"),{method:"POST"});count++}catch{failed.push(host.name)}}await refreshDashboard();if(failed.length)throw Error(`${count} updates queued. Could not queue: ${failed.join(", ")}. Review host status before retrying.`);return {notification:{href:"#/jobs?action=update",label:"Open jobs"}}},"Updates queued");
@@ -287,7 +300,7 @@ function hostSystem(host){
 }
 function systemIcon(host){const system=hostSystem(host);return `<span class="system-icon" data-os="${system.icon}" title="${escapeHtml(system.label)}" aria-hidden="true">${buttonIcon(system.icon)}</span>`}
 function hostActions(host,details=false){
-  const jobs=state.jobs.filter(job=>job.host_id===host.id&&ACTIVE_JOB_STATES.has(job.state)),locked=jobs.some(job=>MUTATING_JOB_ACTIONS.has(job.action));
+  const jobs=activeJobs().filter(job=>job.host_id===host.id),locked=jobs.some(job=>MUTATING_JOB_ACTIONS.has(job.action));
   const action=(name,label,icon,danger=false)=>{const busy=jobs.some(job=>job.action===name);return `<button type="button" ${danger?'class="danger" ':""}data-host="${host.id}" data-action="${name}" aria-label="${label}" title="${label}" ${busy||(MUTATING_JOB_ACTIONS.has(name)&&locked)?"disabled":""}>${name==="check_updates"?`<span class="refresh-glyph ${busy?"spinning":""}">${buttonIcon(icon)}</span>`:buttonIcon(icon)}<span class="action-label">${busy&&name!=="check_updates"?"Running…":label}</span></button>`};
   return action("check_updates","Check for updates","refresh")+action("update","Update","update")+action("reboot","Reboot","reboot",true)+(details?"":`<a href="#/hosts/${host.id}" data-icon="info">Details</a>`);
 }
@@ -335,7 +348,7 @@ function render(){
   const scopedHosts=contextHost?[contextHost]:state.hosts,checkedHosts=scopedHosts.filter(host=>host.checked_at),unchecked=scopedHosts.length-checkedHosts.length;
   const updates=checkedHosts.reduce((total,host)=>total+host.updates,0),securityCount=checkedHosts.reduce((total,host)=>total+host.security_updates,0);
   const updateStatus=checkedHosts.length?`${updates} ${unchecked?"known ":""}updates · ${securityCount} ${unchecked?"known ":""}security updates`:scopedHosts.length?"Update status unknown":"No hosts yet";
-  const metrics=[["Hosts",contextHost?1:state.hosts.length,updateStatus+(unchecked?` · ${unchecked} unchecked ${unchecked===1?"host":"hosts"}`:"")],["Running jobs",contextHost?state.jobs.filter(job=>job.host_id===contextHost.id&&job.state==="running").length:summary?.running_jobs??0,"Being processed now"],["Queued jobs",contextHost?state.jobs.filter(job=>job.host_id===contextHost.id&&job.state==="queued").length:summary?.queued_jobs??0,"Waiting for a worker"]];
+  const metrics=[["Hosts",contextHost?1:state.hosts.length,updateStatus+(unchecked?` · ${unchecked} unchecked ${unchecked===1?"host":"hosts"}`:"")],["Running jobs",contextHost?activeJobs().filter(job=>job.host_id===contextHost.id&&job.state==="running").length:summary?.running_jobs??0,"Being processed now"],["Queued jobs",contextHost?activeJobs().filter(job=>job.host_id===contextHost.id&&job.state==="queued").length:summary?.queued_jobs??0,"Waiting for a worker"]];
   element("dashboard").innerHTML=metrics.map(([label,value,detail],index)=>{const params=new URLSearchParams();if(contextId)params.set("host_id",contextId);if(index)params.set("state",index===1?"running":"queued");const href=index===0?(contextId?`#/hosts/${encodeURIComponent(contextId)}`:"#/hosts"):`#/jobs?${params}`;return `<a class="toolbar-metric" href="${href}" title="${escapeHtml(detail)}"><small>${label}</small><strong>${escapeHtml(value)}</strong><span class="sr-only">${escapeHtml(detail)}</span></a>`}).join("");
   element("job-highlights").innerHTML=highlightJob(latest,"Last job")+highlightJob(failed,"Last failed job");
   element("job-highlights").hidden=page!=="dashboard";
@@ -358,8 +371,8 @@ function render(){
   element("context-host-tasks").hidden=!contextHost||page!=="tasks";element("context-host-jobs").hidden=!contextHost||page!=="jobs";
   if(contextHost){element("context-tasks-title").textContent=`Tasks for ${contextHost.name}`;element("context-jobs-title").textContent=`Recent jobs for ${contextHost.name}`}
   element("host-count").textContent=`${shownHosts.length} of ${state.hosts.length} hosts`;
-  const eligible=state.hosts.filter(h=>h.checked_at&&h.updates>0&&!state.jobs.some(j=>j.host_id===h.id&&ACTIVE_JOB_STATES.has(j.state)&&MUTATING_JOB_ACTIONS.has(j.action)));
-  const unknown=state.hosts.filter(h=>!h.checked_at).length,active=state.hosts.filter(h=>state.jobs.some(j=>j.host_id===h.id&&ACTIVE_JOB_STATES.has(j.state)&&MUTATING_JOB_ACTIONS.has(j.action))).length;
+  const eligible=state.hosts.filter(h=>h.checked_at&&h.updates>0&&!activeJobs().some(j=>j.host_id===h.id&&ACTIVE_JOB_STATES.has(j.state)&&MUTATING_JOB_ACTIONS.has(j.action)));
+  const unknown=state.hosts.filter(h=>!h.checked_at).length,active=state.hosts.filter(h=>activeJobs().some(j=>j.host_id===h.id&&ACTIVE_JOB_STATES.has(j.state)&&MUTATING_JOB_ACTIONS.has(j.action))).length;
   element("update-shown").textContent=`Update all (${eligible.length})`;element("update-shown").disabled=eligible.length===0;element("update-shown").title=`${unknown} hosts have unknown update status; ${active} hosts have an update already running. Only hosts with known pending updates are included.`;element("update-skipped").textContent=unknown||active?`${unknown} unknown · ${active} already updating (skipped)`:"";
   element("hosts").innerHTML=shownHosts.map(host=>hostRow(host)).join("")||`<p class="empty">${state.hosts.length?"No hosts match these filters.":"No hosts to show."}</p>`;
   element("all-hosts").hidden=page!=="dashboard";
@@ -387,7 +400,7 @@ function renderHostDetail(id){
   if(!host){element("host-info").innerHTML="<h2>Host not found</h2>";element("host-tasks").replaceChildren();element("host-jobs").replaceChildren();return}
   element("host-info").innerHTML=hostOverview(host);
 
-  element("host-tasks").innerHTML=state.custom_tasks.map(task=>{const result=currentHostTasks.find(c=>c.task_id===task.id)||{state:"unchecked",reasons:[],assigned:false,enabled:false};const suitable=result.state==="suitable",busy=state.jobs.some(j=>j.host_id===id&&ACTIVE_JOB_STATES.has(j.state)&&MUTATING_JOB_ACTIONS.has(j.action));return `<div class="host-task"><strong>${escapeHtml(task.name)}</strong> <span class="state-${result.state}">${result.state}</span><p>${result.assigned?(result.enabled?"Assigned and enabled":"Assigned and disabled"):"Not assigned"} · ${task.enabled?"Globally enabled":"Globally disabled"}</p><p>${escapeHtml(result.reasons.join("; "))||(suitable?"Prerequisites verified. Ready when assigned and enabled.":"Check prerequisites before assigning or running this task.")}</p><small>${result.checked_at?`Checked ${timeLabel(result.checked_at)} · valid up to 24 hours`:"Not checked"}</small><div class="actions"><button data-check-task="${task.id}" data-host="${id}">Check compatibility</button><button data-assign-task="${task.id}" data-host="${id}" ${!suitable&&!result.enabled?"disabled":""}>${result.enabled?"Disable for host":result.assigned?"Enable for host":"Assign to host"}</button>${result.assigned?`<button data-unassign-task="${task.id}" data-host="${id}">Unassign</button>`:""}<button data-task="${task.id}" data-host="${id}" ${!suitable||!result.enabled||!task.enabled||busy?"disabled":""}>Run task</button><button data-edit-task="${task.id}">Edit</button></div></div>`}).join("")||'<p class="empty">No tasks yet. Create a task for this host above.</p>';
+  element("host-tasks").innerHTML=state.custom_tasks.map(task=>{const result=currentHostTasks.find(c=>c.task_id===task.id)||{state:"unchecked",reasons:[],assigned:false,enabled:false};const suitable=result.state==="suitable",busy=activeJobs().some(j=>j.host_id===id&&ACTIVE_JOB_STATES.has(j.state)&&MUTATING_JOB_ACTIONS.has(j.action));return `<div class="host-task"><strong>${escapeHtml(task.name)}</strong> <span class="state-${result.state}">${result.state}</span><p>${result.assigned?(result.enabled?"Assigned and enabled":"Assigned and disabled"):"Not assigned"} · ${task.enabled?"Globally enabled":"Globally disabled"}</p><p>${escapeHtml(result.reasons.join("; "))||(suitable?"Prerequisites verified. Ready when assigned and enabled.":"Check prerequisites before assigning or running this task.")}</p><small>${result.checked_at?`Checked ${timeLabel(result.checked_at)} · valid up to 24 hours`:"Not checked"}</small><div class="actions"><button data-check-task="${task.id}" data-host="${id}">Check compatibility</button><button data-assign-task="${task.id}" data-host="${id}" ${!suitable&&!result.enabled?"disabled":""}>${result.enabled?"Disable for host":result.assigned?"Enable for host":"Assign to host"}</button>${result.assigned?`<button data-unassign-task="${task.id}" data-host="${id}">Unassign</button>`:""}<button data-task="${task.id}" data-host="${id}" ${!suitable||!result.enabled||!task.enabled||busy?"disabled":""}>Run task</button><button data-edit-task="${task.id}">Edit</button></div></div>`}).join("")||'<p class="empty">No tasks yet. Create a task for this host above.</p>';
   element("host-jobs").innerHTML=currentHostJobs.map(jobRow).join("")||'<p class="empty">No jobs for this host.</p>';
   element("host-all-jobs").href=`#/jobs?host_id=${id}`;
 }
@@ -450,7 +463,7 @@ copy:'<rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 
 function jobRerunReason(job){
   if(ACTIVE_JOB_STATES.has(job.state))return "Wait for this job to finish.";
   if(!state.hosts.some(host=>host.id===job.host_id))return "The original host is no longer available.";
-  if(state.jobs.some(item=>item.host_id===job.host_id&&ACTIVE_JOB_STATES.has(item.state)&&MUTATING_JOB_ACTIONS.has(item.action)))return "The host already has work in progress.";
+  if(activeJobs().some(item=>item.host_id===job.host_id&&ACTIVE_JOB_STATES.has(item.state)&&MUTATING_JOB_ACTIONS.has(item.action)))return "The host already has work in progress.";
   if(job.action==="custom_task"){
     const task=state.custom_tasks.find(item=>item.id===job.custom_task_id);
     if(!task?.enabled||!task.host_ids.includes(job.host_id))return "Review this task's activation and host assignment first.";

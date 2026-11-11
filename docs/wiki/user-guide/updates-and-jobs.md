@@ -78,6 +78,10 @@ changes are reported separately rather than counted as data filters. The last jo
 shortcuts below the graph. Counts use the full database rather than the limited
 recent-job list.
 
+Host-scoped active counts and maintenance guards fetch all queued/running pages
+independently of recent history. An older active job still locks the host after
+more than 100 newer jobs have completed. Backend serialization remains authoritative.
+
 Hosts, Tasks and Jobs have small find/filter/sort controls above their lists.
 The dashboard shows up to five hosts below notices in its right-hand column; the
 full Hosts view shows all matches. Graph controls apply selection and valid custom

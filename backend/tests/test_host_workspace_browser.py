@@ -186,3 +186,76 @@ async def test_host_workspace_icons_filters_and_guarded_bulk_updates(
         )
         assert errors == []
         await browser.close()
+
+
+async def test_old_active_jobs_keep_host_locked_beyond_recent_history(
+    tmp_path: Path, socket_enabled: None
+) -> None:
+    """Active pagination, host counters and maintenance guards outlive history caps."""
+    settings = Settings(data_dir=tmp_path, api_token=TOKEN, ingress_mode=True)
+    app = create_app(
+        settings,
+        executor=FakeExecutor(),
+        ingress_proxy_addresses=frozenset({"supervisor-proxy"}),
+    )
+    async with (
+        _live_server(_PrefixProxy(app, "/nested/active")) as base,
+        async_playwright() as api,
+    ):
+        database = Database(settings.database_path)
+        host = await HostRepository(database).async_create(
+            HostCreate(
+                name="Node 01", address="node-01.example.invalid", username="automation"
+            )
+        )
+        await database.async_execute("UPDATE ui_preferences SET auto_check_enabled=0")
+        await database.async_execute(
+            "UPDATE hosts SET updates=2, checked_at=?",
+            (datetime.now(UTC).isoformat(),),
+        )
+        jobs = JobRepository(database)
+        running = await jobs.async_create(JobAction.UPDATE, host.id)
+        await jobs.async_claim(running.id)
+        # Insert queue records directly: no worker dispatch or remote execution.
+        for _ in range(101):
+            await jobs.async_create(JobAction.TEST_CONNECTION, host.id)
+        for _ in range(101):
+            recent = await jobs.async_create(JobAction.CHECK_UPDATES, host.id)
+            await jobs.async_finish(
+                recent.id,
+                state=JobState.SUCCESS,
+                output="Synthetic output",
+                truncated=False,
+                exit_code=0,
+            )
+        browser = await api.chromium.launch()
+        page = await browser.new_page()
+        await page.clock.install()
+        await page.goto(base + f"/nested/active/#/hosts/{host.id}")
+        await _wait_for_connection(page)
+        await expect(page.locator("#dashboard")).to_contain_text("Running jobs1")
+        await expect(page.locator("#dashboard")).to_contain_text("Queued jobs101")
+        await expect(
+            page.locator(f'[data-action="update"][data-host="{host.id}"]')
+        ).to_be_disabled()
+        await expect(
+            page.locator(f'[data-action="reboot"][data-host="{host.id}"]')
+        ).to_be_disabled()
+        await page.goto(base + "/nested/active/#/hosts")
+        await expect(page.locator("#update-shown")).to_have_text("Update all (0)")
+        await expect(page.locator("#update-shown")).to_be_disabled()
+        await database.async_execute(
+            "UPDATE jobs SET state='success',finished_at=? "
+            "WHERE state IN ('queued','running')",
+            (datetime.now(UTC).isoformat(),),
+        )
+        await page.locator("#refresh").click()
+        await expect(page.locator("#update-shown")).to_have_text("Update all (1)")
+        await expect(page.locator("#update-shown")).to_be_enabled()
+        await page.goto(base + f"/nested/active/#/hosts/{host.id}")
+        await expect(page.locator("#dashboard")).to_contain_text("Running jobs0")
+        await expect(page.locator("#dashboard")).to_contain_text("Queued jobs0")
+        await expect(
+            page.locator(f'[data-action="update"][data-host="{host.id}"]')
+        ).to_be_enabled()
+        await browser.close()
