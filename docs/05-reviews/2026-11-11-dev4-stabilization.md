@@ -39,6 +39,8 @@ fix; keeping the current point preview intact passes in Standalone and Ingress
   passed. The full gate passed again after the orbit fix at `093b4fb6f7c1`
   with the same 386 tests and independent coverage values. The final main
   revision must also complete its CI gates.
+- Final dev.4 wheel built successfully; metadata version and every frontend asset
+  match the candidate source.
 - Exact-revision public Quality, HACS, Hassfest, CodeQL, secret and native
   AMD64/ARM64 container gates: pending after integration into main.
 
