@@ -36,7 +36,9 @@ fix; keeping the current point preview intact passes in Standalone and Ingress
 - Combined `UV_NO_SYNC=1 UV_CACHE_DIR=/tmp/vhomelab-uv-cache make release-check`:
   passed on the combined candidate tree: 386 tests, 98.43% lines and 96.15%
   branches; format/lint/strict types/docs/audit/privacy and dev.4 version alignment
-  passed before the orbit follow-up. The final merge revision must rerun the gate.
+  passed. The full gate passed again after the orbit fix at `093b4fb6f7c1`
+  with the same 386 tests and independent coverage values. The final main
+  revision must also complete its CI gates.
 - Exact-revision public Quality, HACS, Hassfest, CodeQL, secret and native
   AMD64/ARM64 container gates: pending after integration into main.
 
