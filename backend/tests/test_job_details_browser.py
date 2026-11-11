@@ -256,8 +256,9 @@ async def test_custom_task_name_and_missing_assignment_block_rerun(
         await browser.close()
 
 
+@pytest.mark.parametrize("locale", ["en-US", "de-DE"])
 async def test_job_duration_units_and_precise_lifecycle_times(
-    tmp_path: Path, socket_enabled: None
+    tmp_path: Path, socket_enabled: None, locale: str
 ) -> None:
     settings = Settings(data_dir=tmp_path, api_token=TOKEN, ingress_mode=True)
     app = create_app(
@@ -286,12 +287,13 @@ async def test_job_duration_units_and_precise_lifecycle_times(
             exit_code=0,
         )
         browser = await api.chromium.launch()
-        page = await browser.new_page(timezone_id="UTC")
+        page = await browser.new_page(timezone_id="UTC", locale=locale)
+        decimal = "," if locale == "de-DE" else "."
         start = datetime(2026, 11, 11, 10, 0, 0, 123000, tzinfo=UTC)
         for index, (seconds, expected) in enumerate([
             (0.0002, "<1 ms"),
-            (0.0087, "8.7 ms"),
-            (1.234, "1.23 s"),
+            (0.0087, f"8{decimal}7 ms"),
+            (1.234, f"1{decimal}23 s"),
             (62.125, "1 min 2 s"),
             (3601, "1 h 0 min 1 s"),
         ]):
@@ -311,9 +313,15 @@ async def test_job_duration_units_and_precise_lifecycle_times(
                 await page.locator("#refresh-job").click()
             await expect(page.locator("#job-duration")).to_have_text(expected)
             await expect(page.locator("#job-timeline li").nth(1)).to_contain_text(
-                "10:00:00.123"
+                f"10:00:00{decimal}123"
             )
             await expect(page.locator("#job-timeline li").nth(1)).to_contain_text("UTC")
+            started = page.locator("#job-timeline li").nth(1).locator("time")
+            await expect(started).to_have_attribute("datetime", start.isoformat())
+            await expect(started).to_have_attribute("title", start.isoformat())
+            await expect(started.locator(".job-date")).to_have_text(
+                "11.11.2026" if locale == "de-DE" else "Nov 11, 2026"
+            )
             await expect(page.locator("#review-job")).to_be_hidden()
             await expect(page.locator("#job-metadata h2")).to_have_text(
                 "Check for updates · Node 01"
