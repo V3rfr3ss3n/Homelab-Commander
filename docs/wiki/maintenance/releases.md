@@ -104,8 +104,10 @@ then reload the integration and browser UI. Existing data/identities remain inta
 there is no new schema migration or production dependency for this candidate.
 
 Source versions are aligned to dev.4. The combined revision still requires green
-quality, HA/HACS, security and native multi-architecture gates. An actual isolated
-dev.3 image upgrade and Supervisor Store discovery/one-button upgrade must pass
-before release acceptance. A timeout or missing `version_latest` is a blocker.
+quality, HA/HACS, security and native multi-architecture gates. The owner has deferred the isolated dev.3 image-upgrade and Supervisor Store
+walkthrough for this development prerelease: the operator will check Store
+discovery and the App upgrade after publication. These paths have not been
+accepted in advance; a timeout or missing `version_latest` remains an open
+acceptance defect. This is not stable-release installation acceptance.
 See the [candidate evidence](../../05-reviews/2026-11-11-dev4-stabilization.md) for
 completed checks and remaining limits; individual MR runs are not release evidence.

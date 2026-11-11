@@ -5,7 +5,7 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ## [Unreleased]
 
-## [0.3.0-dev.4] - Unpublished
+## [0.3.0-dev.4] - 2026-11-11
 
 ### Added
 
@@ -40,9 +40,11 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 - Update the existing Backend App and integration, then reload the integration
   and browser UI. Existing `/data`, IDs, SSH identity and preferences are retained;
   no new persistence migration or production dependency is introduced.
-- Source versions are aligned to dev.4. Publication requires all release gates,
-  an isolated dev.3 artifact upgrade and Supervisor Store upgrade recognition.
-  This candidate is not yet a published or accepted release.
+- Source versions are aligned to dev.4. Automated quality, security and container
+  gates remain required. The owner deferred the separate isolated image-upgrade/
+  Supervisor walkthrough for this development prerelease; Store recognition and
+  the installed App upgrade will be checked by the operator after publication.
+  These manual paths are not claimed as tested.
 
 ## [0.3.0-dev.3] - 2026-11-10
 

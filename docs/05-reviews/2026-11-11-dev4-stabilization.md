@@ -42,14 +42,21 @@ fix; keeping the current point preview intact passes in Standalone and Ingress
 - Exact-revision public Quality, HACS, Hassfest, CodeQL, secret and native
   AMD64/ARM64 container gates: pending after integration into main.
 
-## Blocking artifact and Supervisor acceptance
+## Artifact and Supervisor acceptance limits
 
 `docker info --format '{{.ServerVersion}}'` and the same command with
 `--context default` fail because neither configured local Docker socket exists.
 The actual dev.3-to-dev.4 container upgrade therefore has not been executed.
 No isolated Supervisor test instance or `ha` CLI is available in this environment;
 Store `version_latest`, one-button App upgrade and post-upgrade integration reload
-have not been accepted. These are release blockers, not waived manual checks.
+have not been accepted.
+
+Owner decision on 2026-11-11: publish this development prerelease after green
+automated gates, without provisioning an additional Supervisor test instance.
+The operator will validate Store recognition and the upgrade on their existing
+installation after publication. This explicitly defers those manual acceptance
+items for dev.4; it is not a successful upgrade-test claim or stable-release
+acceptance. Automated tests never contact that installation or its managed hosts.
 
 Once an isolated runtime is available, use the previous public dev.3 image and
 synthetic data, then upgrade to the exact dev.4 artifact. Verify inventory/task/job
@@ -58,6 +65,8 @@ bytes across upgrade and restart. Do not contact managed hosts or dispatch real
 SSH/Ansible actions. Reload the upgraded integration and verify queued/running/
 terminal update progress against a fake backend.
 
-Tagging, image publication and release announcement must wait for the required
-gates. A missing Store version or timeout still blocks acceptance. Track the
-remaining acceptance under T-032 and the public installation checklist.
+Tagging and image publication require the final automated gates, including native
+multi-architecture runtime checks and anonymous image access. Release notes must
+disclose the untested image-upgrade/Supervisor path. A missing Store version or
+timeout still prevents closing operator acceptance under T-032; it must be
+reported rather than presumed successful.
