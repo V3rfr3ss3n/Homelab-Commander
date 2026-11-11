@@ -2,9 +2,19 @@
 
 ## 0.3.0-dev.4 - 2026-11-11
 
-- Job timeline and filtered management views.
-- Explicit multi-host update confirmation.
-- Release version alignment and App Store upgrade acceptance gate.
+- Timestamp job timeline with grouped previews, automatic filters and matching table.
+- Richer job/host details, precise timings, log tools, consistent icons and a counted
+  filter/reset control. Dashboard hosts appear below notices; notifications overlay
+  the page. Host search and graph previews retain focus during navigation.
+- Update all names every eligible inventory host, including hidden targets, and
+  requires maintenance/restart-review acknowledgement. Reboots remain separate.
+- Active counts and host guards cover all queued/running jobs beyond recent history.
+- Preserve existing data and SSH identity; no new schema migration or production
+  dependency. Reload the browser UI after updating the App. Update/reload the
+  integration separately for the Home Assistant update-dialog progress fix.
+- Development prerelease: automated quality/security/container gates are required.
+  The owner deferred a separate Supervisor test instance; Store discovery and the
+  actual installed upgrade will be checked by the operator after publication.
 
 ## 0.3.0-dev.3
 
