@@ -186,7 +186,7 @@ async def test_readable_dashboard_shortcuts_graph_and_visible_checks(
         await page.locator("#auto-host-checks").uncheck()
         await _wait_for_message(page, "Host check preference saved")
         await page.locator('nav a[data-tab="dashboard"]').click()
-        await page.locator("#dashboard").wait_for(state="visible")
+        await page.locator("#history-section").wait_for(state="visible")
         await page.clock.run_for(300001)
         assert len(auto_requests) == 3
         # Resolving attention removes the sidebar without deleting historical failure.
@@ -240,7 +240,7 @@ async def test_readable_dashboard_shortcuts_graph_and_visible_checks(
         assert await shortcut.get_attribute("onclick") is None
         assert await shortcut.get_attribute("title") == 'Portal " onclick="alert(1)'
         await page.locator('nav a[data-tab="dashboard"]').click()
-        await page.locator("#dashboard").wait_for(state="visible")
+        await page.locator("#history-section").wait_for(state="visible")
         await page.set_viewport_size({"width": 390, "height": 844})
         assert await page.evaluate(
             "document.documentElement.scrollWidth<=window.innerWidth"

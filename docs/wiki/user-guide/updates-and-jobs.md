@@ -62,14 +62,17 @@ regular per-host updates; it does not offer a security-only update mode.
 The timestamp-based history graph is the main dashboard area. Choose the last hour,
 24 hours, 7, 30 or 90 days, or enter a custom period up to 366 days. The graph
 positions jobs by their stored event time; nearby jobs form a numbered group.
-Hover or focus a point to see job previews. A single point opens its job; the
+Hover or focus a point to see job previews directly around its original position.
+The group count stays at the same point in the graph while individual job circles
+open around it. On a touch screen, tap a group to expand its previews. A single point opens its job; the
 center of a group opens the table filtered to that time window, including jobs
 beyond the preview. The table button swaps graph and table in place. Job table
 rows show local date/time, host, outcome, duration and safe error summary. The
 exact timestamp remains in the tooltip. When a host is selected, the Dashboard, Hosts, Tasks and Jobs tabs retain that host
 context. Dashboard and job history are scoped to it; Tasks shows its assignment and
-compatibility controls; Jobs shows its recent work. The context banner lets you
-change hosts or return to the full fleet. The last job and last failed job also have
+compatibility controls; Jobs shows its recent work. The selection summary beside the header refresh button shows the selected host,
+job detail or active filters. **Reset** clears them and returns the current tab to
+its default view; it stays reachable while scrolling. The last job and last failed job also have
 shortcuts below the graph. Counts use the full database rather than the limited
 recent-job list.
 
@@ -83,16 +86,19 @@ be queued, the message names it; verify its status before retrying. Restarts rem
 separate actions. Each host row offers a **Check for updates** refresh icon,
 **Update**, **Reboot** and **Details**.
 
-In normal operation, connectivity appears once in the dashboard's compact backend status badge.
-Successful connection, refresh and navigation do not add status banners. Connection
-progress and sign-in guidance appear when needed; errors and confirmations for
-explicit operations remain visible.
+Operation messages slide in as overlays near the top of the page without moving
+navigation or content. Queued actions link to the exact job; batch updates link to
+the update job list. Success messages dismiss after eight seconds and can also be
+closed explicitly; errors remain until dismissed or replaced. Connection progress
+and sign-in guidance appear when needed.
 
 ## Calmer overview and checks while viewing
 
-The header has a compact manual refresh icon at the upper right. A compact green/red
+The product title remains centered. Refresh and the selection/reset controls are
+at the upper right. Between the primary tabs and **Auto-check hosts**, a compact
 status dot indicates backend connectivity, followed by linked host, running-job and
-queued-job counts in the toolbar. Latest-job highlights show
+queued-job counts. These links retain the selected host and open the matching views
+from every tab. Latest-job highlights show
 readable metadata previews and **Open job** / **Log preview** shortcuts. Log previews
 are retrieved only after a click. Important notices sit beside the content on wide
 screens, move into the flow on mobile and disappear when resolved. A successful

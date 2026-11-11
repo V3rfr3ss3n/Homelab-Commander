@@ -64,7 +64,7 @@ async def test_dashboard_host_import_and_task_assignment(
         await page.locator("#tasks").wait_for(state="visible")
         await expect(page.locator("#message")).to_be_hidden()
         await page.locator('nav a[data-tab="dashboard"]').click()
-        await page.locator("#dashboard").wait_for(state="visible")
+        await page.locator("#history-section").wait_for(state="visible")
         await expect(page.locator("#message")).to_be_hidden()
         await page.locator("#refresh").click()
         await expect(page.locator("#message")).to_have_text("Data refreshed")

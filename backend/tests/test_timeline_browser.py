@@ -118,9 +118,7 @@ async def test_timeline_group_opens_exact_table_window(
             )
             await group.hover(force=True)
             await expect(page.locator("#history-popover .orbit-job")).to_have_count(3)
-            await page.locator("#history-popover .orbit-center").evaluate(
-                "anchor => anchor.click()"
-            )
+            await page.locator("#history-popover .orbit-center").click()
             await expect(page.locator("#jobs-section")).to_be_visible()
             await expect(page.locator("#history-total")).to_have_text("3 jobs")
             assert "display=table" in page.url
@@ -154,7 +152,7 @@ async def test_timeline_group_opens_exact_table_window(
             )["count"] == 0
             await page.locator("#update-shown").click()
             await page.locator("#confirm-accept").click()
-            await expect(page.locator("#message")).to_have_text("Updates queued")
+            await expect(page.locator("#message-text")).to_have_text("Updates queued")
             assert (
                 await db.async_fetch_one(
                     "SELECT COUNT(*) AS count FROM jobs WHERE action='update'"

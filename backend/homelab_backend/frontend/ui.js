@@ -33,8 +33,17 @@ async function checkVisibleHosts(){
 
 
 function element(id){return document.getElementById(id)}
+function syncSearch(id,value){const input=element(id);if(document.activeElement!==input)input.value=value}
 function escapeHtml(value){const node=document.createElement("div");node.textContent=value??"";return node.innerHTML.replaceAll('"',"&quot;").replaceAll("'","&#39;")}
-function message(value,kind=""){const target=element("message");target.textContent=value;target.className=kind;target.hidden=!value;target.setAttribute("role",kind==="error"?"alert":"status")}
+let messageTimer=null;
+function message(value,kind="",link=null){
+  if(messageTimer!==null)clearTimeout(messageTimer);messageTimer=null;
+  const target=element("message"),anchor=element("message-link");
+  element("message-text").textContent=value;target.className=kind;target.hidden=!value;
+  target.setAttribute("role",kind==="error"?"alert":"status");
+  anchor.hidden=!link;if(link){anchor.href=link.href;anchor.textContent=link.label||"Open job"}else{anchor.removeAttribute("href");anchor.textContent=""}
+  if(value&&kind==="success")messageTimer=setTimeout(()=>{target.hidden=true;messageTimer=null},8000);
+}
 function confirmAction(title,description,targets=[],confirmLabel="Confirm"){return new Promise(resolve=>{const dialog=element("confirm-dialog"),accept=element("confirm-accept"),cancel=element("confirm-cancel");element("confirm-title").textContent=title;element("confirm-description").textContent=description;element("confirm-targets").replaceChildren(...targets.map(value=>{const item=document.createElement("div");item.textContent=value;return item}));accept.textContent=confirmLabel;const finish=value=>{dialog.close();accept.removeEventListener("click",yes);cancel.removeEventListener("click",no);dialog.removeEventListener("cancel",escape);resolve(value)};const yes=()=>finish(true),no=()=>finish(false),escape=event=>{event.preventDefault();finish(false)};accept.addEventListener("click",yes);cancel.addEventListener("click",no);dialog.addEventListener("cancel",escape);dialog.showModal();cancel.focus()})}
 function setBusy(button,busy){if(button)button.disabled=busy}
 function backendUnavailable(){state.unavailable=true;element("connection-hint").textContent="Backend unavailable. Displayed data may be out of date.";renderBackendStatus()}
@@ -43,7 +52,7 @@ function hasActiveJobs(){return (state.dashboard?.running_jobs||state.dashboard?
 function stopJobPolling(){if(jobPollTimer!==null)window.clearTimeout(jobPollTimer);jobPollTimer=null;jobPollFailureCount=0}
 function scheduleJobPolling(delay=ACTIVE_JOB_POLL_INTERVAL_MS){if(!connected||!hasActiveJobs()||jobPollTimer!==null||jobPollInFlight)return;jobPollTimer=window.setTimeout(pollJobs,delay)}
 function syncJobPolling(){if(connected&&hasActiveJobs())scheduleJobPolling();else stopJobPolling()}
-function clearProtectedData(){clearWebsiteIcons();stopJobPolling();stopVisibleChecks();document.querySelectorAll("dialog[open]").forEach(d=>d.close());state={info:null,hosts:[],custom_tasks:[],jobs:[],public_key:""};selectedJobId=null;selectedJobLog=null;for(const id of ["backend-status","job-highlights","dashboard","key","hosts","tasks","jobs","job-metadata","log","notices","history","activity","host-info","host-tasks","host-jobs"])element(id).replaceChildren();element("job-detail").hidden=true;element("protected-content").hidden=true;element("connect-placeholder").hidden=false}
+function clearProtectedData(){clearWebsiteIcons();stopJobPolling();stopVisibleChecks();document.querySelectorAll("dialog[open]").forEach(d=>d.close());state={info:null,hosts:[],custom_tasks:[],jobs:[],public_key:""};selectedJobId=null;selectedJobLog=null;for(const id of ["backend-status","job-highlights","dashboard","key","hosts","tasks","jobs","job-metadata","log","notices","history","activity","host-info","host-tasks","host-jobs"])element(id).replaceChildren();element("job-detail").hidden=true;element("protected-content").hidden=true;element("connect-placeholder").hidden=false;element("host-context").hidden=true;closeTimelinePoint()}
 function setDisconnected(hint="Enter your API token to load backend data."){connected=false;element("token").value="";element("token").disabled=ingress;clearProtectedData();element("connection-state").className="connection-state";element("connection-label").textContent="Not connected";element("connection-hint").textContent=hint;element("connect").hidden=false;element("refresh").hidden=true;element("connect").textContent=ingress?"Retry":"Connect";element("disconnect").hidden=true;element("token-field").hidden=ingress}
 function setConnecting(){element("connection-state").className="connection-state connecting";element("connection-label").textContent="Connecting…";element("connection-hint").textContent="Loading backend data."}
 function setConnected(){connected=true;element("token").disabled=true;element("connection-state").className="connection-state connected";element("connection-label").textContent="Connected";element("connection-hint").textContent="Backend data is loaded.";element("protected-content").hidden=false;element("connect-placeholder").hidden=true;element("connect").hidden=true;element("refresh").hidden=false;element("token-field").hidden=true;element("disconnect").hidden=ingress;syncJobPolling();syncVisibleChecks()}
@@ -69,7 +78,7 @@ async function refreshLiveState(){const [hosts,jobs,dashboard]=await Promise.all
 
 async function pollJobs(){jobPollTimer=null;if(!connected||!hasActiveJobs())return;jobPollInFlight=true;try{const recovered=jobPollFailureCount>0;await refreshLiveState();jobPollFailureCount=0;if(recovered)message("Live job updates recovered.","success")}catch(error){if(connected){if(jobPollFailureCount===0)message("Live job refresh failed; retrying automatically.","error");jobPollFailureCount+=1}}finally{jobPollInFlight=false;if(connected&&hasActiveJobs()){const index=Math.min(jobPollFailureCount,JOB_POLL_BACKOFF_MS.length-1);scheduleJobPolling(JOB_POLL_BACKOFF_MS[index])}}}
 
-async function run(button,operation,success=""){setBusy(button,true);message(success?"Working…":"");try{await operation();message(success,"success");return true}catch(error){message(error instanceof Error?error.message:"Request failed","error");return false}finally{setBusy(button,false)}}
+async function run(button,operation,success=""){setBusy(button,true);message(success?"Working…":"");try{const result=await operation();message(success,"success",result?.notification);return true}catch(error){message(error instanceof Error?error.message:"Request failed","error");return false}finally{setBusy(button,false)}}
 
 async function login(apiToken){const response=await fetch(new URL("auth/login",apiBase),{method:"POST",headers:{Accept:"application/json","Content-Type":"application/json","X-CSRF-Token":csrf},credentials:"same-origin",cache:"no-store",body:JSON.stringify({api_token:apiToken})});if(!response.ok){let detail="Authentication failed";try{const payload=await response.json();if(typeof payload.detail==="string")detail=payload.detail}catch{}throw new Error(detail)}}
 async function connect(event){event.preventDefault();const button=element("connect"),wasConnected=connected;let enteredToken="";if(!ingress&&!connected){enteredToken=element("token").value.trim();if(enteredToken.length<32){message("The API token must contain at least 32 characters.","error");return}element("token").value=""}setConnecting();const success=await run(button,async()=>{if(!ingress&&!wasConnected)await login(enteredToken);enteredToken="";await refreshDashboard()});enteredToken="";if(success)setConnected();else if(element("connection-label").textContent==="Connecting…"){if(wasConnected)setConnected();else setDisconnected("Connection failed. Check the backend and enter your API token to retry.")}}
@@ -88,6 +97,21 @@ function view(){
   const [path,query]=raw.split("?");
   const parts=path.split("/").filter(Boolean);
   return {name:parts[0]||"dashboard",id:parts[1]||null,params:new URLSearchParams(query||"")};
+}
+function renderSelection(){
+  const route=view(),hostId=route.name==="hosts"&&route.id?route.id:route.params.get("host_id"),host=state.hosts.find(item=>item.id===hostId);
+  const labels=[];
+  if(host)labels.push(`Selected host: ${host.name}`);
+  if(route.name==="jobs"&&route.id)labels.push(`Job: ${actionName(state.jobs.find(job=>job.id===route.id)?.action)}`);
+  const defaults={range:route.name==="jobs"?"all":"7d",display:route.name==="jobs"?"table":"graph",sort:"newest",h_sort:"name",t_sort:"name",offset:"0"};
+  const filters=[...route.params].filter(([key,value])=>key!=="host_id"&&value&&value!==defaults[key]);
+  if(filters.length)labels.push(`${filters.length} active ${filters.length===1?"filter":"filters"}`);
+  const context=element("host-context");context.hidden=!state.info||!labels.length;
+  element("selection-info").textContent=labels.join(" · ");element("selection-info").title=labels.join(" · ");
+}
+function resetView(){
+  const route=view(),tab=["dashboard","hosts","tasks","jobs"].includes(route.name)?route.name:"dashboard";
+  location.hash=`/${tab}`;
 }
 function actionName(value){return ({check_updates:"Check for updates",test_connection:"Connection test",update:"System update",reboot:"Restart host",custom_task:"Custom task"})[value]||String(value||"Job").replaceAll("_"," ")}
 function timeLabel(value){
@@ -129,7 +153,7 @@ function syncWebsiteIcons(visible){
   }
 }
 
-function renderBackendStatus(){const online=Boolean(state.info&&!state.unavailable);element("backend-status").className=`backend-status ${online?"online":"offline"}`;element("backend-status").textContent=online?"Backend online":"Backend unavailable"}
+function renderBackendStatus(){const online=Boolean(state.info&&!state.unavailable);element("backend-status").className=`backend-status ${online?"online":"offline"}`;element("backend-status").textContent=online?"Backend online":"Backend unavailable";element("backend-status").title=element("backend-status").textContent}
 function highlightJob(job,label){
   if(!job)return `<article class="job-highlight"><small>${label}</small><p class="empty">No job yet</p></article>`;
   const preview=job.short_error||(job.error_code?jobError(job.error_code):job.state==="success"?"Completed successfully":job.state==="running"?"Currently running":job.state==="queued"?"Waiting for a worker":"Job details available");
@@ -185,7 +209,7 @@ function pointStatus(job){return job.needs_review?"needs-review":job.state==="fa
 function renderHistory(){
   const graph=historyMode()==="graph",period=historyPeriod(),params=view().params;
   element("history-toggle").textContent=graph?"▤":"⌁";element("history-toggle").setAttribute("aria-label",graph?"Show table":"Show graph");element("history-toggle").title=graph?"Show table":"Show graph";
-  element("history-chart").hidden=!graph;element("jobs-section").hidden=graph;element("history-popover").hidden=true;
+  element("history-chart").hidden=!graph;element("jobs-section").hidden=graph;closeTimelinePoint();
   element("history-range").value=params.get("range")||(view().name==="jobs"?"all":"7d");
   element("history-custom").hidden=element("history-range").value!=="custom";
   if(period){element("history-start").value=localDateInput(period.start);element("history-end").value=localDateInput(period.end)}
@@ -194,26 +218,41 @@ function renderHistory(){
   const historyCount=graph?currentTimeline.total:currentJobPage.total;
   element("history-total").textContent=`${historyCount} ${historyCount===1?"job":"jobs"}`;
   if(!graph)return;
-  const width=900,height=285,left=42,right=24,top=24,bottom=40,plotHeight=height-top-bottom,points=currentTimeline.points;
+  const width=900,height=365,left=98,right=98,top=90,bottom=90,plotHeight=height-top-bottom,points=currentTimeline.points;
   const start=Date.parse(currentTimeline.start),end=Date.parse(currentTimeline.end),max=Math.max(1,...points.map(p=>p.total));
   const x=time=>left+(Date.parse(time)-start)/(end-start)*(width-left-right),y=count=>top+plotHeight-count/max*plotHeight;
   const grid=Array.from({length:5},(_,i)=>{const value=max*i/4;return `<line class="graph-grid" x1="${left}" x2="${width-right}" y1="${y(value)}" y2="${y(value)}"/><text x="${left-8}" y="${y(value)+4}" text-anchor="end">${Number.isInteger(value)?value:value.toFixed(1)}</text>`}).join("");
   const series=["success","failed","cancelled","running","queued"].map(status=>`<g class="graph-series ${status}"><path d="${timelinePath(points,status,x,y)}"/></g>`).join("");
   const markers=points.map((point,index)=>{const single=point.total===1?point.jobs[0]:null;const dominant=Object.entries(point.counts).filter(([,count])=>count>0).sort((left,right)=>right[1]-left[1])[0];const anchorState=single?.state||dominant?.[0]||"success",anchorCount=single?1:dominant?.[1]||0,status=point.review_required>0?"needs-review":anchorState==="failed"?"reviewed":anchorState,highlight=point.jobs.some(j=>j.id===state.dashboard?.last_job?.id||j.id===state.dashboard?.last_failed_job?.id);const distribution=Object.entries(point.counts).filter(([,count])=>count>0).map(([name,count])=>`${name} ${count}`).join(", ");const title=single?`${actionName(single.action)} · ${single.host_name||"No host"} · ${single.state} · ${single.finished_at||single.started_at||single.created_at}`:`${point.total} jobs · ${distribution} · ${point.review_required} need review · anchor ${anchorState} ${anchorCount} · ${point.start} – ${point.end}`;const markerY=y(anchorCount);return `<a href="${single?`#/jobs/${single.id}`:escapeHtml(pointRoute(point))}" data-point="${index}" data-anchor-state="${anchorState}" data-anchor-count="${anchorCount}" aria-label="${escapeHtml(title)}"><g class="timeline-point ${status} ${highlight?"latest-point":""}"><circle cx="${x(point.timestamp)}" cy="${markerY}" r="${point.total>1?Math.min(17,9+Math.log2(point.total)):5}"/><title>${escapeHtml(title)}</title>${point.total>1?`<text x="${x(point.timestamp)}" y="${markerY+4}" text-anchor="middle">${point.total}</text>`:""}</g></a>`}).join("");
   const labels=Array.from({length:5},(_,i)=>{const time=new Date(start+(end-start)*i/4);return `<text x="${x(time.toISOString())}" y="${height-12}" text-anchor="${i===0?"start":i===4?"end":"middle"}"><title>${time.toISOString()}</title>${escapeHtml(new Intl.DateTimeFormat(navigator.language,(end-start)<=86400000?{hour:"2-digit",minute:"2-digit"}:{month:"short",day:"numeric",hour:"2-digit"}).format(time))}</text>`}).join("");
-  element("history").innerHTML=`<svg class="history-graph" viewBox="0 0 ${width} ${height}" role="group" aria-label="Job timeline; select a point to open a job or grouped time window">${grid}${series}${markers}${labels}</svg>${points.length?"":'<p class="empty">No jobs in this period. Choose a longer period or adjust the filters.</p>'}`;
+  element("history").innerHTML=`<svg class="history-graph" viewBox="0 0 ${width} ${height}" role="group" aria-label="Job timeline; select a point to open a job or grouped time window">${grid}${series}${markers}${labels}<g id="history-popover" hidden></g></svg>${points.length?"":'<p class="empty">No jobs in this period. Choose a longer period or adjust the filters.</p>'}`;
 }
+function closeTimelinePoint(){const preview=element("history-popover");if(preview){preview.setAttribute("hidden","");preview.removeAttribute("data-source-point")}}
 function showTimelinePoint(target){
-  const anchor=target.closest?.("[data-point]");if(!anchor)return;const point=currentTimeline.points[Number(anchor.dataset.point)];if(!point)return;
-  const preview=element("history-popover"),single=point.total===1;
-  preview.innerHTML=single?`<a href="#/jobs/${point.jobs[0].id}">${escapeHtml(actionName(point.jobs[0].action))} · ${escapeHtml(point.jobs[0].host_name||"No host")}</a><p class="state-${point.jobs[0].state}">${escapeHtml(point.jobs[0].short_error||point.jobs[0].state)}</p>${timeLabel(point.timestamp)}`:`<div class="job-orbit"><a class="orbit-center" href="${escapeHtml(pointRoute(point))}" aria-label="${point.total} jobs at ${escapeHtml(point.timestamp)}. Open these jobs in the table.">${point.total}<span class="sr-only"> jobs · open time window in table</span></a>${point.jobs.map((job,index)=>{const label=`${actionName(job.action)} · ${job.host_name||"No host"} · ${job.state} · ${job.finished_at||job.created_at}`;return `<a class="orbit-job orbit-${index%12} state-${pointStatus(job)}" href="#/jobs/${job.id}" aria-label="Open job: ${escapeHtml(label)}" title="${escapeHtml(label)}"><span aria-hidden="true">●</span><span class="sr-only">${escapeHtml(label)}</span></a>`}).join("")}</div><small>Showing ${point.jobs.length} of ${point.total} jobs. All jobs remain available in the table.</small>`;
-  preview.hidden=false;
+  const anchor=target.closest?.("[data-point]");if(!anchor)return;
+  const point=currentTimeline.points[Number(anchor.dataset.point)],preview=element("history-popover");if(!point||!preview)return;
+  const circle=anchor.querySelector("circle"),cx=Number(circle.getAttribute("cx")),cy=Number(circle.getAttribute("cy"));
+  preview.setAttribute("transform",`translate(${cx} ${cy})`);preview.dataset.sourcePoint=anchor.dataset.point;
+  if(point.total===1){
+    const job=point.jobs[0],label=`${actionName(job.action)} · ${job.host_name||"No host"} · ${job.state}`;
+    const labelX=cx>450?-310:12;
+    preview.innerHTML=`<a href="#/jobs/${job.id}" aria-label="${escapeHtml(label)}"><rect class="point-tooltip" x="${labelX}" y="-62" width="298" height="42" rx="8"/><text class="point-tooltip-label" x="${labelX+10}" y="-37">${escapeHtml(label.slice(0,48))}</text><title>${escapeHtml(label)}</title></a>`;
+  }else{
+    const jobs=point.jobs.map((job,index)=>{
+      const angle=-Math.PI/2+index*2*Math.PI/point.jobs.length,x=Math.cos(angle)*64,y=Math.sin(angle)*64;
+      const label=`${actionName(job.action)} · ${job.host_name||"No host"} · ${job.state} · ${job.needs_review?"Needs review · ":""}${job.finished_at||job.created_at}`;
+      return `<a class="orbit-job state-${pointStatus(job)}" href="#/jobs/${job.id}" aria-label="Open job: ${escapeHtml(label)}"><circle cx="${x}" cy="${y}" r="17"/><circle class="orbit-core" cx="${x}" cy="${y}" r="3"/><title>${escapeHtml(label)}</title></a>`;
+    }).join("");
+    preview.innerHTML=`<a class="orbit-center" href="${escapeHtml(pointRoute(point))}" aria-label="${point.total} jobs. Open these jobs in the table."><circle r="${Number(circle.getAttribute("r"))+3}"/></a>${jobs}<text class="orbit-caption" y="94" text-anchor="middle">${point.jobs.length} of ${point.total} jobs · select center for all</text>`;
+  }
+  preview.removeAttribute("hidden");
 }
+
 async function updateShown(button){
   const targets=state.hosts.filter(h=>h.checked_at&&h.updates>0&&!state.jobs.some(j=>j.host_id===h.id&&ACTIVE_JOB_STATES.has(j.state)&&MUTATING_JOB_ACTIONS.has(j.action)));
   if(!targets.length)return;
   if(!await confirmAction(`Update all (${targets.length}) hosts?`,`Run regular system updates on these hosts? No restart is requested.`,targets.map(host=>host.name),"Queue updates"))return;
-  await run(button,async()=>{let count=0;const failed=[];for(const host of targets){try{await request(hostActionPath(host.id,"update"),{method:"POST"});count++}catch{failed.push(host.name)}}await refreshDashboard();if(failed.length)throw Error(`${count} updates queued. Could not queue: ${failed.join(", ")}. Review host status before retrying.`)},"Updates queued");
+  await run(button,async()=>{let count=0;const failed=[];for(const host of targets){try{await request(hostActionPath(host.id,"update"),{method:"POST"});count++}catch{failed.push(host.name)}}await refreshDashboard();if(failed.length)throw Error(`${count} updates queued. Could not queue: ${failed.join(", ")}. Review host status before retrying.`);return {notification:{href:"#/jobs?action=update",label:"Open jobs"}}},"Updates queued");
 }
 function hostRow(host,detail=false){
   const jobs=state.jobs.filter(job=>job.host_id===host.id&&ACTIVE_JOB_STATES.has(job.state));
@@ -236,7 +275,7 @@ function render(){
   const contextId=route.id&&route.name==="hosts"?route.id:route.params.get("host_id");
   const contextHost=state.hosts.find(host=>host.id===contextId);
   document.querySelectorAll("nav a").forEach(link=>{const tab=link.dataset.tab;if(tab){link.href=tab==="hosts"?(contextId?`#/hosts/${encodeURIComponent(contextId)}`:"#/hosts"):`#/${tab}${contextId?`?host_id=${encodeURIComponent(contextId)}`:""}`}if(link.dataset.tab===route.name)link.setAttribute("aria-current","page");else link.removeAttribute("aria-current")});
-  const context=element("host-context");context.hidden=!contextHost;context.innerHTML=contextHost?`<strong>Selected host: ${escapeHtml(contextHost.name)}</strong> <a href="#/hosts">Change host or return to all hosts</a>`:"";
+  renderSelection();
   const summary=state.dashboard;
   const latest=state.jobs.find(job=>ACTIVE_JOB_STATES.has(job.state))||summary?.last_job||state.jobs[0],failed=summary?.last_failed_job||state.jobs.find(job=>job.state==="failed");
   renderBackendStatus();
@@ -244,7 +283,7 @@ function render(){
   const updates=checkedHosts.reduce((total,host)=>total+host.updates,0),securityCount=checkedHosts.reduce((total,host)=>total+host.security_updates,0);
   const updateStatus=checkedHosts.length?`${updates} ${unchecked?"known ":""}updates · ${securityCount} ${unchecked?"known ":""}security updates`:scopedHosts.length?"Update status unknown":"No hosts yet";
   const metrics=[["Hosts",contextHost?1:state.hosts.length,updateStatus+(unchecked?` · ${unchecked} unchecked ${unchecked===1?"host":"hosts"}`:"")],["Running jobs",contextHost?state.jobs.filter(job=>job.host_id===contextHost.id&&job.state==="running").length:summary?.running_jobs??0,"Being processed now"],["Queued jobs",contextHost?state.jobs.filter(job=>job.host_id===contextHost.id&&job.state==="queued").length:summary?.queued_jobs??0,"Waiting for a worker"]];
-  element("dashboard").innerHTML=metrics.map(([label,value,detail],index)=>`<a class="toolbar-metric" href="${index===0?"#/hosts":index===1?"#/jobs?state=running":"#/jobs?state=queued"}" title="${escapeHtml(detail)}"><small>${label}</small><strong>${escapeHtml(value)}</strong><span>${escapeHtml(detail)}</span></a>`).join("");
+  element("dashboard").innerHTML=metrics.map(([label,value,detail],index)=>{const params=new URLSearchParams();if(contextId)params.set("host_id",contextId);if(index)params.set("state",index===1?"running":"queued");const href=index===0?(contextId?`#/hosts/${encodeURIComponent(contextId)}`:"#/hosts"):`#/jobs?${params}`;return `<a class="toolbar-metric" href="${href}" title="${escapeHtml(detail)}"><small>${label}</small><strong>${escapeHtml(value)}</strong><span class="sr-only">${escapeHtml(detail)}</span></a>`}).join("");
   element("job-highlights").innerHTML=highlightJob(latest,"Last job")+highlightJob(failed,"Last failed job");
   element("job-highlights").hidden=page!=="dashboard";
   element("auto-host-checks").checked=state.preferences?.enabled??true;
@@ -261,7 +300,7 @@ function render(){
   element("dashboard-layout").classList.toggle("has-notices",page==="dashboard"&&notices.length>0);
   const filtered=filteredHosts();shownHosts=contextId&&page==="dashboard"?state.hosts.filter(host=>host.id===contextId):page==="dashboard"?filtered.slice(0,5):filtered;
   element("host-filter").value=route.params.get("filter")||"";
-  element("host-search").value=route.params.get("h_search")||"";element("host-sort").value=route.params.get("h_sort")||"name";
+  syncSearch("host-search",route.params.get("h_search")||"");element("host-sort").value=route.params.get("h_sort")||"name";
   element("host-section").querySelector("h2").textContent=contextHost&&page==="dashboard"?"Selected host overview":"Hosts";
   element("context-host-tasks").hidden=!contextHost||page!=="tasks";element("context-host-jobs").hidden=!contextHost||page!=="jobs";
   if(contextHost){element("context-tasks-title").textContent=`Tasks for ${contextHost.name}`;element("context-jobs-title").textContent=`Recent jobs for ${contextHost.name}`}
@@ -279,7 +318,7 @@ function render(){
   element("job-host").value=route.params.get("host_id")||"";element("job-state").value=route.params.get("state")||"";
   element("job-action").value=route.params.get("action")||"";element("job-sort").value=route.params.get("sort")||"newest";
   if(["dashboard","jobs"].includes(page))renderHistory();
-  const tasks=filteredTasks().filter(task=>!contextId||!task.host_ids.length||task.host_ids.includes(contextId));element("task-search").value=route.params.get("t_search")||"";element("task-filter").value=route.params.get("t_filter")||"";element("task-sort").value=route.params.get("t_sort")||"name";element("task-count").textContent=`${tasks.length} of ${state.custom_tasks.length} tasks`;
+  const tasks=filteredTasks().filter(task=>!contextId||!task.host_ids.length||task.host_ids.includes(contextId));syncSearch("task-search",route.params.get("t_search")||"");element("task-filter").value=route.params.get("t_filter")||"";element("task-sort").value=route.params.get("t_sort")||"name";element("task-count").textContent=`${tasks.length} of ${state.custom_tasks.length} tasks`;
   element("tasks").innerHTML=tasks.map(task=>`<div class="row"><span>${escapeHtml(task.name)}<small>${escapeHtml(task.description)} · ${task.enabled?"Enabled":"Globally disabled"} · ${task.host_ids.length} enabled host assignment(s)</small></span><span class="actions"><button data-edit-task="${task.id}">Edit</button><button data-toggle-task="${task.id}">${task.enabled?"Disable globally":"Enable globally"}</button><button class="danger" data-delete-task="${task.id}">Delete</button></span></div>`).join("")||'<p class="empty">No tasks match these filters. Use + to create one.</p>';
   if(page==="host"){element("hosts").replaceChildren();renderHostDetail(route.id)}
   else if(contextHost){renderHostDetail(contextHost.id)}
@@ -314,9 +353,9 @@ async function loadView(){
 function routeJobId(){const match=location.hash.match(/^#\/jobs\/([0-9a-f-]{36})$/i);return match?match[1].toLowerCase():null}
 function formatDuration(value){if(typeof value!=="number")return "Not available";return value<60?`${value.toFixed(1)} seconds`:`${Math.floor(value/60)} min ${Math.round(value%60)} sec`}
 function renderSelectedJob(){const detail=element("job-detail");if(!selectedJobId){detail.hidden=true;return}const job=state.jobs.find(value=>value.id===selectedJobId);if(!job){return}detail.hidden=false;element("job-metadata").innerHTML=`<div class="row"><span>Job ID</span><span class="mono">${escapeHtml(job.job_id||job.id)}</span></div><div class="row"><span>Host</span><span>${escapeHtml(job.host_name||"No host")}</span></div><div class="row"><span>Type</span><span>${escapeHtml(actionName(job.type||job.action))}</span></div><div class="row"><span>State</span><span class="state-${escapeHtml(job.state)}">${escapeHtml(job.state)}</span></div><div class="row"><span>Created</span><span>${timeLabel(job.created_at)}</span></div><div class="row"><span>Started</span><span>${timeLabel(job.started_at)}</span></div><div class="row"><span>Finished</span><span>${timeLabel(job.finished_at)}</span></div><div class="row"><span>Duration</span><span>${formatDuration(job.duration)}</span></div><div class="row"><span>Exit code</span><span>${job.exit_code??"—"}</span></div><div class="row"><span>Error code</span><span>${escapeHtml(job.error_code||"—")}</span></div><div class="row"><span>Short error</span><span>${escapeHtml(job.short_error||"—")}</span></div>${job.state==="failed"?`<div class="row"><span>Review</span><span>${job.reviewed_at?`Reviewed ${timeLabel(job.reviewed_at)}`:`<button type="button" data-review-job="${job.id}">Mark as reviewed</button>`}</span></div>`:""}<details class="technical-details"><summary>Technical details</summary><pre>${escapeHtml(JSON.stringify(job,null,2))}</pre></details>`;element("log").textContent=selectedJobLog===null?(job.log_available?"Loading…":"Log is available after the job completes."):selectedJobLog}
-async function loadJobRoute(force=false){const jobId=routeJobId();if(!jobId){selectedJobId=null;selectedJobLog=null;renderSelectedJob();return}if(!force&&selectedJobId===jobId&&selectedJobLog!==null)return;selectedJobId=jobId;selectedJobLog=null;let job=state.jobs.find(value=>value.id===jobId);if(!job){job=await request(`jobs/${jobId}`);state.jobs=[job,...state.jobs]}renderSelectedJob();if(job.log_available){const log=await request(`jobs/${jobId}/log`);selectedJobLog=log.output+(log.truncated?"\n[truncated]":"");renderSelectedJob()}}
+async function loadJobRoute(force=false){const jobId=routeJobId();if(!jobId){selectedJobId=null;selectedJobLog=null;renderSelectedJob();return}if(!force&&selectedJobId===jobId&&selectedJobLog!==null)return;selectedJobId=jobId;selectedJobLog=null;let job=state.jobs.find(value=>value.id===jobId);if(!job){job=await request(`jobs/${jobId}`);state.jobs=[job,...state.jobs]}renderSelectedJob();if(job.log_available){const log=await request(`jobs/${jobId}/log`);selectedJobLog=log.output+(log.truncated?"\n[truncated]":"");renderSelectedJob()}renderSelection()}
 
-async function mutate(button,path,method="POST",body,success="Done"){return run(button,async()=>{const result=await request(path,{method,body});if(result?.id&&result?.state&&result?.action){state.jobs=[result,...state.jobs.filter(job=>job.id!==result.id)];render()}await refreshDashboard()},success)}
+async function mutate(button,path,method="POST",body,success="Done"){return run(button,async()=>{const result=await request(path,{method,body});const job=result?.id&&result?.state&&result?.action?result:null;if(job){state.jobs=[job,...state.jobs.filter(item=>item.id!==job.id)];render()}await refreshDashboard();return job?{notification:{href:`#/jobs/${job.id}`,label:"Open job"}}:null},success)}
 function hostActionPath(hostId,action){return `hosts/${hostId}/actions/${action}`}
 function customTaskPath(hostId,taskId){return `hosts/${hostId}/tasks/${taskId}`}
 
@@ -408,9 +447,13 @@ document.addEventListener("DOMContentLoaded",()=>{
   const taskControls=()=>updateRoute({t_filter:element("task-filter").value,t_search:element("task-search").value,t_sort:element("task-sort").value});
   element("task-controls").addEventListener("submit",event=>{event.preventDefault();taskControls()});for(const id of ["task-filter","task-search","task-sort"])element(id).addEventListener("change",taskControls);
   element("update-shown").addEventListener("click",event=>updateShown(event.currentTarget));
+  element("reset-view").addEventListener("click",resetView);
+  element("message-dismiss").addEventListener("click",()=>message(""));
   element("refresh").addEventListener("click",event=>run(event.currentTarget,refreshDashboard,"Data refreshed"));
-  element("history").addEventListener("pointerover",event=>{if(element("history-popover").hidden)showTimelinePoint(event.target)});element("history").addEventListener("focusin",event=>showTimelinePoint(event.target));
-  document.addEventListener("pointerdown",event=>{if(!event.target.closest("#history-chart, #history-popover"))element("history-popover").hidden=true});element("history-chart").addEventListener("keydown",event=>{if(event.key==="Escape")element("history-popover").hidden=true});
+  element("history").addEventListener("pointerover",event=>{if(event.pointerType!=="touch")showTimelinePoint(event.target)});element("history").addEventListener("focusin",event=>showTimelinePoint(event.target));
+  element("history").addEventListener("click",event=>{if(event.pointerType!=="touch")return;const anchor=event.target.closest("[data-point]");if(anchor&&currentTimeline.points[Number(anchor.dataset.point)]?.total>1){event.preventDefault();showTimelinePoint(anchor)}});
+  element("history-chart").addEventListener("pointerleave",closeTimelinePoint);
+  document.addEventListener("pointerdown",event=>{if(!event.target.closest("#history-chart"))closeTimelinePoint()});element("history-chart").addEventListener("keydown",event=>{if(event.key==="Escape")closeTimelinePoint()});
   element("auto-host-checks").addEventListener("change",event=>{stopVisibleChecks();state.preferences={enabled:event.target.checked};return run(event.target,async()=>{state.preferences=await request("preferences/host-checks",{method:"PATCH",body:{enabled:event.target.checked}});stopVisibleChecks();render()},"Host check preference saved")});
   document.addEventListener("visibilitychange",syncVisibleChecks);
   element("log-preview-link").addEventListener("click",()=>element("log-preview").close());
