@@ -28,6 +28,12 @@ discarding focused/clicked links. A focused-center regression failed before the
 fix; keeping the current point preview intact passes in Standalone and Ingress
 (2 targeted tests). Switching points, Escape and chart exit still close/change it.
 
+A second intermediate public run exposed the API test's fixed 100-request retry
+budget expiring before synthetic worker persistence. The controlled executor now
+waits through 101 reads in a regression that failed with the old helper. The helper
+waits asynchronously with a ten-second failure bound and no real sleeps; all 26
+API tests pass. Production worker behavior and assertions are unchanged.
+
 ## Validation record
 
 - Targeted timing tests: 2 passed in explicit English/German locales.
@@ -38,7 +44,8 @@ fix; keeping the current point preview intact passes in Standalone and Ingress
   branches; format/lint/strict types/docs/audit/privacy and dev.4 version alignment
   passed. The full gate passed again after the orbit fix at `093b4fb6f7c1`
   with the same 386 tests and independent coverage values. The final main
-  revision must also complete its CI gates.
+  revision must also complete its CI gates, including the subsequent API-test
+  synchronization regression (one additional test).
 - Final dev.4 wheel built successfully; metadata version and every frontend asset
   match the candidate source.
 - Exact-revision public Quality, HACS, Hassfest, CodeQL, secret and native

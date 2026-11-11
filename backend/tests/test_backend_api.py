@@ -10,6 +10,7 @@ from uuid import UUID
 
 import pytest
 from fastapi.testclient import TestClient
+from httpx2 import Response
 
 from backend.homelab_backend.app import (
     _resolve_supervisor_ingress_addresses,
@@ -153,11 +154,44 @@ def _create_host(client: TestClient) -> dict[str, object]:
 
 
 def _terminal_job(client: TestClient, job_id: str) -> dict[str, object]:
-    for _attempt in range(100):
-        payload = client.get(f"/api/v1/jobs/{job_id}", headers=AUTH).json()
-        if payload["state"] in {"success", "failed"}:
-            return payload  # type: ignore[no-any-return]
-    raise AssertionError("Synthetic job did not reach a terminal state")
+    async def wait_for_terminal() -> dict[str, object]:
+        async with asyncio.timeout(10):
+            while True:
+                response = await asyncio.to_thread(
+                    client.get, f"/api/v1/jobs/{job_id}", headers=AUTH
+                )
+                payload = response.json()
+                if payload["state"] in {"success", "failed"}:
+                    return payload  # type: ignore[no-any-return]
+
+    assert client.portal is not None
+    return client.portal.call(wait_for_terminal)
+
+
+def test_terminal_job_waits_for_delayed_worker_persistence(tmp_path: Path) -> None:
+    """A controlled pending executor can outlive an arbitrary request count."""
+    executor = PendingExecutor()
+    with _client(tmp_path, executor) as client:
+        host = _create_host(client)
+        queued = client.post(f"/api/v1/hosts/{host['id']}/actions/update", headers=AUTH)
+        assert queued.status_code == 202
+        original_get = client.get
+        reads = 0
+
+        def read_job(path: str, *, headers: dict[str, str]) -> Response:
+            nonlocal reads
+            response = original_get(path, headers=headers)
+            reads += 1
+            if reads == 101:
+                assert client.portal is not None
+                client.portal.call(executor.async_release)
+            return response
+
+        with patch.object(client, "get", side_effect=read_job):
+            terminal = _terminal_job(client, queued.json()["id"])
+        assert reads > 100
+        assert terminal["state"] == "success"
+        assert executor.calls == [(JobAction.UPDATE, UUID(str(host["id"])))]
 
 
 def test_health_is_public_but_inventory_requires_auth(tmp_path: Path) -> None:
