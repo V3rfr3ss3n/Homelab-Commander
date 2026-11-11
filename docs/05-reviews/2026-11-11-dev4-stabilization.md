@@ -28,7 +28,9 @@ All execution adapters and inventory in these checks are synthetic.
 - Targeted old-active-job browser regression: 1 passed, including second-page
   queued jobs and guard recovery after terminal state.
 - Combined `UV_NO_SYNC=1 UV_CACHE_DIR=/tmp/vhomelab-uv-cache make release-check`:
-  pending final run. Do not substitute individual MR results for this gate.
+  passed on the combined candidate tree: 386 tests, 98.43% lines and 96.15%
+  branches; format/lint/strict types/docs/audit/privacy and dev.4 version alignment
+  passed. The final merge revision must rerun the gate.
 - Exact-revision public Quality, HACS, Hassfest, CodeQL, secret and native
   AMD64/ARM64 container gates: pending after integration into main.
 
