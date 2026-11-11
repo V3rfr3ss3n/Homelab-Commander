@@ -5,6 +5,15 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ## [Unreleased]
 
+## 0.3.0-dev.4 - 2026-11-11
+
+- Put a timestamp-positioned, filterable job timeline first on the dashboard with
+  grouped job previews and a matching paginated table.
+- Add compact host, task and job list controls and an explicitly confirmed
+  update action for eligible visible hosts.
+- Require source version alignment before image publication and an isolated
+  Home Assistant App Store upgrade check before a stable release.
+
 ## [0.3.0-dev.3] - 2026-11-10
 
 ### Upgrade notes

@@ -134,14 +134,61 @@ function highlightJob(job,label){
   const preview=job.short_error||(job.error_code?jobError(job.error_code):job.state==="success"?"Completed successfully":job.state==="running"?"Currently running":job.state==="queued"?"Waiting for a worker":"Job details available");
   return `<article class="job-highlight"><small>${label}</small><a class="job-title" href="#/jobs/${job.id}" title="${escapeHtml(job.action)}">${escapeHtml(actionName(job.action))}</a><p>${escapeHtml(job.host_name||"All hosts")} · ${timeLabel(job.finished_at||job.created_at)}</p><p class="job-preview state-${job.state}" title="${escapeHtml(job.error_code||job.state)}">${escapeHtml(preview)}</p><div class="actions"><a href="#/jobs/${job.id}">Open job →</a>${job.log_available?`<button class="text-button" data-preview-log="${job.id}">Log preview</button>`:""}</div></article>`;
 }
-function renderHistory(history){
-  const width=720,height=220,left=40,top=18,bottom=38,plotHeight=height-top-bottom;
-  const max=Math.ceil(Math.max(4,...history.flatMap(day=>Object.values(day.counts)))/4)*4;
-  const x=index=>left+index*(width-left-18)/Math.max(1,history.length-1),y=count=>top+plotHeight-count/max*plotHeight;
-  const grid=Array.from({length:5},(_,i)=>{const value=max*i/4;return `<line class="graph-grid" x1="${left}" x2="${width-15}" y1="${y(value)}" y2="${y(value)}"/><text x="${left-8}" y="${y(value)+4}" text-anchor="end">${Number.isInteger(value)?value:value.toFixed(1)}</text>`}).join("");
-  const series=["success","failed","cancelled","running","queued"].map(status=>{const points=history.map((day,i)=>`${x(i)},${y(day.counts[status]||0)}`).join(" ");return `<g class="graph-series ${status}"><polyline points="${points}"/>${history.map((day,i)=>`<circle tabindex="0" cx="${x(i)}" cy="${y(day.counts[status]||0)}" r="4"><title>${escapeHtml(day.day)} (UTC) · ${status}: ${day.counts[status]||0}</title></circle>`).join("")}</g>`}).join("");
-  const labels=history.map((day,i)=>`<text x="${x(i)}" y="${height-12}" text-anchor="middle"><title>${escapeHtml(day.day)} (UTC)</title>${escapeHtml(new Intl.DateTimeFormat(navigator.language,{month:"short",day:"numeric",timeZone:"UTC"}).format(new Date(day.day+"T12:00:00Z")))}</text>`).join("");
-  element("history").innerHTML=`<svg class="history-graph" viewBox="0 0 ${width} ${height}" role="img" aria-label="Job counts by day; exact UTC dates and counts are available on each point">${grid}${series}${labels}</svg>`;
+let currentTimeline={points:[],total:0};
+let shownHosts=[];
+function historyMode(){const route=view();return route.params.get("display")||(route.name==="jobs"?"table":"graph")}
+function historyPeriod(){
+  const params=view().params,range=params.get("range")||(view().name==="jobs"?"all":"7d");
+  if(params.has("start")&&params.has("end"))return {start:params.get("start"),end:params.get("end")};
+  if(range==="all"&&historyMode()==="table")return null;
+  const hours=({"1h":1,"24h":24,"7d":168,"30d":720,"90d":2160})[range]||168;
+  const end=new Date(Date.now()+1000);end.setMilliseconds(0);return {start:new Date(end-hours*3600000).toISOString(),end:end.toISOString()};
+}
+function jobQuery(){const params=new URLSearchParams();for(const key of ["host_id","state","action","sort","offset"])if(view().params.has(key))params.set(key,view().params.get(key));const period=historyPeriod();if(period){params.set("start",period.start);params.set("end",period.end)}return params}
+function updateRoute(values){const route=view(),params=route.params;for(const [key,value] of Object.entries(values)){if(value===null||value==="")params.delete(key);else params.set(key,value)}location.hash=`/${route.name}?${params}`}
+function filteredHosts(){
+  const params=view().params,filter=params.get("filter"),search=(params.get("h_search")||"").toLocaleLowerCase();
+  return state.hosts.filter(h=>(h.name+" "+h.address).toLocaleLowerCase().includes(search)).filter(h=>filter==="security"?h.security_updates>0:filter==="updates"?h.updates>0:filter==="reboot"?h.reboot_required:filter==="stale"?staleHost(h):true).sort((a,b)=>{
+    const sort=params.get("h_sort"),primary=sort==="updates"?b.updates-a.updates:sort==="security"?b.security_updates-a.security_updates:sort==="checked"?(Date.parse(a.checked_at)||0)-(Date.parse(b.checked_at)||0):0;
+    return primary||a.name.localeCompare(b.name,undefined,{numeric:true,sensitivity:"base"});
+  });
+}
+function filteredTasks(){const params=view().params,search=(params.get("t_search")||"").toLocaleLowerCase(),filter=params.get("t_filter");return state.custom_tasks.filter(t=>(t.name+" "+t.description).toLocaleLowerCase().includes(search)).filter(t=>filter==="enabled"?t.enabled:filter==="disabled"?!t.enabled:filter==="assigned"?t.host_ids.length>0:true).sort((a,b)=>(params.get("t_sort")==="hosts"?b.host_ids.length-a.host_ids.length:0)||a.name.localeCompare(b.name))}
+function pointRoute(point){const params=view().params;params.set("start",point.start);params.set("end",point.end);params.set("range","custom");params.set("display","table");params.delete("offset");return `#/${view().name}?${params}`}
+function localDateInput(value){const date=new Date(value);return new Date(date-date.getTimezoneOffset()*60000).toISOString().slice(0,19)}
+function renderHistory(){
+  const graph=historyMode()==="graph",period=historyPeriod(),params=view().params;
+  element("history-toggle").textContent=graph?"▤":"⌁";element("history-toggle").setAttribute("aria-label",graph?"Show table":"Show graph");element("history-toggle").title=graph?"Show table":"Show graph";
+  element("history-chart").hidden=!graph;element("jobs-section").hidden=graph;element("history-popover").hidden=true;
+  element("history-range").value=params.get("range")||(view().name==="jobs"?"all":"7d");
+  element("history-custom").hidden=element("history-range").value!=="custom";
+  if(period){element("history-start").value=localDateInput(period.start);element("history-end").value=localDateInput(period.end)}
+  const dateFormat=new Intl.DateTimeFormat(navigator.language,{dateStyle:"medium",timeStyle:"short"});
+  element("history-period").textContent=period?`${dateFormat.format(new Date(period.start))} – ${dateFormat.format(new Date(period.end))}`:"All stored jobs";
+  const historyCount=graph?currentTimeline.total:currentJobPage.total;
+  element("history-total").textContent=`${historyCount} ${historyCount===1?"job":"jobs"}`;
+  if(!graph)return;
+  const width=900,height=285,left=42,right=24,top=24,bottom=40,plotHeight=height-top-bottom,points=currentTimeline.points;
+  const start=Date.parse(currentTimeline.start),end=Date.parse(currentTimeline.end),max=Math.max(1,...points.map(p=>p.total));
+  const x=time=>left+(Date.parse(time)-start)/(end-start)*(width-left-right),y=count=>top+plotHeight-count/max*plotHeight;
+  const grid=Array.from({length:5},(_,i)=>{const value=max*i/4;return `<line class="graph-grid" x1="${left}" x2="${width-right}" y1="${y(value)}" y2="${y(value)}"/><text x="${left-8}" y="${y(value)+4}" text-anchor="end">${Number.isInteger(value)?value:value.toFixed(1)}</text>`}).join("");
+  const series=["success","failed","cancelled","running","queued"].map(status=>`<g class="graph-series ${status}"><polyline points="${points.map(p=>`${x(p.timestamp)},${y(p.counts[status]||0)}`).join(" ")}"/></g>`).join("");
+  const markers=points.map((point,index)=>{const single=point.total===1?point.jobs[0]:null,status=single?.state||"grouped",highlight=point.jobs.some(j=>j.id===state.dashboard?.last_job?.id||j.id===state.dashboard?.last_failed_job?.id);const title=single?`${actionName(single.action)} · ${single.host_name||"No host"} · ${single.state} · ${single.finished_at||single.started_at||single.created_at}`:`${point.total} jobs · ${point.start} – ${point.end}`;return `<a href="${single?`#/jobs/${single.id}`:escapeHtml(pointRoute(point))}" data-point="${index}" aria-label="${escapeHtml(title)}"><g class="timeline-point ${status} ${highlight?"latest-point":""}"><circle cx="${x(point.timestamp)}" cy="${y(point.total)}" r="${point.total>1?Math.min(17,9+Math.log2(point.total)):5}"/><title>${escapeHtml(title)}</title>${point.total>1?`<text x="${x(point.timestamp)}" y="${y(point.total)+4}" text-anchor="middle">${point.total}</text>`:""}</g></a>`}).join("");
+  const labels=Array.from({length:5},(_,i)=>{const time=new Date(start+(end-start)*i/4);return `<text x="${x(time.toISOString())}" y="${height-12}" text-anchor="${i===0?"start":i===4?"end":"middle"}"><title>${time.toISOString()}</title>${escapeHtml(new Intl.DateTimeFormat(navigator.language,(end-start)<=86400000?{hour:"2-digit",minute:"2-digit"}:{month:"short",day:"numeric",hour:"2-digit"}).format(time))}</text>`}).join("");
+  element("history").innerHTML=`<svg class="history-graph" viewBox="0 0 ${width} ${height}" role="group" aria-label="Job timeline; select a point to open a job or grouped time window">${grid}${series}${markers}${labels}</svg>${points.length?"":'<p class="empty">No jobs in this period. Choose a longer period or adjust the filters.</p>'}`;
+}
+function showTimelinePoint(target){
+  const anchor=target.closest?.("[data-point]");if(!anchor)return;const point=currentTimeline.points[Number(anchor.dataset.point)];if(!point)return;
+  const preview=element("history-popover"),single=point.total===1;
+  preview.innerHTML=single?`<a href="#/jobs/${point.jobs[0].id}">${escapeHtml(actionName(point.jobs[0].action))} · ${escapeHtml(point.jobs[0].host_name||"No host")}</a><p class="state-${point.jobs[0].state}">${escapeHtml(point.jobs[0].short_error||point.jobs[0].state)}</p>${timeLabel(point.timestamp)}`:`<div class="job-orbit"><a class="orbit-center" href="${escapeHtml(pointRoute(point))}">${point.total} jobs<br><small>View all in table</small></a>${point.jobs.map((job,index)=>{return `<a class="orbit-job orbit-${index} state-${job.state}" href="#/jobs/${job.id}" title="${escapeHtml(actionName(job.action)+" · "+(job.host_name||"No host")+" · "+job.state+" · "+(job.finished_at||job.created_at))}">${escapeHtml(job.host_name||actionName(job.action))}<small>${escapeHtml(actionName(job.action))}</small></a>`}).join("")}</div><small>Showing ${point.jobs.length} of ${point.total} jobs. All jobs remain available in the table.</small>`;
+  preview.hidden=false;
+  const chart=element("history-chart").getBoundingClientRect(),rect=anchor.getBoundingClientRect();preview.style.left=Math.max(0,Math.min(chart.width-preview.offsetWidth,rect.left-chart.left-preview.offsetWidth/2))+"px";
+}
+async function updateShown(button){
+  const targets=shownHosts.filter(h=>h.checked_at&&h.updates>0&&!state.jobs.some(j=>j.host_id===h.id&&ACTIVE_JOB_STATES.has(j.state)&&MUTATING_JOB_ACTIONS.has(j.action)));
+  if(!targets.length)return;
+  if(!confirm(`Run regular system updates on these ${targets.length} hosts?\n\n${targets.map(h=>h.name).join("\n")}\n\nNo restart is requested.`))return;
+  await run(button,async()=>{let count=0;const failed=[];for(const host of targets){try{await request(hostActionPath(host.id,"update"),{method:"POST"});count++}catch{failed.push(host.name)}}await refreshDashboard();if(failed.length)throw Error(`${count} updates queued. Could not queue: ${failed.join(", ")}. Review host status before retrying.`)},"Updates queued");
 }
 function hostRow(host,detail=false){
   const jobs=state.jobs.filter(job=>job.host_id===host.id&&ACTIVE_JOB_STATES.has(job.state));
@@ -150,21 +197,28 @@ function hostRow(host,detail=false){
   const system=[host.distribution,host.distribution_version].filter(Boolean).join(" ")||host.status||"Not checked";
   return `<div class="row"><span>${detail?"":`<a href="#/hosts/${host.id}">${escapeHtml(host.name)}</a>`}<span class="website-links">${websiteLinks(host)}</span><small>${escapeHtml(system)} · ${host.checked_at?`${host.updates} updates · ${host.security_updates} security · reboot ${host.reboot_required?"required":"not required"}`:"Update status unknown · reboot status unknown"}</small></span><span class="actions">${action("check_updates","↻")}${action("update","Update")}${action("reboot","Reboot",true)}${detail?"":`<a href="#/hosts/${host.id}">Details</a>`}</span></div>`;
 }
-function jobRow(job){return `<div class="row"><span><span title="${escapeHtml(job.type||job.action)}">${escapeHtml(actionName(job.type||job.action))}</span><small>${escapeHtml(job.host_name||"No host")} · ${timeLabel(job.finished_at||job.created_at)}</small></span><span class="actions"><span class="state-${escapeHtml(job.state)}" title="${escapeHtml(job.error_code||job.state)}">${escapeHtml(job.state==="failed"&&job.error_code?jobError(job.error_code):job.state)}</span><button type="button" data-job-log="${job.id}">Open</button></span></div>`}
+function jobRow(job,detailed=false){
+  const type=escapeHtml(actionName(job.type||job.action)),host=escapeHtml(job.host_name||"No host");
+  const when=job.finished_at||job.started_at||job.created_at;
+  const absolute=when?new Intl.DateTimeFormat(navigator.language,{dateStyle:"medium",timeStyle:"short"}).format(new Date(when)):"Not yet";
+  const detail=detailed?`<small title="${escapeHtml(when||"")}">${escapeHtml(absolute)} · ${escapeHtml(job.state)}${typeof job.duration==="number"?` · ${formatDuration(job.duration)}`:""}</small>${job.short_error?`<small class="state-failed">${escapeHtml(job.short_error)}</small>`:""}`:`<small>${host} · ${timeLabel(when)}</small>`;
+  return `<div class="row"><span><span title="${escapeHtml(job.type||job.action)}">${type}</span>${detailed?`<small>${host}</small>`:""}${detail}</span><span class="actions"><span class="state-${escapeHtml(job.state)}" title="${escapeHtml(job.error_code||job.state)}">${escapeHtml(job.state==="failed"&&job.error_code?jobError(job.error_code):job.state)}</span><button type="button" data-job-log="${job.id}">Open</button></span></div>`;
+}
 function staleHost(host){return !host.checked_at||Date.now()-Date.parse(host.checked_at)>86400000}
 function render(){
   const route=view(),page=route.name==="hosts"&&route.id?"host":route.name==="jobs"&&route.id?"job":route.name;
   document.querySelectorAll("[data-views]").forEach(section=>section.hidden=!section.dataset.views.split(" ").includes(page));
   document.querySelectorAll("nav a").forEach(link=>{if(link.hash===`#/${route.name}`)link.setAttribute("aria-current","page");else link.removeAttribute("aria-current")});
   const summary=state.dashboard;
-  const latest=summary?.last_job,failed=summary?.last_failed_job;
+  const latest=state.jobs.find(job=>ACTIVE_JOB_STATES.has(job.state))||summary?.last_job||state.jobs[0],failed=summary?.last_failed_job||state.jobs.find(job=>job.state==="failed");
   renderBackendStatus();
   const checkedHosts=state.hosts.filter(host=>host.checked_at),unchecked=state.hosts.length-checkedHosts.length;
   const updates=checkedHosts.reduce((total,host)=>total+host.updates,0),securityCount=checkedHosts.reduce((total,host)=>total+host.security_updates,0);
   const updateStatus=checkedHosts.length?`${updates} ${unchecked?"known ":""}updates · ${securityCount} ${unchecked?"known ":""}security updates`:state.hosts.length?"Update status unknown":"No hosts yet";
   const metrics=[["Hosts",state.hosts.length,updateStatus+(unchecked?` · ${unchecked} unchecked ${unchecked===1?"host":"hosts"}`:"")],["Running jobs",summary?.running_jobs??0,"Being processed now"],["Queued jobs",summary?.queued_jobs??0,"Waiting for a worker"]];
-  element("dashboard").innerHTML=metrics.map(([label,value,detail])=>`<div class="metric"><small>${label}</small><span class="value">${escapeHtml(value)}</span><span class="metric-detail">${escapeHtml(detail)}</span></div>`).join("");
+  element("dashboard").innerHTML=metrics.map(([label,value,detail])=>`<div class="metric" title="${escapeHtml(detail)}"><small>${label}</small><span class="value">${escapeHtml(value)}</span><span class="metric-detail">${escapeHtml(detail)}</span></div>`).join("");
   element("job-highlights").innerHTML=highlightJob(latest,"Last job")+highlightJob(failed,"Last failed job");
+  element("job-highlights").hidden=page!=="dashboard";
   element("auto-host-checks").checked=state.preferences?.enabled??true;
   element("key").textContent=state.public_key;
   const notices=[];
@@ -177,29 +231,23 @@ function render(){
   element("notices").innerHTML=notices.join("");
   element("notices-panel").hidden=page!=="dashboard"||notices.length===0;
   element("dashboard-layout").classList.toggle("has-notices",page==="dashboard"&&notices.length>0);
-  const filter=route.params.get("filter");
-  let hosts=state.hosts.filter(h=>filter==="security"?h.security_updates>0:filter==="reboot"?h.reboot_required:filter==="stale"?staleHost(h):true);
-  if(page==="dashboard")hosts=hosts.slice(0,5);
-  element("host-filter").textContent=page==="hosts"&&filter?`Filter: ${filter}. Use Hosts above to clear.`:"";
-  element("hosts").innerHTML=hosts.map(host=>hostRow(host)).join("")||'<p class="empty">No hosts to show.</p>';
+  const filtered=filteredHosts();shownHosts=page==="dashboard"?filtered.slice(0,5):filtered;
+  element("host-filter").value=route.params.get("filter")||"";
+  element("host-search").value=route.params.get("h_search")||"";element("host-sort").value=route.params.get("h_sort")||"name";
+  element("host-count").textContent=`${shownHosts.length} of ${state.hosts.length} hosts`;
+  element("update-shown").disabled=!shownHosts.some(h=>h.checked_at&&h.updates>0);
+  element("hosts").innerHTML=shownHosts.map(host=>hostRow(host)).join("")||`<p class="empty">${state.hosts.length?"No hosts match these filters.":"No hosts to show."}</p>`;
   element("all-hosts").hidden=page!=="dashboard";
-  element("host-section").classList.toggle("wide",page==="hosts");
-  element("jobs-section").classList.toggle("wide",page==="jobs");
-  element("jobs-heading").textContent=page==="jobs"?"Jobs":"Recent jobs";
-  element("job-filters").hidden=page!=="jobs";
-  element("job-pagination").hidden=page!=="jobs";
-  const jobs=page==="jobs"?currentJobPage.items:state.jobs.slice(0,5);
-  element("jobs").innerHTML=jobs.map(jobRow).join("")||'<p class="empty">No jobs yet.</p>';
+  element("jobs").innerHTML=currentJobPage.items.map(job=>jobRow(job,true)).join("")||'<p class="empty">No jobs yet.</p>';
   element("jobs-count").textContent=`${currentJobPage.offset+Math.min(1,currentJobPage.total)}–${Math.min(currentJobPage.offset+currentJobPage.limit,currentJobPage.total)} of ${currentJobPage.total}`;
   element("jobs-previous").disabled=currentJobPage.offset===0;
   element("jobs-next").disabled=currentJobPage.offset+currentJobPage.limit>=currentJobPage.total;
   element("job-host").innerHTML='<option value="">All hosts</option>'+state.hosts.map(h=>`<option value="${h.id}">${escapeHtml(h.name)}</option>`).join("");
-  element("job-host").value=route.params.get("host_id")||"";
-  element("job-state").value=route.params.get("state")||"";
-  const history=summary?.history||[];
-  renderHistory(history);
-  element("activity").innerHTML=(summary?.recent_completions||[]).map(jobRow).join("")||'<p class="empty">No completed jobs yet.</p>';
-  element("tasks").innerHTML=state.custom_tasks.map(task=>`<div class="row"><span>${escapeHtml(task.name)}<small>${escapeHtml(task.description)} · ${task.enabled?"Enabled":"Globally disabled"} · ${task.host_ids.length} enabled host assignment(s)</small></span><span class="actions"><button data-edit-task="${task.id}">Edit</button><button data-toggle-task="${task.id}">${task.enabled?"Disable globally":"Enable globally"}</button><button class="danger" data-delete-task="${task.id}">Delete</button></span></div>`).join("")||'<p class="empty">No custom tasks yet. Use + to create one.</p>';
+  element("job-host").value=route.params.get("host_id")||"";element("job-state").value=route.params.get("state")||"";
+  element("job-action").value=route.params.get("action")||"";element("job-sort").value=route.params.get("sort")||"newest";
+  if(["dashboard","jobs"].includes(page))renderHistory();
+  const tasks=filteredTasks();element("task-search").value=route.params.get("t_search")||"";element("task-filter").value=route.params.get("t_filter")||"";element("task-sort").value=route.params.get("t_sort")||"name";element("task-count").textContent=`${tasks.length} of ${state.custom_tasks.length} tasks`;
+  element("tasks").innerHTML=tasks.map(task=>`<div class="row"><span>${escapeHtml(task.name)}<small>${escapeHtml(task.description)} · ${task.enabled?"Enabled":"Globally disabled"} · ${task.host_ids.length} enabled host assignment(s)</small></span><span class="actions"><button data-edit-task="${task.id}">Edit</button><button data-toggle-task="${task.id}">${task.enabled?"Disable globally":"Enable globally"}</button><button class="danger" data-delete-task="${task.id}">Delete</button></span></div>`).join("")||'<p class="empty">No tasks match these filters. Use + to create one.</p>';
   if(page==="host"){element("hosts").replaceChildren();renderHostDetail(route.id)}
   else{element("host-info").replaceChildren();element("host-tasks").replaceChildren();element("host-jobs").replaceChildren()}
   syncWebsiteIcons(["dashboard","hosts","host"].includes(page));
@@ -221,7 +269,11 @@ async function loadView(){
   if(route.name==="hosts"&&route.id){
     const [checks,jobs]=await Promise.all([request(`hosts/${encodeURIComponent(route.id)}/task-compatibility`),request(`jobs/page?host_id=${encodeURIComponent(route.id)}&limit=5`)]);
     currentHostTasks=checks;currentHostJobs=jobs.items;
-  }else if(route.name==="jobs"&&!route.id){currentJobPage=await request(`jobs/page?${route.params}`)}
+  }else if(["dashboard","jobs"].includes(route.name)&&!route.id){
+    const params=jobQuery();
+    if(historyMode()==="graph"){params.delete("offset");params.delete("sort");currentTimeline=await request(`jobs/timeline?${params}`)}
+    else currentJobPage=await request(`jobs/page?${params}`);
+  }
 }
 
 function routeJobId(){const match=location.hash.match(/^#\/jobs\/([0-9a-f-]{36})$/i);return match?match[1].toLowerCase():null}
@@ -309,8 +361,20 @@ document.addEventListener("DOMContentLoaded",()=>{
   for(const id of ["host-name","host-address","host-user","host-port"])element(id).addEventListener("paste",importHost);
   element("import-address").addEventListener("change",()=>{element("host-address").value=element("import-address").value;element("host-form-error").textContent=""});
   document.addEventListener("click",event=>{const button=event.target.closest("button");if(!button)return;if(button.hasAttribute("data-add-host"))openHostDialog();if(button.hasAttribute("data-add-task"))openTaskDialog();if(button.hasAttribute("data-close-dialog"))button.closest("dialog").close();if(button.dataset.previewLog)previewLog(button);if(button.dataset.reviewJob)reviewJob(button);hostClick(event);taskClick(event);jobClick(event)});
-  element("job-filters").addEventListener("submit",event=>{event.preventDefault();const params=new URLSearchParams();if(element("job-state").value)params.set("state",element("job-state").value);if(element("job-host").value)params.set("host_id",element("job-host").value);location.hash=`/jobs?${params}`});
-  const pageJobs=delta=>{const params=view().params;params.set("offset",Math.max(0,currentJobPage.offset+delta*currentJobPage.limit));location.hash=`/jobs?${params}`};element("jobs-previous").addEventListener("click",()=>pageJobs(-1));element("jobs-next").addEventListener("click",()=>pageJobs(1));
+  const applyJobFilters=()=>{const values={offset:null,state:element("job-state").value,host_id:element("job-host").value,action:element("job-action").value,sort:element("job-sort").value,range:element("history-range").value};if(values.range==="custom"){const start=new Date(element("history-start").value),end=new Date(element("history-end").value);if(!Number.isFinite(+start)||!Number.isFinite(+end)||start>=end||end-start>366*86400000){message("Choose a valid period of at most 366 days.","error");return}values.start=start.toISOString();values.end=end.toISOString()}else{values.start=null;values.end=null}if(values.range==="all")values.display="table";updateRoute(values)};
+  element("job-filters").addEventListener("submit",event=>{event.preventDefault();applyJobFilters()});
+  for(const id of ["job-state","job-host","job-action","job-sort"])element(id).addEventListener("change",applyJobFilters);
+  element("history-range").addEventListener("change",()=>{if(element("history-range").value==="custom"){element("history-custom").hidden=false;element("history-start").focus()}else applyJobFilters()});
+  element("history-toggle").addEventListener("click",()=>updateRoute({display:historyMode()==="graph"?"table":"graph",offset:null,...(element("history-range").value==="all"?{range:"7d"}:{})}));
+  element("history-reset").addEventListener("click",()=>updateRoute({start:null,end:null,state:null,host_id:null,action:null,sort:null,offset:null,range:view().name==="jobs"?"all":"7d"}));
+  const pageJobs=delta=>updateRoute({offset:Math.max(0,currentJobPage.offset+delta*currentJobPage.limit)});element("jobs-previous").addEventListener("click",()=>pageJobs(-1));element("jobs-next").addEventListener("click",()=>pageJobs(1));
+  const hostControls=()=>updateRoute({filter:element("host-filter").value,h_search:element("host-search").value,h_sort:element("host-sort").value});
+  element("host-controls").addEventListener("submit",event=>{event.preventDefault();hostControls()});for(const id of ["host-filter","host-search","host-sort"])element(id).addEventListener("change",hostControls);
+  const taskControls=()=>updateRoute({t_filter:element("task-filter").value,t_search:element("task-search").value,t_sort:element("task-sort").value});
+  element("task-controls").addEventListener("submit",event=>{event.preventDefault();taskControls()});for(const id of ["task-filter","task-search","task-sort"])element(id).addEventListener("change",taskControls);
+  element("update-shown").addEventListener("click",event=>updateShown(event.currentTarget));
+  element("history").addEventListener("pointerover",event=>showTimelinePoint(event.target));element("history").addEventListener("focusin",event=>showTimelinePoint(event.target));
+  document.addEventListener("pointerdown",event=>{if(!event.target.closest("#history-chart"))element("history-popover").hidden=true});element("history-chart").addEventListener("keydown",event=>{if(event.key==="Escape")element("history-popover").hidden=true});
   element("auto-host-checks").addEventListener("change",event=>{stopVisibleChecks();state.preferences={enabled:event.target.checked};return run(event.target,async()=>{state.preferences=await request("preferences/host-checks",{method:"PATCH",body:{enabled:event.target.checked}});stopVisibleChecks();render()},"Host check preference saved")});
   document.addEventListener("visibilitychange",syncVisibleChecks);
   element("log-preview-link").addEventListener("click",()=>element("log-preview").close());

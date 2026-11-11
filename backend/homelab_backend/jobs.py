@@ -4,6 +4,7 @@ import asyncio
 import sqlite3
 from contextlib import suppress
 from datetime import UTC, datetime
+from typing import Literal
 from uuid import UUID, uuid4
 
 from .automation import (
@@ -19,6 +20,9 @@ from .task_compatibility import TaskCompatibilityService
 
 MAX_JOB_LOG_BYTES = 64 * 1024
 _MUTATING_ACTIONS = frozenset({JobAction.UPDATE, JobAction.REBOOT})
+JOB_TIME = "COALESCE(jobs.finished_at,jobs.started_at,jobs.created_at)"
+JobSort = Literal["newest", "oldest", "host", "action", "state"]
+
 _SELECT = (
     "SELECT jobs.id, jobs.action, jobs.host_id, hosts.name AS host_name, jobs.state, "
     "jobs.created_at, jobs.started_at, jobs.finished_at, jobs.exit_code, "
@@ -81,19 +85,37 @@ class JobRepository:
         host_id: UUID | None = None,
         state: JobState | None = None,
         completed: bool = False,
+        start: datetime | None = None,
+        end: datetime | None = None,
+        action: JobAction | None = None,
+        sort: JobSort | None = None,
     ) -> tuple[Job, ...]:
-        clause, parameters = _job_filter(host_id, state, completed)
-        order = "jobs.finished_at" if completed else "jobs.created_at"
+        clause, parameters = job_filter(host_id, state, completed, start, end, action)
+        order = "jobs.finished_at DESC" if completed else "jobs.created_at DESC"
+        if sort is not None:
+            order = {
+                "newest": f"{JOB_TIME} DESC",
+                "oldest": f"{JOB_TIME} ASC",
+                "host": f"hosts.name COLLATE NOCASE ASC, {JOB_TIME} DESC",
+                "action": f"jobs.action ASC, {JOB_TIME} DESC",
+                "state": f"jobs.state ASC, {JOB_TIME} DESC",
+            }[sort]
         rows = await self._database.async_fetch_all(
-            f"{_SELECT}{clause} ORDER BY {order} DESC, jobs.id DESC LIMIT ? OFFSET ?",
+            f"{_SELECT}{clause} ORDER BY {order}, jobs.id DESC LIMIT ? OFFSET ?",
             (*parameters, limit, offset),
         )
         return tuple(_job_from_row(row) for row in rows)
 
     async def async_count(
-        self, *, host_id: UUID | None = None, state: JobState | None = None
+        self,
+        *,
+        host_id: UUID | None = None,
+        state: JobState | None = None,
+        start: datetime | None = None,
+        end: datetime | None = None,
+        action: JobAction | None = None,
     ) -> int:
-        clause, parameters = _job_filter(host_id, state, False)
+        clause, parameters = job_filter(host_id, state, False, start, end, action)
         row = await self._database.async_fetch_one(
             f"SELECT COUNT(*) AS count FROM jobs{clause}", parameters
         )
@@ -422,8 +444,13 @@ def _job_from_row(row: sqlite3.Row) -> Job:
     )
 
 
-def _job_filter(
-    host_id: UUID | None, state: JobState | None, completed: bool
+def job_filter(
+    host_id: UUID | None,
+    state: JobState | None,
+    completed: bool,
+    start: datetime | None = None,
+    end: datetime | None = None,
+    action: JobAction | None = None,
 ) -> tuple[str, tuple[object, ...]]:
     clauses: list[str] = []
     parameters: list[object] = []
@@ -433,6 +460,15 @@ def _job_filter(
     if state is not None:
         clauses.append("jobs.state = ?")
         parameters.append(state)
+    if action is not None:
+        clauses.append("jobs.action = ?")
+        parameters.append(action)
+    if start is not None:
+        clauses.append(f"unixepoch({JOB_TIME}, 'subsec') >= ?")
+        parameters.append(start.timestamp())
+    if end is not None:
+        clauses.append(f"unixepoch({JOB_TIME}, 'subsec') < ?")
+        parameters.append(end.timestamp())
     if completed:
         clauses.append("jobs.finished_at IS NOT NULL")
     return (" WHERE " + " AND ".join(clauses) if clauses else ""), tuple(parameters)

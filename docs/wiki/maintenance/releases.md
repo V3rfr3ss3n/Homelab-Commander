@@ -1,7 +1,7 @@
 ---
 title: Releases and compatibility
 status: active
-updated: 2026-11-10
+updated: 2026-11-11
 tags: [wiki, maintenance]
 ---
 
@@ -14,10 +14,19 @@ migration and ADR.
 
 ## Release evidence
 
-Before a release, require the full local/CI gate, independent HA/HACS validators,
+Before a release, require the source version-alignment gate, full local/CI gate,
+independent HA/HACS validators,
 secret/privacy checks, dependency review and the actual AMD64/AArch64 image/runtime
 checks. Test installation and upgrade from the produced artifact in an isolated
 HA environment. Never use a production homelab for development acceptance.
+
+The release check and container policy reject mismatches among the project lock,
+backend, integration, App, build and publish versions before publication. In an
+isolated HA Supervisor test, confirm the newly published App is actually offered
+as an update from the previous version, then verify installed/running versions
+and persisted synthetic data after the normal App update. A Store reload timeout
+or stale `version_latest` leaves this gate open; never count integration updates
+as an App upgrade. A stable release requires this complete check.
 
 The existing GitHub image pipeline builds PR/main changes without publishing.
 Only the documented version-tag or explicit manual release path publishes public
@@ -78,3 +87,11 @@ After publication, refresh the App store and update **Homelab Commander Backend*
 then reload its UI. The integration prerelease is also version-aligned, but these
 backend UI fixes do not require deleting/re-adding the integration. Keep the normal
 backup/recovery strategy; older binaries may not parse stored custom icon overrides.
+
+## 0.3.0-dev.4 candidate (unpublished)
+
+The next candidate includes the timestamp job timeline, compact list controls and
+explicit update of eligible displayed hosts. Its version is bumped separately from
+dev.3 so the Backend App can present an actual upgrade after the image is published.
+Source alignment is checked in CI. Publication and an isolated Supervisor Store
+upgrade from dev.3 remain open; this source branch is not an installable release.

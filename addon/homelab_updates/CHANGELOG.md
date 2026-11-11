@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0-dev.4 - 2026-11-11
+
+- Job timeline and filtered management views.
+- Explicit multi-host update confirmation.
+- Release version alignment and App Store upgrade acceptance gate.
+
 ## 0.3.0-dev.3
 
 - Adds persistent failed-job review and guided Debian/Ubuntu SSH user setup with

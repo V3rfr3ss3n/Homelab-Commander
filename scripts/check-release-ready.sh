@@ -2,6 +2,7 @@
 set -euo pipefail
 
 manifest='custom_components/homelab_updates/manifest.json'
+python3 scripts/check-version-alignment.py
 status=0
 
 if rg -n 'example\.invalid' "$manifest"; then

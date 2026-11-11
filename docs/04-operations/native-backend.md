@@ -22,7 +22,7 @@ Konfigurationszugriff. `/tmp` ist flüchtig. Backups müssen `/data` schützen.
 
 Nach der dokumentierten Veröffentlichung zieht die öffentliche App den exakt
 versionierten generischen Multi-Arch-Tag
-`ghcr.io/v3rfr3ss3n/homelab-updates-backend:0.3.0-dev.3`; Endnutzer benötigen
+`ghcr.io/v3rfr3ss3n/homelab-updates-backend:0.3.0-dev.4`; Endnutzer benötigen
 keine Registry-Anmeldung. Der optionale Hostport ist ausschließlich nötig, wenn
 die Home-Assistant-Integration keinen anderen stabilen Netzwerkweg zur REST-API
 hat. Ingress selbst verwendet ihn ohne externe Veröffentlichung.

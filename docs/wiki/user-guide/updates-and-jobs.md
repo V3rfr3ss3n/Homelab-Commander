@@ -59,15 +59,24 @@ link to hosts with security updates, reboot requirements or missing/status check
 older than 24 hours, and to unresolved failed jobs. A security notice leads to
 regular per-host updates; it does not offer a security-only update mode.
 
-The compact host list and five recent jobs are shortcuts. **Hosts**, **Tasks** and
-**Jobs** open full views. Each host row offers a **Check for updates** refresh icon, **Update**, **Reboot**
-and **Details**; details contain connection testing, editing, deletion and tasks.
-Jobs supports host/state filters and 25-item pages with a full matching count.
-Dashboard's seven-day chart uses UTC calendar dates, with terminal jobs counted on
-the completion date and active jobs on their creation date. Recent activity links
-to completed jobs. Counts and historical failure query the full database rather
-than the browser's capped recent-job list. Backend failures mark displayed data
-as potentially out of date; refresh reconnects without starting host actions.
+The timestamp-based history graph is the main dashboard area. Choose the last hour,
+24 hours, 7, 30 or 90 days, or enter a custom period up to 366 days. The graph
+positions jobs by their stored event time; nearby jobs form a numbered group.
+Hover or focus a point to see job previews. A single point opens its job; the
+center of a group opens the table filtered to that time window, including jobs
+beyond the preview. The table button swaps graph and table in place. Job table
+rows show local date/time, host, outcome, duration and safe error summary. The
+exact timestamp remains in the tooltip. The last job and last failed job also have
+shortcuts below the graph. Counts use the full database rather than the limited
+recent-job list.
+
+Hosts, Tasks and Jobs have small find/filter/sort controls above their lists.
+The dashboard shows up to five hosts and the full Hosts view shows all matches.
+**Update shown** lists eligible visible hosts with known pending updates in a
+confirmation before queuing their normal per-host update jobs. If a target cannot
+be queued, the message names it; verify its status before retrying. Restarts remain
+separate actions. Each host row offers a **Check for updates** refresh icon,
+**Update**, **Reboot** and **Details**.
 
 In normal operation, connectivity appears once in the dashboard's compact backend status badge.
 Successful connection, refresh and navigation do not add status banners. Connection
@@ -82,7 +91,7 @@ readable metadata previews and **Open job** / **Log preview** shortcuts. Log pre
 are retrieved only after a click. Important notices sit beside the content on wide
 screens, move into the flow on mobile and disappear when resolved. A successful
 retry resolves the matching failure notice without erasing historical failures.
-The history chart is a line graph; point tooltips retain exact UTC dates/counts.
+The history chart plots timestamped jobs; point tooltips retain exact UTC dates/counts.
 Times are localized/relative, with original ISO values in tooltips and technical details.
 
 **Auto-check hosts** is on by default and stored for this backend. While Dashboard

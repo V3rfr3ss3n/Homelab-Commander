@@ -28,6 +28,8 @@ tags: [architecture, adr, index]
 
 | [[0015-stable-website-icons]] | accepted | Stabile Browser-Icons, feste Fallbacks und explizite Icon-URL |
 
+| [[0016-timestamp-job-timeline]] | accepted | Zeitgenauer Jobverlauf und gefilterte Verwaltungslisten |
+
 Neue ADRs verwenden [[../../templates/adr-template|die ADR-Vorlage]]. Akzeptierte
 ADRs werden nicht rückwirkend umgeschrieben; eine neue ADR ersetzt die alte und
 verlinkt sie als `superseded`.

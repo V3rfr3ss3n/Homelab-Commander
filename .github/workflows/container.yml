@@ -10,7 +10,7 @@ on:
       version:
         description: Image version; must match the app version when publishing
         required: true
-        default: 0.3.0-dev.3
+        default: 0.3.0-dev.4
         type: string
       publish:
         description: Publish the versioned image to GHCR
@@ -44,6 +44,9 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Check source version alignment
+        run: python3 scripts/check-version-alignment.py
 
       - name: Resolve version and publish permission
         id: policy

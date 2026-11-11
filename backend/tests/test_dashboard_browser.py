@@ -73,7 +73,7 @@ async def test_dashboard_host_import_and_task_assignment(
         await expect(page.locator("#message")).to_be_hidden()
         assert not await page.locator("#host-dialog").is_visible()
         assert not await page.locator("#task-dialog").is_visible()
-        assert await page.locator("#history .graph-series.success circle").count() == 7
+        assert await page.locator("#history .timeline-point circle").count() == 0
         await page.locator("[data-add-host]").click()
         await expect(page.locator("#host-system-step")).to_be_visible()
         await page.locator("#host-system-next").click()
@@ -137,9 +137,14 @@ async def test_dashboard_host_import_and_task_assignment(
         await expect(page.locator("#dashboard .metric-detail").first).to_contain_text(
             "Update status unknown · 1 unchecked host"
         )
-        assert await page.locator("#jobs").get_by_text("No jobs yet.").is_visible()
+        assert (
+            await page
+            .locator("#history")
+            .get_by_text("No jobs in this period.", exact=False)
+            .is_visible()
+        )
         await page.locator('a.notice[href="#/hosts?filter=stale"]').click()
-        await expect(page.locator("#host-filter")).to_contain_text("Filter: stale")
+        await expect(page.locator("#host-filter")).to_have_value("stale")
         await page.get_by_role("link", name="Details", exact=True).click()
         await page.locator("#host-detail [data-add-task]").click()
         await page.locator("#task-name").fill("Read uptime")
@@ -171,7 +176,7 @@ async def test_dashboard_host_import_and_task_assignment(
         await _wait_for_message(page, "Task updated")
         await page.locator('nav a[href="#/jobs"]').click()
         await page.locator("#job-state").select_option("success")
-        await page.locator("#job-filters button").click()
+        await page.locator("#job-filters button[type=submit]").click()
         await page.locator("#jobs").get_by_text("success", exact=True).first.wait_for()
         assert "of 1" in await page.locator("#jobs-count").inner_text()
         await page.locator("#jobs [data-job-log]").first.click()
@@ -181,7 +186,7 @@ async def test_dashboard_host_import_and_task_assignment(
         await _wait_for_connection(page)
         assert await page.locator("#job-detail").is_visible()
         await page.locator('nav a[href="#/dashboard"]').click()
-        await expect(page.locator("#activity [data-job-log]")).to_have_count(1)
+        await expect(page.locator("#job-highlights")).to_contain_text("Last job")
         assert await page.evaluate(
             "document.documentElement.scrollWidth <= window.innerWidth"
         )

@@ -211,7 +211,7 @@ wird beim Parser in Tests festgeschrieben.
 
 - **REQ-UI-001 MUST:** Dashboard ist der Einstieg mit Backend-/Queuezustand,
   wichtigen verlinkten Meldungen, fünf neuesten Jobs, kompakten Hosts und einem
-  vollständigen Sieben-Tage-Verlauf. Vollansichten trennen Hosts, Tasks und Jobs.
+  vollständigen Verlauf mit wählbarem Zeitraum. Vollansichten trennen Hosts, Tasks und Jobs.
 - **REQ-UI-002 MUST:** Hostzeilen bieten Prüfen, Update, Reboot und Details;
   Erstellen/Bearbeiten erfolgt über Dialoge. Der Einrichtungsdialog bietet Public
   Key, Debian-/Ubuntu-Vorlagen und validierten versionierten Paste-Import ohne
@@ -245,3 +245,16 @@ wird beim Parser in Tests festgeschrieben.
   directly copy visible previews. Root sudo is opt-in with explicit UI acknowledgement;
   no package, firewall or SSH daemon changes are inferred. Managed sudo rules are
   validated, isolated from foreign rules and safely installed. See ADR-0014.
+
+## Timestamp history and list controls
+
+- **REQ-UI-HISTORY MUST:** Dashboard presents a prominent, timestamp-positioned job
+  timeline. A selectable period, host/state/action filters and a graph/table switch
+  apply to the complete stored history. A single point opens its job; a grouped
+  point shows bounded previews and opens the matching paginated table period.
+  Table rows expose exact local times while technical timestamps remain available.
+- **REQ-UI-LISTS MUST:** Host, task and job lists place compact filter and sort
+  controls above results. Host status and available operations remain readable on
+  small screens. An **Update shown** operation lists eligible displayed hosts in
+  its confirmation and uses only explicit per-host update jobs; partial failures
+  remain visible and no restart follows automatically. See ADR-0016.

@@ -86,10 +86,15 @@ in typisierte, unveränderliche Modelle übersetzt.
 ## Dashboard und Host-Task-Zuordnungen
 
 Zusätzliche authentifizierte Leseendpunkte unter `/api/v1` und `/ui-api`:
-`GET /dashboard`, `GET /jobs/page` und
+`GET /dashboard`, `GET /jobs/page`, `GET /jobs/timeline` und
 `GET /hosts/{host_id}/task-compatibility`. Die Jobseite akzeptiert `host_id`,
-`state`, `offset >= 0`, `limit = 1..100` (Default 25) und liefert
+`state`, optional `action`, `start`/`end` (UTC-Zeitfenster, beide erforderlich,
+maximal 366 Tage), `sort` (newest/oldest/host/action/state), `offset >= 0`,
+`limit = 1..100` (Default 25) und liefert
 `items`, `total`, `offset`, `limit`; `/jobs` behält die bisherige Listenform.
+Die Timeline benötigt `start` und `end`, erlaubt 12–120 Zeit-Buckets und liefert
+`total`, `points` mit Start/Ende, mittlerem Zeitstempel, Zustandszählung und maximal
+sechs Vorschau-Jobs. Der Endzeitpunkt ist exklusiv.
 Dashboard-Aggregate verwenden die gesamte Datenbank und sieben UTC-Kalendertage.
 Terminale Jobs werden nach Abschlussdatum, aktive nach Anlagedatum gruppiert.
 

@@ -114,7 +114,7 @@ async def test_readable_dashboard_shortcuts_graph_and_visible_checks(
         ]
         assert await page.locator("#history polyline").count() == 5
         assert await page.locator("#history rect").count() == 0
-        assert await page.locator("#history circle").count() == 35
+        assert await page.locator("#history .timeline-point circle").count() == 1
         await expect(page.locator("#notices-panel")).to_be_visible()
         assert await page.locator(
             "#hosts .row > span:first-child > a"

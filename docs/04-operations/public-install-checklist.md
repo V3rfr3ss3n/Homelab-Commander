@@ -37,6 +37,20 @@ reales Zielsystem oder startet Update beziehungsweise Reboot.
 - [ ] Native Integration mit demselben Token einrichten.
 - [ ] Backendzustand, Hauptpanel und Backend-Ingress-Eintrag prüfen.
 
+## Upgrade-Erkennung und Datenbestand
+
+- [ ] Eine isolierte HA-Instanz mit der vorherigen App-Version und synthetischen
+      Daten starten. Integration und Backend-App getrennt aktualisieren.
+- [ ] App-Store aktualisieren. Die neue Version muss in `version_latest` und als
+      Update auf der Backend-App-Karte erscheinen. Ein Timeout oder fehlende
+      Erkennung blockiert die Abnahme.
+- [ ] Die normale App-Update-Aktion ausführen; `version` und die laufende
+      Backend-API müssen die Zielversion melden. Keine Neuinstallation.
+- [ ] Host-, Task- und Job-IDs sowie SSH-Schlüssel-Fingerprint bleiben nach App-
+      Neustart erhalten. Nur synthetische Daten benutzen.
+- [ ] Integrations-/App-Versionsanzeige nach beiden separaten Updates prüfen;
+      ein neuer Main-Commit allein gilt nicht als App-Update.
+
 ## Sichere Funktionsprüfung
 
 - [ ] Nur einen synthetischen, gemockten oder vollständig isolierten Testhost

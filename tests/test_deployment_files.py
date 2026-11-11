@@ -74,7 +74,7 @@ def test_addon_uses_ingress_without_privileged_host_access() -> None:
     assert "ingress_entry" not in config
     assert config["ports"] == {"8099/tcp": None}
     assert config["image"] == "ghcr.io/v3rfr3ss3n/homelab-updates-backend"
-    assert config["version"] == "0.3.0-dev.3"
+    assert config["version"] == "0.3.0-dev.4"
     assert config["url"] == "https://github.com/V3rfr3ss3n/Homelab-Commander"
     assert config["arch"] == ["aarch64", "amd64"]
     for forbidden in ("host_network", "privileged", "docker_api", "hassio_api"):
@@ -102,7 +102,7 @@ def test_public_installation_docs_have_only_public_navigation_links() -> None:
 
 def test_development_release_versions_stay_aligned() -> None:
     """Integration, backend, App and publication use one release version."""
-    expected = "0.3.0-dev.3"
+    expected = "0.3.0-dev.4"
     manifest = json.loads(
         (ROOT / "custom_components/homelab_updates/manifest.json").read_text()
     )
