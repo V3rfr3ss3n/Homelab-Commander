@@ -269,6 +269,7 @@ function closeTimelinePoint(){const preview=element("history-popover");if(previe
 function showTimelinePoint(target){
   const anchor=target.closest?.("[data-point]");if(!anchor)return;
   const point=currentTimeline.points[Number(anchor.dataset.point)],preview=element("history-popover");if(!point||!preview)return;
+  if(!preview.hasAttribute("hidden")&&preview.dataset.sourcePoint===anchor.dataset.point)return;
   const circle=anchor.querySelector("circle"),cx=Number(circle.getAttribute("cx")),cy=Number(circle.getAttribute("cy"));
   preview.setAttribute("transform",`translate(${cx} ${cy})`);preview.dataset.sourcePoint=anchor.dataset.point;
   if(point.total===1){
@@ -336,8 +337,11 @@ function staleHost(host){return !host.checked_at||Date.now()-Date.parse(host.che
 function render(){
   const route=view(),page=route.name==="hosts"&&route.id?"host":route.name==="jobs"&&route.id?"job":route.name;
   element("dashboard-layout").classList.toggle("is-dashboard",page==="dashboard");
-  const hostContainer=page==="dashboard"?element("dashboard-sidebar"):element("host-list-slot");if(element("host-section").parentElement!==hostContainer)hostContainer.append(element("host-section"));
+  const hostContainer=page==="dashboard"?element("dashboard-sidebar"):element("host-list-slot"),hostSection=element("host-section");
+  const focused=hostSection.parentElement!==hostContainer&&hostSection.contains(document.activeElement)?document.activeElement:null;
+  if(hostSection.parentElement!==hostContainer)hostContainer.append(hostSection);
   document.querySelectorAll("[data-views]").forEach(section=>section.hidden=!section.dataset.views.split(" ").includes(page));
+  if(focused)focused.focus({preventScroll:true});
   const contextId=route.id&&route.name==="hosts"?route.id:route.params.get("host_id");
   const contextHost=state.hosts.find(host=>host.id===contextId);
   document.querySelectorAll("nav a").forEach(link=>{const tab=link.dataset.tab;if(tab){link.href=tab==="hosts"?(contextId?`#/hosts/${encodeURIComponent(contextId)}`:"#/hosts"):`#/${tab}${contextId?`?host_id=${encodeURIComponent(contextId)}`:""}`}if(link.dataset.tab===route.name)link.setAttribute("aria-current","page");else link.removeAttribute("aria-current")});
