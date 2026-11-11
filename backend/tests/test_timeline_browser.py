@@ -140,8 +140,11 @@ async def test_timeline_group_opens_exact_table_window(
             await page.screenshot(
                 path=f"/tmp/timeline-dashboard-{ingress}.png", full_page=True
             )
-            await page.locator('nav a[data-tab="hosts"]').click()
             await page.locator("#host-search").fill("Node B")
+            await page.evaluate("location.hash='/hosts'")
+            await expect(page.locator("#host-list-slot #host-controls")).to_be_visible()
+            await expect(page.locator("#host-search")).to_be_focused()
+            await expect(page.locator("#host-search")).to_have_value("Node B")
             await page.locator("#host-search").press("Enter")
             await expect(page.locator("#host-count")).to_have_text("1 of 2 hosts")
             assert await page.locator("#hosts .row").count() == 1

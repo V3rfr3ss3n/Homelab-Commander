@@ -34,6 +34,13 @@ waits through 101 reads in a regression that failed with the old helper. The hel
 waits asynchronously with a ten-second failure bound and no real sleeps; all 26
 API tests pass. Production worker behavior and assertions are unchanged.
 
+The host MR retarget run also exposed a lost search draft/focus when the same host
+list moved from the dashboard sidebar into Hosts. Preserve the focused control
+across reparenting and restore it after the destination becomes visible. The
+regression fails before the fix and passes in both UI modes, retaining the entered
+filter and its resulting host count. The stability fixes are also backported to
+the host MR so each dependency can pass independently.
+
 ## Validation record
 
 - Targeted timing tests: 2 passed in explicit English/German locales.
@@ -46,6 +53,9 @@ API tests pass. Production worker behavior and assertions are unchanged.
   with the same 386 tests and independent coverage values. The final main
   revision must also complete its CI gates, including the subsequent API-test
   synchronization regression (one additional test).
+- After the API-test synchronization follow-up, the full release-check passed
+  with 387 tests, 98.43% lines and 96.15% branches. Final CI also includes the
+  host-filter focus regression; coverage thresholds remain unchanged.
 - Final dev.4 wheel built successfully; metadata version and every frontend asset
   match the candidate source.
 - Exact-revision public Quality, HACS, Hassfest, CodeQL, secret and native
