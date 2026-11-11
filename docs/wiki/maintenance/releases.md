@@ -88,10 +88,28 @@ then reload its UI. The integration prerelease is also version-aligned, but thes
 backend UI fixes do not require deleting/re-adding the integration. Keep the normal
 backup/recovery strategy; older binaries may not parse stored custom icon overrides.
 
-## 0.3.0-dev.4 candidate (unpublished)
+## 0.3.0-dev.4 development prerelease
 
-The next candidate includes the timestamp job timeline, compact list controls and
-explicit update of eligible displayed hosts. Its version is bumped separately from
-dev.3 so the Backend App can present an actual upgrade after the image is published.
-Source alignment is checked in CI. Publication and an isolated Supervisor Store
-upgrade from dev.3 remain open; this source branch is not an installable release.
+This development prerelease combines the timestamp timeline, job inspection/log tools, host
+workspace, consistent action/system icons, compact filter reset and overlay
+notifications. Active host guards and scoped counts cover all queued/running jobs,
+including those outside recent history. **Update all** includes every eligible
+host across the inventory, even when filters hide some targets; confirmation lists
+the targets and requires maintenance/restart-review acknowledgement. Reboots remain
+separate explicit actions.
+
+The integration advertises update progress throughout queued/running jobs and
+refreshes status at completion. Update the Backend App and integration separately,
+then reload the integration and browser UI. Existing data/identities remain intact;
+there is no new schema migration or production dependency for this candidate.
+
+Source versions are aligned to dev.4. Publication requires green
+quality, HA/HACS, security and native multi-architecture gates. The owner has deferred the isolated dev.3 image-upgrade and Supervisor Store
+walkthrough for this development prerelease: the operator will check Store
+discovery and the App upgrade after publication. These paths have not been
+accepted in advance; a timeout or missing `version_latest` remains an open
+acceptance defect. This is not stable-release installation acceptance.
+Publication results are recorded in the
+[release notes](https://github.com/V3rfr3ss3n/Homelab-Commander/releases/tag/v0.3.0-dev.4).
+See the [candidate evidence](../../05-reviews/2026-11-11-dev4-stabilization.md) for
+completed checks and remaining limits; individual MR runs are not release evidence.

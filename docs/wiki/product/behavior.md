@@ -1,7 +1,7 @@
 ---
 title: Behavior and acceptance
 status: active
-updated: 2026-10-31
+updated: 2026-11-11
 tags: [wiki, product]
 ---
 
@@ -52,8 +52,11 @@ Dated reviews document a particular verification point, not permanent success.
 
 ## Dashboard and task eligibility
 
-The backend opens on a dashboard with linked notices, compact hosts/jobs and seven
-UTC days of job history. Full Hosts, Tasks and Jobs views own administration.
+The backend opens on a dashboard with linked notices, sidebar hosts and a
+timestamp-positioned job timeline (seven days by default). Automatic filters and
+a paginated table share the selected period/host/action/state. Full Hosts, Tasks
+and Jobs views own administration. Active counts and maintenance guards cover all
+queued/running jobs independently of recent history.
 Security notices filter affected hosts and lead to regular explicit system updates.
 
 Custom tasks require a host assignment, global and per-host activation, and current

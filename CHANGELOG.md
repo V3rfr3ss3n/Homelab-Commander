@@ -5,14 +5,46 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ## [Unreleased]
 
-## 0.3.0-dev.4 - 2026-11-11
+## [0.3.0-dev.4] - 2026-11-11
 
-- Put a timestamp-positioned, filterable job timeline first on the dashboard with
-  grouped job previews and a matching paginated table.
-- Add compact host, task and job list controls and an explicitly confirmed
-  update action for eligible visible hosts.
-- Require source version alignment before image publication and an isolated
-  Home Assistant App Store upgrade check before a stable release.
+### Added
+
+- Timestamp-positioned job timeline with grouped previews, automatic filters and
+  a matching paginated table; red attention markers only for unresolved reviews.
+- Compact job workspace with precise local timestamps, adaptive durations,
+  searchable/redacted logs, copy/download controls and explicitly confirmed reruns.
+- Host workspace with system/SSH facts, task assignments and recent jobs; consistent
+  action/system icons, subtle update accents and prominent restart requirements.
+
+### Changed
+
+- Move host summaries below dashboard notices and status counts into the toolbar.
+  Show notifications as overlays with job links and keep context/filter reset
+  reachable through a counted funnel control.
+- **Update all** targets every eligible host, including hosts hidden by filters.
+  Confirmation names targets and requires maintenance/restart-review acknowledgement.
+  Updates never request a reboot; reboot remains a separate confirmed action.
+
+### Fixed
+
+- Keep timeline previews stable across pointer movements so focused links and
+  group-center clicks remain usable.
+- Preserve active host counts and maintenance guards beyond the latest 100 jobs
+  by loading queued/running pages independently of recent history.
+- Advertise Home Assistant update progress so queued/running jobs remain visible
+  in the update dialog until completion and the final status refresh.
+- Test precise times and durations with explicit English and German browser locales.
+
+### Upgrade notes
+
+- Update the existing Backend App and integration, then reload the integration
+  and browser UI. Existing `/data`, IDs, SSH identity and preferences are retained;
+  no new persistence migration or production dependency is introduced.
+- Source versions are aligned to dev.4. Automated quality, security and container
+  gates remain required. The owner deferred the separate isolated image-upgrade/
+  Supervisor walkthrough for this development prerelease; Store recognition and
+  the installed App upgrade will be checked by the operator after publication.
+  These manual paths are not claimed as tested.
 
 ## [0.3.0-dev.3] - 2026-11-10
 

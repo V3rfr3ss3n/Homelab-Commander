@@ -1,7 +1,7 @@
 ---
 title: Abnahme
 status: accepted
-updated: 2026-10-31
+updated: 2026-11-11
 tags: [product, acceptance, release]
 ---
 
@@ -163,8 +163,10 @@ tags: [product, acceptance, release]
 
 - Hosts/running/queued counts share the top row; connectivity uses one compact dot.
   Job highlights link directly to details and explicitly requested log previews.
-- Resolved notices disappear; historical failures remain accessible. The seven-day
-  line graph retains UTC counts and dates in point tooltips. Human-readable times
+- Resolved notices disappear; historical failures remain accessible. The timestamp
+  timeline defaults to seven days and supports bounded custom periods, grouped
+  previews and a matching paginated table. Only unresolved review needs mark
+  attention points red. Human-readable times
   retain their original values in tooltips and technical details.
 - Visible Dashboard/Hosts views request checks every five minutes by default.
   Disabling the persisted preference, hiding the page, navigating away or
