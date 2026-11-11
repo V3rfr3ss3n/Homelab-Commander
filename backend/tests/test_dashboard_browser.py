@@ -194,6 +194,8 @@ async def test_dashboard_host_import_and_task_assignment(
         assert "of 1" in await page.locator("#jobs-count").inner_text()
         await page.locator("#jobs [data-job-log]").first.click()
         await page.locator("#job-detail").wait_for(state="visible")
+        await expect(page.locator("#job-metadata h2")).to_contain_text("Node 01")
+        await page.get_by_text("Technical details and identifiers", exact=True).click()
         assert "Custom task" in await page.locator("#job-metadata").inner_text()
         await page.reload()
         await _wait_for_connection(page)

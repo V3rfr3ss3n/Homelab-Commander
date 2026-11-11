@@ -258,3 +258,19 @@ wird beim Parser in Tests festgeschrieben.
   small screens. An **Update shown** operation lists eligible displayed hosts in
   its confirmation and uses only explicit per-host update jobs; partial failures
   remain visible and no restart follows automatically. See ADR-0016.
+
+## Job inspection workspace
+
+- **REQ-UI-JOB-DETAIL MUST:** A job detail presents outcome, host/task context,
+  duration and lifecycle before technical identifiers. Job and host share one
+  title with an inline outcome description. Lifecycle times show milliseconds,
+  date and time zone; elapsed durations scale from ms through s/min to h. Only
+  outstanding reviews expose a prominent top action, alongside icon-labelled
+  copy/download controls. It refreshes the selected
+  persisted job even outside recent history, and active jobs update automatically.
+- **REQ-UI-JOB-LOG MUST:** Local search, wrapping, copy and explicit text download
+  operate on bounded redacted output. Truncation and fetch errors remain visible;
+  changing to another or missing job never displays the previous job's log.
+- **REQ-UI-JOB-RERUN MUST:** A rerun creates a distinct job only after explicit
+  action/host confirmation, preserving original state and output. Existing host
+  serialization and task activation/assignment/prerequisite checks apply.

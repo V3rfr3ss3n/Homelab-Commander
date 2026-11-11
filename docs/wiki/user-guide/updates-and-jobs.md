@@ -130,6 +130,36 @@ hosts; unknown status is never presented as a successful zero-update check.
 A failed first check leaves status unknown. Open its job for the failure reason.
 
 
+## Inspect one job
+
+Open a job from its history point, table row or action notification. The detail
+workspace combines the task/action name and host in one title, with a short outcome
+description immediately below. Duration uses milliseconds, seconds, minutes or hours
+as appropriate. The queued/started/finished timeline shows local clock times to
+millisecond precision, date and time zone; original ISO values remain in tooltips.
+Only failures needing acknowledgement show a prominent **Mark as reviewed** button
+in the top action bar. Identifiers and review metadata remain in **Technical details**. Host and
+host-history links keep investigation close to the affected system; custom jobs
+also link to the host's task configuration.
+
+**Refresh job** fetches that exact job, including older jobs outside the recent
+list. Active jobs update automatically. Logs appear when the backend has recorded
+them. A log-fetch failure leaves the job summary available and can be retried with
+**Refresh job**. Search output locally, move between matches, toggle line wrapping,
+or use the **Copy log** / **Download .txt** icon buttons in the top action bar. These tools use only the bounded,
+redacted output already returned by the backend. A truncation notice means the
+export is also incomplete. Inspect exported logs before sharing them. **Copy link**
+copies the authenticated job URL without a token.
+
+**Run again** creates a new job after confirming the action and exact host. It
+preserves the original job and log, and the notification links to the new job.
+Active jobs, missing hosts and hosts with mutating work block this shortcut.
+Custom task reruns use the current task definition. They additionally require
+current activation, assignment and suitable
+prerequisites; otherwise open the host's tasks to resolve them. Backend checks
+still apply when queuing and executing. An update rerun does not schedule a reboot.
+Review acknowledges a failed job; rerunning it is a separate deliberate action.
+
 ## Review a failed-job notice
 
 Follow **Review the job** from Important notices, inspect the log, then select
