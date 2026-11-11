@@ -1,8 +1,9 @@
 """Entity state, command, and diagnostic behavior tests."""
 
+import asyncio
 import json
 from dataclasses import replace
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from homeassistant.components.button import (
@@ -23,7 +24,12 @@ from custom_components.homelab_updates.diagnostics import (
     _safe_url,
     async_get_config_entry_diagnostics,
 )
-from custom_components.homelab_updates.domain import Command, HostStatus
+from custom_components.homelab_updates.domain import (
+    BackendTask,
+    Command,
+    HostStatus,
+    TaskPhase,
+)
 from custom_components.homelab_updates.entity import async_start_command
 from custom_components.homelab_updates.exceptions import (
     AuthenticationError,
@@ -221,3 +227,109 @@ async def test_entity_command_errors_are_safe(error: Exception) -> None:
     manager.async_start = AsyncMock(side_effect=error)
     with pytest.raises(HomeAssistantError):
         await async_start_command(manager, Command.CHECK_ALL)
+
+
+@pytest.mark.parametrize(
+    "terminal", [TaskPhase.SUCCESS, TaskPhase.FAILED, TaskPhase.CANCELLED]
+)
+async def test_update_service_publishes_progress_until_terminal_status_refresh(
+    hass: HomeAssistant,
+    aioclient_mock: object,
+    mock_entry: MockConfigEntry,
+    terminal: TaskPhase,
+) -> None:
+    """HA's serialized update state follows accepted jobs, not service duration."""
+    await _setup_entry(hass, aioclient_mock, mock_entry)
+    runtime = mock_entry.runtime_data
+    manager = runtime.task_manager
+    manager._poll_interval = 0
+    host = runtime.coordinator.data["node-01"]
+    running_gate, terminal_gate = asyncio.Event(), asyncio.Event()
+    running_seen, refresh_started, refresh_gate = (
+        asyncio.Event(),
+        asyncio.Event(),
+        asyncio.Event(),
+    )
+    polls = 0
+
+    async def poll(task_id: int | str) -> BackendTask:
+        nonlocal polls
+        polls += 1
+        if polls == 1:
+            await running_gate.wait()
+            phase = TaskPhase.RUNNING
+        else:
+            await terminal_gate.wait()
+            phase = terminal
+        return BackendTask(task_id=task_id, phase=phase, raw_status=phase.value)
+
+    async def refresh_hosts() -> dict[str, HostStatus]:
+        refresh_started.set()
+        await refresh_gate.wait()
+        return {
+            "node-01": replace(host, updates=0, security_updates=0)
+            if terminal is TaskPhase.SUCCESS
+            else host
+        }
+
+    def observe_running() -> None:
+        task = manager.task_state(Command.UPDATE_HOST, "node-01")
+        if task and task.phase is TaskPhase.RUNNING:
+            running_seen.set()
+
+    remove_listener = manager.async_add_listener(observe_running)
+    started = BackendTask(task_id=812, phase=TaskPhase.WAITING, raw_status="queued")
+    with (
+        patch.object(
+            runtime.automation_backend,
+            "async_update_host",
+            AsyncMock(return_value=started),
+        ),
+        patch.object(runtime.automation_backend, "async_get_task", poll),
+        patch.object(runtime.status_client, "async_get_hosts", refresh_hosts),
+    ):
+        try:
+            await hass.services.async_call(
+                UPDATE_DOMAIN,
+                SERVICE_INSTALL,
+                {ATTR_ENTITY_ID: "update.example_node_system_updates"},
+                blocking=True,
+            )
+            assert manager.is_running(Command.UPDATE_HOST, "node-01")
+            queued = hass.states.get("update.example_node_system_updates")
+            assert queued is not None
+            assert queued.attributes["in_progress"] is True
+            assert queued.attributes["update_percentage"] is None
+            with pytest.raises(HomeAssistantError):
+                await hass.services.async_call(
+                    UPDATE_DOMAIN,
+                    SERVICE_INSTALL,
+                    {ATTR_ENTITY_ID: "update.example_node_system_updates"},
+                    blocking=True,
+                )
+            running_gate.set()
+            await asyncio.wait_for(running_seen.wait(), timeout=1)
+            running = hass.states.get("update.example_node_system_updates")
+            assert running is not None
+            assert running.attributes["in_progress"] is True
+            terminal_gate.set()
+            await asyncio.wait_for(refresh_started.wait(), timeout=1)
+            refreshing = hass.states.get("update.example_node_system_updates")
+            assert refreshing is not None
+            assert refreshing.attributes["in_progress"] is True
+            refresh_gate.set()
+            await hass.async_block_till_done()
+            final = hass.states.get("update.example_node_system_updates")
+            assert final is not None
+            assert final.attributes["in_progress"] is False
+            assert final.attributes["update_percentage"] is None
+            assert final.attributes["latest_version"] == (
+                "0" if terminal is TaskPhase.SUCCESS else "5"
+            )
+            assert not manager.is_running(Command.UPDATE_HOST, "node-01")
+        finally:
+            running_gate.set()
+            terminal_gate.set()
+            refresh_gate.set()
+            remove_listener()
+            await manager.async_cancel()

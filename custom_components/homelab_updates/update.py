@@ -41,7 +41,9 @@ class HomelabSystemUpdateEntity(HomelabUpdatesEntity, UpdateEntity):
 
     _attr_translation_key = "system_updates"
     _attr_title = "System packages"
-    _attr_supported_features = UpdateEntityFeature.INSTALL
+    _attr_supported_features = (
+        UpdateEntityFeature.INSTALL | UpdateEntityFeature.PROGRESS
+    )
 
     def __init__(
         self,
