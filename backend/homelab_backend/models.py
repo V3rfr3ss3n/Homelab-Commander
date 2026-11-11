@@ -137,6 +137,7 @@ class Job(BaseModel):
     error_code: str | None = None
     log_available: bool = False
     reviewed_at: datetime | None = None
+    needs_review: bool = False
     reboot_required: bool | None = None
 
     # Mypy does not yet understand Pydantic's decorator above a property.

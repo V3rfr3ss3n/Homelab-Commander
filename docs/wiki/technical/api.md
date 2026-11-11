@@ -44,9 +44,13 @@ standalone management session.
 
 ## Dashboard, assignments and prerequisites
 
-Additive read routes under both API prefixes are `/dashboard`, `/jobs/page` and
-`/hosts/{host_id}/task-compatibility`. Job pages accept `host_id`, `state`, `offset`
+Additive read routes under both API prefixes are `/dashboard`, `/jobs/page`, `/jobs/timeline` and
+`/hosts/{host_id}/task-compatibility`. Job pages accept `host_id`, `state`, `action`, an optional `start`/`end` pair
+(maximum 366 days), `sort` (newest, oldest, host, action or state), `offset`
 and `limit` (1–100, default 25), returning `items`, `total`, `offset` and `limit`.
+The timeline requires start/end, accepts 12–120 bins, and returns complete counts
+with at most six preview jobs per point. Point bounds are inclusive/exclusive so
+they can be passed to the job page.
 The existing `/jobs` list shape is preserved.
 
 `POST /hosts/{host_id}/tasks/{task_id}/check` explicitly runs the fixed probe and

@@ -21,6 +21,7 @@ from fastapi import (
 )
 from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import AwareDatetime
 
 from .automation import AnsibleExecutor, AutomationExecutor
 from .config import Settings
@@ -28,7 +29,7 @@ from .custom_tasks import CustomTaskRepository, ShellTasksDisabledError
 from .dashboard import DashboardService, DashboardSummary, JobPage
 from .database import Database
 from .hosts import DuplicateHostError, HostRepository
-from .jobs import JobManager, JobRepository
+from .jobs import JobManager, JobRepository, JobSort
 from .models import (
     AssignmentUpdate,
     CustomTask,
@@ -51,6 +52,7 @@ from .models import (
 from .onboarding import OnboardingCommand, SetupOptions, setup_command
 from .ssh_keys import SshKeyStore
 from .task_compatibility import TaskCompatibilityService
+from .timeline import JobTimeline, TimelineService, validate_period
 from .ui import UI_HTML, UI_JAVASCRIPT, UI_STYLESHEET
 from .ui_sessions import UI_SESSION_COOKIE, UI_SESSION_COOKIE_PATH, UiSessionStore
 from .version import __version__
@@ -481,15 +483,63 @@ def create_app(
         offset: int = Query(default=0, ge=0),
         host_id: UUID | None = None,
         state: JobState | None = None,
+        action: JobAction | None = None,
+        start: AwareDatetime | None = None,
+        end: AwareDatetime | None = None,
+        sort: JobSort = "newest",
     ) -> JobPage:
+        if (start is None) != (end is None):
+            raise HTTPException(422, "Provide both start and end timestamps")
+        if start is not None and end is not None:
+            try:
+                validate_period(start, end)
+            except ValueError as err:
+                raise HTTPException(422, str(err)) from err
         return JobPage(
             items=await jobs_repository.async_list(
-                limit=limit, offset=offset, host_id=host_id, state=state
+                limit=limit,
+                offset=offset,
+                host_id=host_id,
+                state=state,
+                start=start,
+                end=end,
+                action=action,
+                sort=sort,
             ),
-            total=await jobs_repository.async_count(host_id=host_id, state=state),
+            total=await jobs_repository.async_count(
+                host_id=host_id, state=state, start=start, end=end, action=action
+            ),
             limit=limit,
             offset=offset,
         )
+
+    @app.get(
+        "/api/v1/jobs/timeline", response_model=JobTimeline, dependencies=authenticated
+    )
+    @app.get(
+        "/ui-api/jobs/timeline",
+        response_model=JobTimeline,
+        dependencies=ui_authenticated,
+    )
+    async def job_timeline(
+        start: AwareDatetime,
+        end: AwareDatetime,
+        bins: int = Query(default=60, ge=12, le=120),
+        host_id: UUID | None = None,
+        state: JobState | None = None,
+        action: JobAction | None = None,
+    ) -> JobTimeline:
+        try:
+            return await TimelineService(database, jobs_repository).async_read(
+                start,
+                end,
+                bins=bins,
+                host_id=host_id,
+                state=state,
+                action=action,
+            )
+        except ValueError as err:
+            raise HTTPException(422, str(err)) from err
 
     @app.get(
         "/api/v1/hosts/{host_id}/task-compatibility",

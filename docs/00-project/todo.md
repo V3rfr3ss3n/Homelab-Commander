@@ -12,9 +12,11 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## In Arbeit
 
-- [ ] T-032 Den Release Candidate `0.3.0-dev.3` nach Merge öffentlich bauen und
-  die [[../04-operations/public-install-checklist|frische Installation]] mit
-  automatischer lokaler App-Erkennung bestätigen.
+- [ ] T-032 Den Release Candidate `0.3.0-dev.4` nach Merge öffentlich bauen und
+  die [[../04-operations/public-install-checklist|frische Installation]] sowie
+  den App-Store-Upgrade von dev.3 auf dev.4 mit erhaltener `/data` und
+  automatischer lokaler App-Erkennung bestätigen. Ein Store-Timeout oder
+  `version_latest` auf dev.3 bleibt ein offener Release-Blocker.
 
 ## Weitere Änderungen zur Review
 

@@ -60,6 +60,8 @@ async def test_notice_review_survives_reload(
             await page.locator("#token").fill(TOKEN)
             await page.locator("#connect").click()
         await _wait_for_connection(page)
+        marker = page.locator(f'#history a[href="#/jobs/{failure.id}"] circle')
+        await expect(marker).to_have_css("fill", "rgb(237, 140, 152)")
         await page.locator(f'#notices a[href="#/jobs/{failure.id}"]').click()
         await page.get_by_role("button", name="Mark as reviewed").click()
         await expect(page.locator("#job-metadata")).to_contain_text("Reviewed")
@@ -70,8 +72,9 @@ async def test_notice_review_survives_reload(
         await expect(page.get_by_role("button", name="Mark as reviewed")).to_have_count(
             0
         )
-        await page.locator('nav a[href="#/dashboard"]').click()
+        await page.locator('nav a[data-tab="dashboard"]').click()
         await expect(page.locator("#notices-panel")).to_be_hidden()
         await expect(page.locator("#job-highlights")).to_contain_text("Last failed job")
+        await expect(marker).not_to_have_css("fill", "rgb(237, 140, 152)")
         assert (await jobs.async_get(failure.id)).state == JobState.FAILED
         await browser.close()

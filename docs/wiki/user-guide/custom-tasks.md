@@ -1,7 +1,7 @@
 ---
 title: Custom tasks
 status: active
-updated: 2026-10-31
+updated: 2026-11-11
 tags: [wiki, user-guide]
 ---
 
@@ -28,7 +28,7 @@ There is no built-in autonomous task scheduler or implicit update/reboot policy.
 
 ## Assign tasks to suitable hosts
 
-Use **+** on Tasks, or **+ Create task** in host details. The dialog supports name,
+Use **+** on Tasks, or **+ Create task** in the selected host’s Tasks tab. The dialog supports name,
 description, command argv or opt-in shell mode, global activation and prerequisites.
 Declare allowed lowercase OS IDs (for example `debian, ubuntu`), exact VERSION_ID
 values, required programs/packages and whether execution needs sudo. Empty system

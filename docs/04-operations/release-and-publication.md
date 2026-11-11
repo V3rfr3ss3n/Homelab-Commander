@@ -36,6 +36,9 @@ offiziellen Home-Assistant-Builder-Actions. Der Workflow setzt
 | manueller Lauf von `main`, `publish=true` | ja | ja |
 | Tag `v<version>` auf einem `main`-Commit | ja | ja |
 
+Die lokale `release-check`-Prüfung und die Container-Pipeline vergleichen
+Projekt-/Lock-, Backend-, Integrations-, App-, Image-Build-, Compose- und
+Workflow-Version. Bei Abweichung stoppt die Veröffentlichung vor dem Build.
 Eine veröffentlichte Version muss exakt mit
 `addon/homelab_updates/config.yaml` übereinstimmen. Die Pipeline erzeugt native
 AMD64-/AArch64-Images und den von der App referenzierten generischen Multi-Arch-
@@ -54,7 +57,7 @@ anonymen Pull und denselben Laufzeitvertrag.
 Nach Merge der Pipeline auf `main`:
 
 1. In GitHub **Actions → Container → Run workflow** öffnen.
-2. Branch `main`, Version `0.3.0-dev.3` und `publish=true` wählen.
+2. Branch `main`, Version `0.3.0-dev.4` und `publish=true` wählen.
 3. Den Lauf bis zur Manifest-Veröffentlichung und zum anonymen Gate abwarten.
 4. Nur bei der allerersten Package-Veröffentlichung: Auf der GitHub-Profilseite
    unter **Packages** jedes neu erzeugte zugehörige
@@ -70,9 +73,9 @@ Nach Merge der Pipeline auf `main`:
    ```bash
    docker logout ghcr.io || true
    docker buildx imagetools inspect \
-     ghcr.io/v3rfr3ss3n/homelab-updates-backend:0.3.0-dev.3
+     ghcr.io/v3rfr3ss3n/homelab-updates-backend:0.3.0-dev.4
    docker pull \
-     ghcr.io/v3rfr3ss3n/homelab-updates-backend:0.3.0-dev.3
+     ghcr.io/v3rfr3ss3n/homelab-updates-backend:0.3.0-dev.4
    ```
 
 Erst ein grünes anonymes Gate und die frische Home-Assistant-Installation gelten
@@ -100,10 +103,20 @@ stehen in [[../03-development/branding|Branding und Icons]].
 3. Versionierten Container über den geschützten Tag- oder manuellen Pfad
    veröffentlichen; anonymes Manifest-/Pull-Gate abwarten.
 4. GitHub Release erstellen und das HACS-Artefakt prüfen.
-5. [[public-install-checklist|Öffentliche Installations-Checkliste]] in einer
-   isolierten Home-Assistant-Testinstanz vollständig durchführen.
-6. HACS-Installations- und Upgradepfad erneut prüfen und bekannte Einschränkungen
-   veröffentlichen.
+5. In einer isolierten Home-Assistant-Testinstanz die bereits installierte alte
+   Backend-App über den Store auf die neue Version aktualisieren. Store-Reload
+   (`ha store reload`) nur bei noch nicht erkanntem Update verwenden; einen
+   Timeout als fehlgeschlagene Abnahme werten und die Ursache untersuchen.
+   `ha apps info <slug>` muss `version_latest` auf die Zielversion setzen;
+   nach dem App-Update müssen `version`, laufende API-Version und persistierte
+   Daten dieselbe neue Version belegen. Keine Neuinstallation als Ersatz für
+   diesen Upgrade-Test.
+6. [[public-install-checklist|Öffentliche Installations-Checkliste]] in einer
+   isolierten Home-Assistant-Testinstanz vollständig durchführen und die
+   unabhängige Integrationsaktualisierung prüfen.
+7. Bei einem stabilen Release darf kein offener Store-Erkennungs- oder
+   Upgrade-Blocker als erfolgreich bewertet werden. Bekannte Einschränkungen
+   in den Release Notes veröffentlichen.
 
 SemVer wird verwendet. Vor `1.0.0` dürfen Contracts bewusst brechen, aber nur mit
 Release Notes und Migrationspfad für persistierte Config Entries. Manifest,

@@ -61,8 +61,9 @@ async def test_host_removal_returns_to_list_without_deleted_detail_requests(
         await _wait_for_connection(page)
         await expect(page.locator("#host-title")).to_have_text("Node 01")
         # Cancelling must not delete or navigate away.
-        page.once("dialog", lambda dialog: dialog.dismiss())
         await page.locator("[data-delete-host]").click()
+        await page.keyboard.press("Escape")
+        await expect(page.locator("#confirm-dialog")).to_be_hidden()
         assert await hosts.async_get(host.id) is not None
         await expect(page).to_have_url(base + prefix + f"/#/hosts/{host.id}")
         # Failed writes keep the user on the existing host, with a useful error.
@@ -73,14 +74,14 @@ async def test_host_removal_returns_to_list_without_deleted_detail_requests(
                 status=503, json={"detail": "Synthetic removal failure"}
             ),
         )
-        page.once("dialog", lambda dialog: dialog.accept())
         await page.locator("[data-delete-host]").click()
+        await page.locator("#confirm-accept").click()
         await expect(page.locator("#message")).to_have_text("Synthetic removal failure")
         assert await hosts.async_get(host.id) is not None
         await page.unroute(endpoint)
-        page.once("dialog", lambda dialog: dialog.accept())
         with patch.object(executor, "async_execute", new_callable=AsyncMock) as execute:
             await page.locator("[data-delete-host]").click()
+            await page.locator("#confirm-accept").click()
             await expect(page).to_have_url(base + prefix + "/#/hosts")
             await expect(page.locator("#message")).to_have_text("Host removed")
             await expect(page.locator("#hosts")).to_contain_text("No hosts to show")
@@ -156,8 +157,8 @@ async def test_edit_host_exposes_setup_copy_and_removal(
         await expect(page.locator("#host-user")).to_have_value("automation")
         await expect(page.locator("#host-port")).to_have_value("2222")
         assert (await hosts.async_get(host.id)).name == "Node 01"
-        page.once("dialog", lambda dialog: dialog.dismiss())
         await page.locator("#host-delete").click()
+        await page.locator("#confirm-cancel").click()
         await expect(page.locator("#host-dialog")).to_be_visible()
         assert await hosts.async_get(host.id) is not None
         endpoint = f"**/ui-api/hosts/{host.id}"
@@ -167,26 +168,20 @@ async def test_edit_host_exposes_setup_copy_and_removal(
                 status=503, json={"detail": "Synthetic removal failure"}
             ),
         )
-        page.once("dialog", lambda dialog: dialog.accept())
         await page.locator("#host-delete").click()
+        await page.locator("#confirm-accept").click()
         await expect(page.locator("#host-form-error")).to_have_text(
             "Synthetic removal failure"
         )
         await expect(page.locator("#host-dialog")).to_be_visible()
         assert await hosts.async_get(host.id) is not None
         await page.unroute(endpoint)
-        messages = []
-
-        async def confirm(dialog):
-            messages.append(dialog.message)
-            await dialog.accept()
-
-        page.once("dialog", confirm)
         await page.locator("#host-delete").click()
+        await expect(page.locator("#confirm-description")).to_contain_text("SSH access")
+        await expect(page.locator("#confirm-targets")).to_contain_text("Node 01")
+        await page.locator("#confirm-accept").click()
         await expect(page.locator("#host-dialog")).not_to_be_visible()
         await expect(page).to_have_url(base + prefix + "/#/hosts")
         await expect(page.locator("#message")).to_have_text("Host removed")
-        assert "Node 01" in messages[0]
-        assert "SSH access" in messages[0]
         assert await hosts.async_get(host.id) is None
         await browser.close()
