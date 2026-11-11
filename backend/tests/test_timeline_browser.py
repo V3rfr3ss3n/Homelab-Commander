@@ -118,7 +118,13 @@ async def test_timeline_group_opens_exact_table_window(
             )
             await group.hover(force=True)
             await expect(page.locator("#history-popover .orbit-job")).to_have_count(3)
-            await page.locator("#history-popover .orbit-center").click()
+            center = page.locator("#history-popover .orbit-center")
+            await center.focus()
+            await group.locator("text").dispatch_event(
+                "pointerover", {"pointerType": "mouse"}
+            )
+            await expect(center).to_be_focused()
+            await center.click()
             await expect(page.locator("#jobs-section")).to_be_visible()
             await expect(page.locator("#history-total")).to_have_text("3 jobs")
             assert "display=table" in page.url

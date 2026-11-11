@@ -27,6 +27,8 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ### Fixed
 
+- Keep timeline previews stable across pointer movements so focused links and
+  group-center clicks remain usable.
 - Preserve active host counts and maintenance guards beyond the latest 100 jobs
   by loading queued/running pages independently of recent history.
 - Advertise Home Assistant update progress so queued/running jobs remain visible

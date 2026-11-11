@@ -269,6 +269,7 @@ function closeTimelinePoint(){const preview=element("history-popover");if(previe
 function showTimelinePoint(target){
   const anchor=target.closest?.("[data-point]");if(!anchor)return;
   const point=currentTimeline.points[Number(anchor.dataset.point)],preview=element("history-popover");if(!point||!preview)return;
+  if(!preview.hasAttribute("hidden")&&preview.dataset.sourcePoint===anchor.dataset.point)return;
   const circle=anchor.querySelector("circle"),cx=Number(circle.getAttribute("cx")),cy=Number(circle.getAttribute("cy"));
   preview.setAttribute("transform",`translate(${cx} ${cy})`);preview.dataset.sourcePoint=anchor.dataset.point;
   if(point.total===1){

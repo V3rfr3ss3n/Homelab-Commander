@@ -22,6 +22,12 @@ records and 101 newer terminal jobs. Host-scoped counters, paginated active jobs
 update/reboot guards and bulk eligibility remain correct and recover at completion.
 All execution adapters and inventory in these checks are synthetic.
 
+The public GitHub Quality run on the intermediate timeline merge exposed a
+detached orbit-center click. Repeated pointer events rebuilt the same preview,
+discarding focused/clicked links. A focused-center regression failed before the
+fix; keeping the current point preview intact passes in Standalone and Ingress
+(2 targeted tests). Switching points, Escape and chart exit still close/change it.
+
 ## Validation record
 
 - Targeted timing tests: 2 passed in explicit English/German locales.
@@ -30,7 +36,7 @@ All execution adapters and inventory in these checks are synthetic.
 - Combined `UV_NO_SYNC=1 UV_CACHE_DIR=/tmp/vhomelab-uv-cache make release-check`:
   passed on the combined candidate tree: 386 tests, 98.43% lines and 96.15%
   branches; format/lint/strict types/docs/audit/privacy and dev.4 version alignment
-  passed. The final merge revision must rerun the gate.
+  passed before the orbit follow-up. The final merge revision must rerun the gate.
 - Exact-revision public Quality, HACS, Hassfest, CodeQL, secret and native
   AMD64/ARM64 container gates: pending after integration into main.
 
