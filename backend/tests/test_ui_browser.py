@@ -539,6 +539,8 @@ async def test_standalone_job_deep_link_requires_session_and_survives_reload(
         await page.locator("#connect").click()
         await _wait_for_connection(page)
         assert await page.locator("#job-detail").is_visible()
+        await page.get_by_text("Technical details and identifiers", exact=True).click()
+        await expect(page.locator("#job-state-badge")).to_have_text("success")
         metadata = await page.locator("#job-metadata").inner_text()
         assert job_id in metadata
         assert "Node 01" in metadata
@@ -554,6 +556,7 @@ async def test_standalone_job_deep_link_requires_session_and_survives_reload(
         await _wait_for_connection(page)
         assert page.url == deep_link
         assert await page.locator("#job-detail").is_visible()
+        await page.get_by_text("Technical details and identifiers", exact=True).click()
         assert job_id in await page.locator("#job-metadata").inner_text()
 
         await page.locator("#disconnect").click()

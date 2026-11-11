@@ -66,3 +66,42 @@ button[data-action=check_updates]:hover{border-color:var(--line);color:var(--tex
 
 .orbit-job .orbit-core{fill:currentColor;stroke:none;pointer-events:none}
 #disconnect{font-size:11px;padding:4px 7px;color:var(--muted)}
+/* Job inspection workspace: outcome first, precise metadata available on demand. */
+.job-workspace{padding:24px}
+.job-workspace-toolbar{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:26px;font-size:12px}
+.job-workspace-toolbar button{font-size:12px;padding:6px 10px}
+.job-hero{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:20px}
+.job-hero .eyebrow{text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-size:10px;margin:0 0 6px}
+.job-hero h2{font-size:27px;letter-spacing:-.4px;margin:0}
+.job-hero p{margin:5px 0 0;font-size:13px}
+.job-state-badge{flex:none;border:1px solid currentColor;border-radius:20px;padding:5px 14px;font-size:12px;text-transform:capitalize}
+.job-result{padding:14px 18px;border-radius:10px;border-left:3px solid currentColor;background:var(--bg)}
+.job-result strong{font-size:14px}
+.job-result p{color:var(--text);font-size:12px;margin:5px 0 0}
+.job-facts{display:grid;grid-template-columns:1fr 1fr 2fr;gap:20px;padding:20px 0}
+.job-facts>div{display:flex;flex-direction:column;gap:5px}
+.job-facts strong,.job-facts span{font-size:13px;font-weight:500}
+.job-facts button{padding:4px 9px;font-size:12px}
+.job-timeline{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));list-style:none;margin:0;padding:8px 0 20px}
+.job-timeline li{position:relative;padding:16px 12px 0 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:4px;font-size:12px}
+.job-timeline li:before{content:"";position:absolute;top:-4px;left:0;width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.job-timeline li.complete:before{background:var(--accent)}
+.job-timeline li span{color:var(--muted);font-size:11px}
+.job-related{display:flex;gap:20px;flex-wrap:wrap;font-size:12px}
+.job-identifiers{display:grid;grid-template-columns:auto 1fr;gap:8px 20px}
+.job-identifiers dd{margin:0;overflow-wrap:anywhere}
+.job-log-panel{margin-top:24px;border-top:1px solid var(--line);padding-top:20px}
+.job-log-panel h3{margin:0;font-size:14px}
+#job-log-note{font-size:11px;margin:4px 0 0}
+.job-log-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.log-search-label{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--muted)}
+#job-log-search{width:210px;font-size:12px;padding:5px 8px;margin:0}
+#job-log-matches{font-size:11px;min-width:85px}
+.job-log-tools>button{padding:3px 8px;font-size:12px}
+.job-log-tools .check{margin-left:auto;font-size:11px;color:var(--muted)}
+.job-log-tools input[type=checkbox]{width:auto}
+#log{margin:0;padding:18px;background:var(--bg);border:1px solid var(--line);border-radius:10px;max-height:460px;min-height:100px;overflow:auto;white-space:pre;overflow-wrap:normal;line-height:1.8;font-size:12px;tab-size:4}
+#log.wrap-log{white-space:pre-wrap;overflow-wrap:anywhere}
+#log mark{background:#534b2f;color:#ffe39a;border-radius:2px}
+#log mark.current-match{background:#ffe39a;color:var(--bg);outline:1px solid #ffe39a}
+@media(max-width:750px){.job-workspace{padding:16px}.job-workspace-toolbar{align-items:flex-start;flex-direction:column;gap:12px;margin-bottom:20px}.job-hero{align-items:flex-start}.job-hero h2{font-size:22px}.job-state-badge{padding:3px 9px}.job-facts{grid-template-columns:1fr 1fr;gap:16px}.job-facts>div:last-child{grid-column:1/-1}.job-timeline{gap:8px}.job-timeline li span{font-size:10px}.job-log-panel .section-heading{align-items:flex-start;flex-direction:column}.log-search-label{flex:1 0 100%;min-width:0;white-space:nowrap}.log-search-label input{min-width:0;flex:1}.job-log-tools .check{margin-left:auto}#job-log-search{width:150px}.job-identifiers{grid-template-columns:1fr;gap:4px}#log{max-height:400px;padding:12px}}

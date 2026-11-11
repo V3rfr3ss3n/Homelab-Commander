@@ -123,6 +123,33 @@ hosts; unknown status is never presented as a successful zero-update check.
 A failed first check leaves status unknown. Open its job for the failure reason.
 
 
+## Inspect one job
+
+Open a job from its history point, table row or action notification. The detail
+workspace leads with the task/action name, host and outcome, followed by duration,
+exit code, review state and a queued/started/finished timeline. Exact timestamps
+and identifiers remain available in tooltips and **Technical details**. Host and
+host-history links keep investigation close to the affected system; custom jobs
+also link to the host's task configuration.
+
+**Refresh job** fetches that exact job, including older jobs outside the recent
+list. Active jobs update automatically. Logs appear when the backend has recorded
+them. A log-fetch failure leaves the job summary available and can be retried with
+**Refresh job**. Search output locally, move between matches, toggle line wrapping,
+or explicitly **Copy log** / **Download .txt**. These tools use only the bounded,
+redacted output already returned by the backend. A truncation notice means the
+export is also incomplete. Inspect exported logs before sharing them. **Copy link**
+copies the authenticated job URL without a token.
+
+**Run again** creates a new job after confirming the action and exact host. It
+preserves the original job and log, and the notification links to the new job.
+Active jobs, missing hosts and hosts with mutating work block this shortcut.
+Custom task reruns use the current task definition. They additionally require
+current activation, assignment and suitable
+prerequisites; otherwise open the host's tasks to resolve them. Backend checks
+still apply when queuing and executing. An update rerun does not schedule a reboot.
+Review acknowledges a failed job; rerunning it is a separate deliberate action.
+
 ## Review a failed-job notice
 
 Follow **Review the job** from Important notices, inspect the log, then select
