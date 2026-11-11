@@ -317,8 +317,9 @@ async def test_job_duration_units_and_precise_lifecycle_times(
             )
             await expect(page.locator("#job-timeline li").nth(1)).to_contain_text("UTC")
             started = page.locator("#job-timeline li").nth(1).locator("time")
-            await expect(started).to_have_attribute("datetime", start.isoformat())
-            await expect(started).to_have_attribute("title", start.isoformat())
+            timestamp = start.isoformat().replace("+00:00", "Z")
+            await expect(started).to_have_attribute("datetime", timestamp)
+            await expect(started).to_have_attribute("title", timestamp)
             await expect(started.locator(".job-date")).to_have_text(
                 "11.11.2026" if locale == "de-DE" else "Nov 11, 2026"
             )
