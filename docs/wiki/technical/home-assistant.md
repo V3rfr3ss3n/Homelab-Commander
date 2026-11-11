@@ -1,7 +1,7 @@
 ---
 title: Home Assistant integration
 status: active
-updated: 2026-10-31
+updated: 2026-11-11
 tags: [wiki, technical]
 ---
 
@@ -34,6 +34,14 @@ Application services route deliberate actions to provider protocols. Tracking ha
 bounded deadlines, unknown-state handling and cancellation on unload. Terminal
 completion removes active trackers before the final listener notification and
 requests status refresh on success.
+
+System-update entities advertise `INSTALL | PROGRESS`. Their boolean `in_progress`
+is supplied by the application task manager, so the accepted queued/running job
+remains active after the install service returns. Home Assistant's fallback only
+covers the service call itself and must not be used for background jobs. Progress
+clears after the terminal status refresh and tracker cleanup, including failure
+or cancellation. No percentage is invented and no job output is placed in entity
+attributes.
 
 ## Native panel
 

@@ -1,7 +1,7 @@
 ---
 title: Updates and jobs
 status: active
-updated: 2026-11-09
+updated: 2026-11-11
 tags: [wiki, user-guide]
 ---
 
@@ -38,6 +38,13 @@ jobs are serialized per host.
 ## Interpret jobs and logs
 
 Jobs move through `queued` and `running` to `success`, `failed` or `cancelled`.
+When you select **Update** in Home Assistant, the system-update entity shows an
+indeterminate running state while the accepted job is queued or running. This
+continues after the start request returns. Package availability refreshes before
+the entity returns to idle after completion; failures/cancellation also clear the
+running state. The backend does not provide an installation percentage, so none
+is displayed. Detailed output stays in the authenticated backend job view.
+
 While jobs are active, the management UI automatically refreshes jobs and hosts
 with a single poller. Terminal states stop fast polling; errors use bounded backoff.
 
