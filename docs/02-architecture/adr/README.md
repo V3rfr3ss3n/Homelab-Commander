@@ -1,7 +1,7 @@
 ---
 title: Architecture Decision Records
 status: active
-updated: 2026-10-31
+updated: 2026-11-13
 tags: [architecture, adr, index]
 ---
 
@@ -31,6 +31,9 @@ tags: [architecture, adr, index]
 | [[0016-timestamp-job-timeline]] | accepted | Zeitgenauer Jobverlauf und gefilterte Verwaltungslisten |
 
 | [[0017-timeline-review-attention]] | accepted | Rote Timeline-Punkte nur bei offener Fehlerprüfung |
+| [[ADR-0018-package-details]] | accepted | Begrenzte Paketdetails im Hoststatus |
+| [[ADR-0020-package-selection-and-snapshots]] | accepted | Paket-Auswahljobs und konsistente Status-Snapshots |
+| [[ADR-0019-scoped-package-update]] | accepted | Paketdialog aktualisiert ein bestätigtes Paket gezielt |
 
 Neue ADRs verwenden [[../../templates/adr-template|die ADR-Vorlage]]. Akzeptierte
 ADRs werden nicht rückwirkend umgeschrieben; eine neue ADR ersetzt die alte und

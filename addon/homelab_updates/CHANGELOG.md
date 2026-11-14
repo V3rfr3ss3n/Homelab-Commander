@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.0-dev.5 (unpublished candidate)
+
+- Adds package details with name/security sorting, single updates, selected updates
+  in one job, Skip all/Select all and a separate full Update all action.
+- Keeps measured counts/rows while jobs run; updates installed packages with APT
+  latest/only-upgrade and refreshes remaining packages after success. Failed jobs
+  preserve the previous snapshot. Worker recovery and reruns retain package scope.
+- Fixes readable check times in the dialog. Shows the 50-row detail limit and
+  confirms full updates can include skipped/undisplayed packages and dependencies.
+- Additive migrations preserve data and SSH identity. Existing hosts populate
+  details after the next successful check. Package choices are UI selection, not
+  persistent APT holds; review restart requirements separately.
+
 ## 0.3.0-dev.4 - 2026-11-11
 
 - Timestamp job timeline with grouped previews, automatic filters and matching table.

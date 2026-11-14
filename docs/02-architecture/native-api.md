@@ -1,7 +1,7 @@
 ---
 title: Native API v1
 status: accepted
-updated: 2026-11-09
+updated: 2026-11-14
 tags: [architecture, api, backend]
 ---
 
@@ -20,9 +20,11 @@ Home-Assistant-Client nicht verfolgt. IDs sind kanonische UUIDs.
 | GET | `/public-key` | ED25519 Public Key, niemals Private Key |
 | GET/POST | `/hosts` | Hostliste bzw. Host anlegen |
 | GET/PATCH/DELETE | `/hosts/{host_id}` | stabilen Host lesen/ändern/löschen |
+| GET | `/hosts/{host_id}/packages` | begrenzte Paketdetails eines Hosts lesen |
+| GET | `/ui-api/hosts/{host_id}/packages` | Paketdetails in der Management-UI lesen |
 | POST | `/hosts/{host_id}/actions/test-connection` | Connection Job |
 | POST | `/hosts/{host_id}/actions/check-updates` | Status Job |
-| POST | `/hosts/{host_id}/actions/update` | Update Job |
+| POST | `/hosts/{host_id}/actions/update` | Full update; optional single name or bounded `package_names` selection |
 | POST | `/hosts/{host_id}/actions/reboot` | expliziter Reboot Job |
 | POST | `/actions/check` | je vorhandenem Host einen Check Job anlegen |
 | GET | `/jobs` | neueste Jobs, begrenztes `limit` |
@@ -69,6 +71,17 @@ separat authentifizierten Log-Endpunkt.
 
 Ein erfolgreicher Update Job kann `reboot_required=true` melden. Das ist nur ein
 Statuswert und startet niemals selbst einen Reboot.
+Ein Update ohne Body führt das bestehende vollständige Host-Upgrade aus. Ein Body
+mit `package_name` wird im Job persistiert und aktualisiert nur dieses validierte
+Paket. Die Management-UI stellt die Paketaktion separat dar und bestätigt den
+Paketnamen vor dem Einreihen. Alternativ ist `{"package_names":["curl","git"]}`
+für 1–50 eindeutige validierte Namen erlaubt. Genau ein Scope-Feld ist nötig;
+leere, doppelte, ungültige oder mehrdeutige Auswahl ergibt 422, niemals Full Update.
+Jobs speichern `package_names` zusätzlich zum bestehenden `package_name` für
+Wiederanlauf und Rerun. APT nutzt `state=latest only_upgrade=true`; Abhängigkeiten
+können mit aktualisiert werden. Counts und Paketliste stammen vom selben
+Nachprüfungs-Snapshot; Queueing ändert sie nicht. Siehe
+[ADR-0020](adr/ADR-0020-package-selection-and-snapshots.md).
 
 Ein fehlgeschlagener Job enthält einen sicheren `error_code`; technische Details
 bleiben im authentifizierten, redigierten Log. Native Built-ins verwenden unter
@@ -165,3 +178,29 @@ Job responses include additive `needs_review`: an unreviewed failure without a
 later successful job matching host, action and custom task. Timeline points include
 `review_required`, counted across the complete bucket rather than just previews.
 These values share the dashboard notice predicate and do not alter stored outcomes.
+
+## Paketdetails
+
+`GET /api/v1/hosts/{host_id}/packages` (Bearer) und
+`GET /ui-api/hosts/{host_id}/packages` (UI-Session beziehungsweise Ingress)
+liefern ausschließlich Lesedaten. Die Hostliste enthält keine Paketdetails. Die
+Antwort ist stabil und enthält höchstens 50 Einträge in Parserreihenfolge; `total`
+bleibt die tatsächliche Zahl der vom letzten erfolgreichen Check erkannten
+Updates. Vor einem erfolgreichen Check sind `checked_at` und `provider` null.
+
+```json
+{
+  "packages": [
+    {"name": "curl", "old_version": "8.3.0-1", "new_version": "8.8.0-1", "is_security": false}
+  ],
+  "total": 17,
+  "security_updates": 0,
+  "checked_at": "2026-11-11T12:00:00+00:00",
+  "provider": "debian_apt"
+}
+```
+
+Unbekannte Hosts ergeben 404; die API benötigt einen Bearer Token. Der UI-GET
+verwendet die bestehende UI-Session-Prüfung und benötigt keinen CSRF-Header.
+Siehe [ADR-0018](adr/ADR-0018-package-details.md) und
+[ADR-0019](adr/ADR-0019-scoped-package-update.md).

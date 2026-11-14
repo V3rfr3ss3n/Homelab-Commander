@@ -1,7 +1,7 @@
 ---
 title: Homelab Commander Wiki
 status: active
-updated: 2026-10-31
+updated: 2026-11-14
 tags: [wiki, home]
 ---
 
@@ -19,7 +19,7 @@ integration provides devices, entities and a direct backend UI entry.
 | [Maintenance](maintenance/index.md) | Contributors and release maintainers | Documentation ownership, releases and contribution workflow |
 
 New here? Start with [installation](user-guide/installation.md), then
-[host onboarding](user-guide/hosts.md). To investigate a failure, use
+[host onboarding](user-guide/hosts.md) and [host package details](user-guide/host-package-details.md). To investigate a failure, use
 [troubleshooting](user-guide/troubleshooting.md).
 
 The current project version is a development release. Successful tests do not
