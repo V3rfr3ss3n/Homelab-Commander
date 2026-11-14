@@ -67,3 +67,28 @@ check; the dialog now has a dedicated check handler and the full UI test passes.
 All adapters/modules are synthetic or mocked. These local results do not close
 the final merged-revision/publication/operator gates above. The MR records CI
 results separately; unchecked items are not presumed passed.
+
+
+## 2026-11-15 actual preview follow-up
+
+The local VS Code preview maintained its own ignored adapter. Reproducing a vim
+update with that exact adapter produced count 0, twelve retained rows and vim
+still present: it ignored the package name and reset counts for every update.
+Earlier package regressions used a different fake and missed this discrepancy.
+
+The canonical preview now lives in the versioned backend module and the local
+VS Code wrapper delegates to it. Tests start that same preview app and cover vim
+12→11 (security 4→3), selected/full updates, a subsequent check, custom tasks,
+reboot simulation, stale-inventory reads and loopback-only launch. The count/list invariant rejects a
+contradictory adapter result before it can replace a stored snapshot. A real
+browser checks the reorganized toolbar and the 11-row result on desktop/mobile.
+Restart the preview process and reload its UI before repeating operator checks;
+old Python processes keep the old adapter in memory. No managed-host operation
+is involved in this preview.
+
+Validation of the follow-up: `UV_NO_SYNC=1 UV_CACHE_DIR=/tmp/vhomelab-uv-cache
+make release-check` passed with 424 tests, independent 98.48% line / 96.21% branch
+coverage, lint/format/strict types/docs/audit/privacy and dev.5 version alignment.
+Desktop/mobile screenshots and the vim workflow use the actual preview factory,
+not the earlier unrelated package-test fake. The local ignored VS Code shim now
+delegates to the versioned entrypoint; no editor settings or mock data are committed.

@@ -47,3 +47,12 @@ synthetic adapters/mocked modules and never update managed hosts.
 - [Original scope decision](ADR-0019-scoped-package-update.md)
 - [Native API](../native-api.md)
 - [User guide](../../wiki/user-guide/host-package-details.md)
+
+
+## 2026-11-15 verification clarification
+
+The developer preview uses a versioned synthetic executor shared with regressions;
+editor-local files only delegate to its entrypoint. Immutable adapter snapshots
+reject counts smaller than their detail rows, inconsistent security counts and
+negative values. Bounded partial detail lists remain supported. This prevents a
+broken preview/adapter from silently storing contradictory package status.

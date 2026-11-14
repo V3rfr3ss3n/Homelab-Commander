@@ -1,7 +1,7 @@
 ---
 title: Development, tests and CI
 status: active
-updated: 2026-10-31
+updated: 2026-11-15
 tags: [wiki, technical]
 ---
 
@@ -53,3 +53,24 @@ workflows. Their success must be checked separately from local tests or CI lint.
 
 [Quality gates](../../03-development/quality-gates.md) define full policy and
 [code rules](../../03-development/code-rules.md) define implementation conventions.
+
+## Synthetic local UI preview
+
+Run `uv run python -m homelab_backend.preview` to serve the preview on loopback
+port 8100. It creates disposable synthetic inventory/history for each launch and
+always injects the fake executor, even for newly entered addresses or custom
+commands. It does not read production runtime configuration or execute SSH/Ansible.
+Stop and restart it to reset the sample data. Never supply a production data path
+to the preview factory used by tests.
+
+VS Code launchers should use module `homelab_backend.preview`. An older local
+`.vscode/preview_backend.py` can be a thin wrapper calling that module's `main`;
+keep no independent mock implementation there. After updating the source, stop
+and restart the existing preview process and reload the browser UI. Editing the
+file does not replace a Python class already loaded by a running debugger.
+
+The versioned preview and browser regressions share the same adapter. A single
+`vim` update changes the seeded 12/4 counts to 11/3 and removes the vim row. A
+subsequent check preserves that result. The simulator keeps its own session state
+so stale inventory objects cannot resurrect removed packages or restart warnings. Selected/full updates remove exactly the
+simulated scope, and contradictory count/row snapshots are rejected before storage.

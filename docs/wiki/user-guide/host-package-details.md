@@ -1,7 +1,7 @@
 ---
 title: Host package details
 status: active
-updated: 2026-11-14
+updated: 2026-11-15
 tags: [wiki, user-guide, hosts, packages]
 ---
 
@@ -13,7 +13,9 @@ available in the published dev.4 release.
 Open **Hosts → Details → Package details** after a successful check. The dialog
 shows package names, installed/available versions, security badges, last check
 and the full pending count. Sort by security first, name A–Z or name Z–A. Sorting
-never changes the selected names or starts work. The date is a readable timestamp,
+never changes the selected names or starts work. Sorting and grouped selection
+controls sit above a separate action bar; the highlighted action updates the
+selection, while Update all remains a distinct secondary action. The date is a readable timestamp,
 not markup printed into the dialog.
 
 ## Choose the update scope

@@ -340,6 +340,7 @@ function renderPackageDialog(host){
   else if(!rows.length&&total)list.innerHTML='<p class="empty">Package names are not recorded yet. Run a check to populate them.</p>';
   else if(!rows.length)list.innerHTML='<p class="empty">No packages need updates.</p>';
   else list.innerHTML=rows.map(pkg=>`<div class="package-row ${skipped.has(pkg.name)?"skipped":""}"><div class="package-version"><strong>${escapeHtml(pkg.name)}</strong><span title="Installed version">${escapeHtml(pkg.old_version)}</span><span title="Available version">${escapeHtml(pkg.new_version)}</span>${pkg.is_security?'<span class="security-count">Security</span>':""}</div><div class="package-row-actions"><label class="package-skip"><input type="checkbox" data-skip-name="${escapeHtml(pkg.name)}" ${skipped.has(pkg.name)?"checked":""} ${busy?"disabled":""}>Skip</label><button type="button" data-host="${host.id}" data-action="update-package" data-package="${escapeHtml(pkg.name)}" class="package-update-btn" ${busy?"disabled":""}>${buttonIcon("update")}Update</button></div></div>`).join("");
+  decorateIcons();
 }
 async function updatePackages(button,scope){
   const hostId=element("package-check").dataset.host,host=state.hosts.find(h=>h.id===hostId);

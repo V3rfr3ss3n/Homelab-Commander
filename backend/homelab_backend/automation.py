@@ -30,6 +30,16 @@ class HostSnapshot:
     checked_at: datetime
     packages: tuple[PackageInfo, ...] = ()
 
+    def __post_init__(self) -> None:
+        """Reject contradictory adapter snapshots before they replace stored status."""
+        if not (
+            0 <= self.security_updates <= self.updates
+            and len(self.packages) <= self.updates
+            and sum(package.is_security for package in self.packages)
+            <= self.security_updates
+        ):
+            raise ValueError("Package snapshot counts do not match its rows")
+
 
 @dataclass(frozen=True, slots=True)
 class ExecutionResult:
