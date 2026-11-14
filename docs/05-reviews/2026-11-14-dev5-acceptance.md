@@ -91,4 +91,4 @@ make release-check` passed with 424 tests, independent 98.48% line / 96.21% bran
 coverage, lint/format/strict types/docs/audit/privacy and dev.5 version alignment.
 Desktop/mobile screenshots and the vim workflow use the actual preview factory,
 not the earlier unrelated package-test fake. The local ignored VS Code shim now
-delegates to the versioned entrypoint; no editor settings or mock data are committed.
+delegates to the versioned entrypoint; no editor settings or generated preview databases are committed.
