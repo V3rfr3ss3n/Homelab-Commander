@@ -94,3 +94,13 @@ store, public log endpoint or telemetry service is introduced. An initial UI
 failure may report version `unknown`; request references depend on ordinary
 backend log retention. All reported details are deliberately allowlisted rather
 than full stack/exception dumps.
+
+## Owner decision and publication update (2026-11-15)
+
+The owner accepted the visible result and authorized merging !37; it is now on
+main at `83bdd5094ede0509964381adc2d62994d5fc3e43`. This does not assert that every
+manual scenario above was individually repeated. No release was requested.
+After separate explicit approval, the four listed Wiki pages were synchronized
+from that exact revision, verified by readback, with unchanged page inventory.
+The initial publication refusal was resolved by owner permission, not bypassed.
+#41 proceeds separately as contract/design work.

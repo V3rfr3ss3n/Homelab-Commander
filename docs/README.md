@@ -32,9 +32,10 @@ for the GitLab Wiki. Detailed normative records and the original vault remain he
 
 | Task | Read the relevant sections |
 | --- | --- |
-| Plan future platform features | [Approved future-platform specification](01-product/future-platform-specification.md), [GitHub issue/milestone plan](00-project/future-platform-issue-plan.md), [roadmap](00-project/roadmap.md) |\n| Understand scope or choose work | [Vision](00-project/vision-and-scope.md), [TODO](00-project/todo.md), [backlog](00-project/backlog.md), [roadmap](00-project/roadmap.md) |
+| Plan future platform features | [Approved future-platform specification](01-product/future-platform-specification.md), [GitHub issue/milestone plan](00-project/future-platform-issue-plan.md), [roadmap](00-project/roadmap.md) |
+| Understand scope or choose work | [Vision](00-project/vision-and-scope.md), [TODO](00-project/todo.md), [backlog](00-project/backlog.md), [roadmap](00-project/roadmap.md) |
 | Change behavior | [Requirements](01-product/requirements.md), [acceptance](01-product/acceptance.md) |
-| Change a component or contract | [Architecture](02-architecture/overview.md), [native API](02-architecture/native-api.md), [ADR index](02-architecture/adr/README.md) |
+| Change a component or contract | [Architecture](02-architecture/overview.md), [native API](02-architecture/native-api.md), [resource/capability contracts](02-architecture/resource-capability-contracts.md), [ADR index](02-architecture/adr/README.md) |
 | Implement or reproduce a bug | [Contributing](../CONTRIBUTING.md), [workflow](03-development/workflow.md), [code rules](03-development/code-rules.md) |
 | Run checks | [Quality gates](03-development/quality-gates.md), [technical foundation](03-development/technical-foundation.md) |
 | Update documentation or prepare the Wiki | [Documentation ownership and migration](03-development/documentation.md) |

@@ -1,7 +1,7 @@
 ---
 title: Architecture and contracts
 status: active
-updated: 2026-10-31
+updated: 2026-11-15
 tags: [wiki, technical]
 ---
 
@@ -49,3 +49,16 @@ navigation. Link it and add a superseding ADR when a decision changes.
 Read the relevant ADRs before changing public contracts, persistence, security
 boundaries, dependency direction or backend abstraction. Detailed component/data
 flows remain in the [architecture overview](../../02-architecture/overview.md).
+
+## Resource and capability contract proposal (#41)
+
+The next architecture block introduces [inert typed contracts](../../02-architecture/resource-capability-contracts.md)
+for Host/Managed Service identities, optional host association, directed relationships,
+versioned capabilities and typed provider validation/assessment. These declarations
+are a review proposal, not new UI actions or installed providers. Existing Host UUIDs,
+SSH identity, jobs, review states, HA identifiers and `/api/v1` stay compatible.
+
+Supported, unsupported, unavailable and policy-blocked are distinct states. Technical
+availability never authorizes execution. Registry, generic jobs, policy enforcement
+and real provider expansion remain separate downstream issues. See
+[ADR-0022](../../02-architecture/adr/0022-resource-and-capability-contracts.md).

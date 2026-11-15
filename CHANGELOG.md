@@ -14,6 +14,10 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ### Added
 
+- Inert typed resource/capability contracts, provider assessment/validation ports
+  and a compatibility/migration design for the next architecture stage. No new
+  provider or resource API is activated.
+
 - Safe expandable/copyable failure diagnostics and retry/recovery indications.
   API errors add request references; worker failures retain a protected job reference.
 - An explicit synthetic preview option to demonstrate history failure and recovery.

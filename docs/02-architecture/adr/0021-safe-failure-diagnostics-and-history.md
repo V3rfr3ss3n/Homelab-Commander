@@ -1,6 +1,6 @@
 ---
 title: Safe failure diagnostics and compatible history timestamps
-status: proposed
+status: accepted
 updated: 2026-11-15
 tags: [architecture, diagnostics, privacy, persistence]
 ---
