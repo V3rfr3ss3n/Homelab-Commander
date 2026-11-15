@@ -67,4 +67,4 @@ The approved English [Product & Architecture Specification v1.0](../01-product/f
 5. Automation & External Services (Semaphore, n8n and workflows).
 6. Secure AI Operations (restricted identity, safe update policies, backend-only human approvals).
 
-Platform reliability, releases, legal compliance, quality and data migration cut across every phase. Decisions and unscoped future work are recorded in specification section 19. GitHub issue planning uses specification section links and explicit dependencies. Do not interpret the order as release-date commitments.
+Platform reliability, releases, legal compliance, quality and data migration cut across every phase. Decisions and unscoped future work are recorded in specification section 19. GitHub issue planning uses specification section links and explicit dependencies. See the [GitHub milestone, label and issue register](future-platform-issue-plan.md). Do not interpret the order as release-date commitments.
