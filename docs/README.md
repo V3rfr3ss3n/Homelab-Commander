@@ -1,7 +1,7 @@
 ---
 title: Documentation index
 status: active
-updated: 2026-10-31
+updated: 2026-11-15
 tags: [project, index]
 ---
 
@@ -32,7 +32,7 @@ for the GitLab Wiki. Detailed normative records and the original vault remain he
 
 | Task | Read the relevant sections |
 | --- | --- |
-| Understand scope or choose work | [Vision](00-project/vision-and-scope.md), [TODO](00-project/todo.md), [backlog](00-project/backlog.md), [roadmap](00-project/roadmap.md) |
+| Plan future platform features | [Approved future-platform specification](01-product/future-platform-specification.md), [roadmap](00-project/roadmap.md) |\n| Understand scope or choose work | [Vision](00-project/vision-and-scope.md), [TODO](00-project/todo.md), [backlog](00-project/backlog.md), [roadmap](00-project/roadmap.md) |
 | Change behavior | [Requirements](01-product/requirements.md), [acceptance](01-product/acceptance.md) |
 | Change a component or contract | [Architecture](02-architecture/overview.md), [native API](02-architecture/native-api.md), [ADR index](02-architecture/adr/README.md) |
 | Implement or reproduce a bug | [Contributing](../CONTRIBUTING.md), [workflow](03-development/workflow.md), [code rules](03-development/code-rules.md) |
