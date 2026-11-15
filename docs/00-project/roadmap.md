@@ -1,7 +1,7 @@
 ---
 title: Roadmap
 status: active
-updated: 2026-11-12
+updated: 2026-11-15
 tags: [project, roadmap]
 ---
 
@@ -55,3 +55,16 @@ kaschiert.
 Weitere Homelab-Funktionen werden nur aufgenommen, wenn sie in Home Assistant
 einen klaren Nutzerwert haben und als eigener Capability-Bereich modelliert werden
 können. Der Backlog ist die Sammelstelle, nicht die Zusage zur Umsetzung.
+
+## Approved future-platform plan (2026-11-15)
+
+The approved English [Product & Architecture Specification v1.0](../01-product/future-platform-specification.md) is the planning baseline for future work; it does **not** describe already shipped features. The priority sequence is:
+
+1. Architecture & Platform Foundation (including host/service relationships, manual and smart groups, policy groundwork).
+2. Linux Distribution Expansion (APT, DNF, Zypper, pacman, restricted AUR, apk and compatibility research).
+3. Minecraft Management (Pterodactyl Client API only initially; extension updates, backup and protected restore).
+4. Proxmox & Infrastructure.
+5. Automation & External Services (Semaphore, n8n and workflows).
+6. Secure AI Operations (restricted identity, safe update policies, backend-only human approvals).
+
+Platform reliability, releases, legal compliance, quality and data migration cut across every phase. Decisions and unscoped future work are recorded in specification section 19. GitHub issue planning uses specification section links and explicit dependencies. Do not interpret the order as release-date commitments.
