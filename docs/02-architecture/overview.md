@@ -1,7 +1,7 @@
 ---
 title: Architektur
 status: accepted
-updated: 2026-10-31
+updated: 2026-11-15
 tags: [architecture, design]
 ---
 
@@ -212,3 +212,12 @@ im Backend enthalten. `DashboardService` aggregiert vollständige SQLite-Histori
 Execution-Protocol. Nur der Ansible-Adapter liest fremde Hostdaten in `ProbeFacts`.
 Entities konsumieren ausschließlich normalisierte Task-Host-Metadaten.
 Migration und Sicherheitsentscheidung: [ADR-0012](adr/0012-dashboard-task-compatibility.md).
+
+## Resource and capability foundation (#41)
+
+The inert [v1 contracts](resource-capability-contracts.md) and
+[ADR-0022](adr/0022-resource-and-capability-contracts.md) define independent Host/Managed
+Service identities, typed relationships, versioned capability metadata and narrow
+provider validation/assessment ports. They add no live provider, registry, generic
+executor or policy engine. Current Host/job APIs, SSH data and HA identifiers remain
+unchanged; additive rollout belongs to the linked implementation issues.

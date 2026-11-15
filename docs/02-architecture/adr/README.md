@@ -1,7 +1,7 @@
 ---
 title: Architecture Decision Records
 status: active
-updated: 2026-11-13
+updated: 2026-11-15
 tags: [architecture, adr, index]
 ---
 
@@ -35,7 +35,9 @@ tags: [architecture, adr, index]
 | [[ADR-0020-package-selection-and-snapshots]] | accepted | Paket-Auswahljobs und konsistente Status-Snapshots |
 | [[ADR-0019-scoped-package-update]] | accepted | Paketdialog aktualisiert ein bestätigtes Paket gezielt |
 
-| [[0021-safe-failure-diagnostics-and-history]] | proposed | Sichere Fehlerdiagnosen und SQLite-kompatibler Jobverlauf |
+| [[0021-safe-failure-diagnostics-and-history]] | accepted | Sichere Fehlerdiagnosen und SQLite-kompatibler Jobverlauf |
+
+| [[0022-resource-and-capability-contracts]] | proposed | Ressourcenidentitäten, versionierte Capabilities und additive Kompatibilität |
 
 Neue ADRs verwenden [[../../templates/adr-template|die ADR-Vorlage]]. Akzeptierte
 ADRs werden nicht rückwirkend umgeschrieben; eine neue ADR ersetzt die alte und

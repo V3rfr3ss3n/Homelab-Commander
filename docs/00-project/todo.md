@@ -1,7 +1,7 @@
 ---
 title: TODO
 status: active
-updated: 2026-11-14
+updated: 2026-11-15
 tags: [project, todo]
 ---
 
@@ -12,10 +12,11 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## In Arbeit
 
-- [ ] Gemeinsamer Stabilisierungs-MR für GitHub #62/#63: SQLite-kompatibler
-  Jobverlauf, Fehlerfarben und sichere Diagnosen. Lokale Abnahme und Review
-  stehen vor Merge; #41 bleibt ein separater Folgeschritt. Kein Versionssprung
-  oder Release in diesem Block.
+- [ ] GitHub #41: Ressourcen-/Capability-Verträge mit ADR und additiver
+  Migrationsstrategie. Eigener Review-MR; keine Registry-/Provider-Aktivierung.
+- [x] GitHub #62/#63 vom Owner abgenommen und mit !37 zusammengeführt:
+  Jobverlauf, Fehlerfarben und sichere Diagnosen. Kein Release ausgelöst.
+
 
 - [ ] T-032 Den Release Candidate `0.3.0-dev.4` nach Merge öffentlich bauen und
   die [[../04-operations/public-install-checklist|frische Installation]] sowie
