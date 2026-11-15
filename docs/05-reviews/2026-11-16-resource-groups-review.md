@@ -73,6 +73,10 @@ original registry backfill/rollback assertions when schema 12 is appended.
 No version bump, merge, release, image publication or new runtime privilege in this
 block. Back up data/SSH state together before later operator upgrades; no downgrade
 promise after group writes. New Wiki pages remain unreviewed source snapshots until
-owner acceptance and publication. Existing reviewed Wiki snapshots are handled
-separately; unexpected remote edits must never be overwritten. #44/#46 remain the
+owner acceptance and publication. The owner separately authorized publication of the four registry pages
+`technical/api`, `technical/architecture`, `technical/development` and
+`technical/persistence` at merged main `f3bfd64bde34`; all four were published and
+read back successfully on 2026-11-16 after matching their previous source snapshots.
+The new groups snapshot remains unpublished; unexpected remote edits must never
+be overwritten. #44/#46 remain the
 next target/job and authorization work, not implemented by grouping.

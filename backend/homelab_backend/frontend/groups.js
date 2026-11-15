@@ -22,7 +22,7 @@ window.groupWorkspace = (() => {
     const [nextGroups,page]=await Promise.all([request(`groups?${new URLSearchParams({query:el("group-search").value,limit:"25",offset:String(groupOffset)})}`),request(`group-resources?${params}`)]);
     if(current!==generation)return;
     groups=nextGroups;resources=page.items;resourceTotal=page.total;
-    el("group-list").innerHTML=groups.map(g=>`<article class="row"><div><strong>${escapeHtml(g.name)}</strong><small>${g.kind==="smart"?"Smart group · dynamic rules":`Manual group · ${g.members.length} selected`} · ${escapeHtml(g.description)}</small></div><div class="actions"><button type="button" data-edit-group="${g.id}" data-icon="edit">Edit</button><button type="button" data-view-group="${g.id}">View members</button><button type="button" data-delete-group="${g.id}" data-icon="delete">Delete</button></div></article>`).join("")||'<p class="empty">No groups match. Create your first group.</p>';
+    el("group-list").innerHTML=groups.map(g=>`<article class="row"><div><strong>${escapeHtml(g.name)}</strong><small>${g.kind==="smart"?"Smart group · dynamic rules":`Manual group · ${g.members.length} selected`} · ${escapeHtml(g.description)}</small></div><div class="actions"><button type="button" data-edit-group="${g.id}" data-icon="edit">Edit</button><button type="button" data-view-group="${g.id}">View members</button><button type="button" data-delete-group="${g.id}" data-icon="trash">Delete</button></div></article>`).join("")||'<p class="empty">No groups match. Create your first group.</p>';
     el("group-previous").disabled=groupOffset===0;el("group-next").disabled=groups.length<25;resourceRows();
   }
   function addRule(predicate={field:"type",value:"host",relationship:null}){
