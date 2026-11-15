@@ -3,7 +3,7 @@
 import asyncio
 import json
 import socket
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
@@ -73,7 +73,7 @@ async def test_browser_server_reset_cleans_its_keepalive_timer(tmp_path: Path) -
 
 
 @asynccontextmanager
-async def _live_server(app: Any) -> AsyncIterator[str]:
+async def _live_server(app: Any) -> AsyncGenerator[str]:
     """Serve one ASGI app on an ephemeral loopback port."""
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

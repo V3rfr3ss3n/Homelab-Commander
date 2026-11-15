@@ -13,8 +13,8 @@ This register tracks implementation issues derived from the owner-approved [Prod
 
 All six milestones below exist and the feature issues carry their assigned phase.
 The existing area/type/priority labels are also configured (verified 2026-11-15).
-The Development Roadmap project tracks status and label-derived priority; #41 is
-In Progress, while #62/#63 are Done. These planning states do not claim that M1
+The Development Roadmap project tracks status and label-derived priority; #41 and
+#62/#63 are Done, while #42/#61 are In Progress. These planning states do not claim that M1
 features have shipped.
 
 | Order | GitHub milestone title | Purpose | Issues |
@@ -34,9 +34,10 @@ features have shipped.
 - [#61](https://github.com/V3rfr3ss3n/Homelab-Commander/issues/61) — Deferred Dependabot changes after dev.5.
 - [#62](https://github.com/V3rfr3ss3n/Homelab-Commander/issues/62) — Dashboard history and failed-outcome visibility.
 - [#63](https://github.com/V3rfr3ss3n/Homelab-Commander/issues/63) — Error-handling audit and safe actionable diagnostics.
-- #62/#63 were owner-approved and merged in the stabilization block. #41 is now
-  the separate contract-design block; registry/provider/policy execution remains
-  downstream. No development release is implied.
+- #62/#63 were owner-approved and merged in the stabilization block. #41 was
+  separately approved and merged in !38. #42/#61 implement the registry and
+  dependency follow-up on a separate review branch; provider/policy execution
+  remains downstream. No development release is implied.
 - This work remains active across all six milestones. #38 and #39 are existing issues, not duplicated.
 
 ## Existing label taxonomy

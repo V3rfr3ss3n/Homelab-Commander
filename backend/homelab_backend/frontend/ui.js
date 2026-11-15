@@ -294,6 +294,7 @@ function timelinePath(points,status,x,y){
 }
 function pointStatus(job){return job.needs_review?"needs-review":job.state==="failed"?"reviewed":job.state}
 function renderHistory(){
+  const previousPreview=element("history-popover"),focusedOrbit=previousPreview?.contains(document.activeElement)?document.activeElement:null,focusedJobs=previousPreview?.dataset.jobs;
   const graph=historyMode()==="graph",period=historyPeriod(),params=view().params;
   element("history-toggle").textContent=graph?"▤":"⌁";element("history-toggle").setAttribute("aria-label",graph?"Show table":"Show graph");element("history-toggle").title=graph?"Show table":"Show graph";
   element("job-sort-label").hidden=graph;
@@ -319,14 +320,18 @@ function renderHistory(){
   const markers=points.map((point,index)=>{const single=point.total===1?point.jobs[0]:null;const dominant=Object.entries(point.counts).filter(([,count])=>count>0).sort((left,right)=>right[1]-left[1])[0];const anchorState=single?.state||dominant?.[0]||"success",anchorCount=single?1:dominant?.[1]||0,status=point.review_required>0?"needs-review":anchorState==="failed"?"reviewed":anchorState,highlight=point.jobs.some(j=>j.id===state.dashboard?.last_job?.id||j.id===state.dashboard?.last_failed_job?.id);const distribution=Object.entries(point.counts).filter(([,count])=>count>0).map(([name,count])=>`${name} ${count}`).join(", ");const title=single?`${actionName(single.action)} · ${single.host_name||"No host"} · ${single.state} · ${single.finished_at||single.started_at||single.created_at}`:`${point.total} jobs · ${distribution} · ${point.review_required} need review · anchor ${anchorState} ${anchorCount} · ${point.start} – ${point.end}`;const markerY=y(anchorCount);return `<a href="${single?`#/jobs/${single.id}`:escapeHtml(pointRoute(point))}" data-point="${index}" data-anchor-state="${anchorState}" data-anchor-count="${anchorCount}" aria-label="${escapeHtml(title)}"><g class="timeline-point ${status} ${highlight?"latest-point":""}"><circle cx="${x(point.timestamp)}" cy="${markerY}" r="${point.total>1?Math.min(17,9+Math.log2(point.total)):5}"/><title>${escapeHtml(title)}</title>${point.total>1?`<text x="${x(point.timestamp)}" y="${markerY+4}" text-anchor="middle">${point.total}</text>`:""}</g></a>`}).join("");
   const labels=Array.from({length:5},(_,i)=>{const time=new Date(start+(end-start)*i/4);return `<text x="${x(time.toISOString())}" y="${height-12}" text-anchor="${i===0?"start":i===4?"end":"middle"}"><title>${time.toISOString()}</title>${escapeHtml(new Intl.DateTimeFormat(navigator.language,(end-start)<=86400000?{hour:"2-digit",minute:"2-digit"}:{month:"short",day:"numeric",hour:"2-digit"}).format(time))}</text>`}).join("");
   element("history").innerHTML=`<svg class="history-graph" viewBox="0 0 ${width} ${height}" role="group" aria-label="Job timeline; select a point to open a job or grouped time window">${grid}${series}${markers}${labels}<g id="history-popover" hidden></g></svg>${points.length?"":'<p class="empty">No jobs in this period. Choose a longer period or adjust the filters.</p>'}`;
+  if(focusedOrbit){
+    const index=points.findIndex(point=>point.jobs.map(job=>job.id).sort().join(",")===focusedJobs),anchor=element("history").querySelector(`[data-point="${index}"]`);
+    if(anchor){showTimelinePoint(anchor);const links=[...element("history-popover").querySelectorAll("a")],replacement=links.find(link=>focusedOrbit.classList.contains("orbit-center")?link.classList.contains("orbit-center"):link.getAttribute("href")===focusedOrbit.getAttribute("href"));replacement?.focus({preventScroll:true})}
+  }
 }
 function closeTimelinePoint(){const preview=element("history-popover");if(preview){preview.setAttribute("hidden","");preview.removeAttribute("data-source-point")}}
 function showTimelinePoint(target){
   const anchor=target.closest?.("[data-point]");if(!anchor)return;
   const point=currentTimeline.points[Number(anchor.dataset.point)],preview=element("history-popover");if(!point||!preview)return;
-  if(!preview.hasAttribute("hidden")&&preview.dataset.sourcePoint===anchor.dataset.point)return;
+  if(!preview.hasAttribute("hidden")&&(preview.dataset.sourcePoint===anchor.dataset.point||preview.contains(document.activeElement)))return;
   const circle=anchor.querySelector("circle"),cx=Number(circle.getAttribute("cx")),cy=Number(circle.getAttribute("cy"));
-  preview.setAttribute("transform",`translate(${cx} ${cy})`);preview.dataset.sourcePoint=anchor.dataset.point;
+  preview.setAttribute("transform",`translate(${cx} ${cy})`);preview.dataset.sourcePoint=anchor.dataset.point;preview.dataset.jobs=point.jobs.map(job=>job.id).sort().join(",");
   if(point.total===1){
     const job=point.jobs[0],label=`${actionName(job.action)} · ${job.host_name||"No host"} · ${job.state}`;
     const labelX=cx>450?-310:12;
@@ -768,7 +773,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   element("refresh").addEventListener("click",event=>run(event.currentTarget,refreshDashboard,"Data refreshed"));
   element("history").addEventListener("pointerover",event=>{if(event.pointerType!=="touch")showTimelinePoint(event.target)});element("history").addEventListener("focusin",event=>showTimelinePoint(event.target));
   element("history").addEventListener("click",event=>{if(event.pointerType!=="touch")return;const anchor=event.target.closest("[data-point]");if(anchor&&currentTimeline.points[Number(anchor.dataset.point)]?.total>1){event.preventDefault();showTimelinePoint(anchor)}});
-  element("history-chart").addEventListener("pointerleave",closeTimelinePoint);
+  element("history-chart").addEventListener("pointerleave",()=>{if(!element("history-popover")?.contains(document.activeElement))closeTimelinePoint()});
   document.addEventListener("pointerdown",event=>{if(!event.target.closest("#history-chart"))closeTimelinePoint()});element("history-chart").addEventListener("keydown",event=>{if(event.key==="Escape")closeTimelinePoint()});
   element("auto-host-checks").addEventListener("change",event=>{stopVisibleChecks();state.preferences={enabled:event.target.checked};return run(event.target,async()=>{state.preferences=await request("preferences/host-checks",{method:"PATCH",body:{enabled:event.target.checked}});stopVisibleChecks();render()},"Host check preference saved")});
   document.addEventListener("visibilitychange",syncVisibleChecks);

@@ -59,6 +59,16 @@ are a review proposal, not new UI actions or installed providers. Existing Host 
 SSH identity, jobs, review states, HA identifiers and `/api/v1` stay compatible.
 
 Supported, unsupported, unavailable and policy-blocked are distinct states. Technical
-availability never authorizes execution. Registry, generic jobs, policy enforcement
-and real provider expansion remain separate downstream issues. See
+availability never authorizes execution. The registry follows below; generic jobs,
+policy enforcement and real provider expansion remain separate downstream issues. See
 [ADR-0022](../../02-architecture/adr/0022-resource-and-capability-contracts.md).
+
+## Registry implementation and module layout
+
+The follow-up registry block groups domain values, application/store ports, SQLite
+adapter and HTTP schemas/router under `resources/`. Storage and migration code
+lives under `persistence/`, while compatibility imports and the Host facade remain
+available. This establishes working boundaries incrementally; Linux extraction and
+policy/generic jobs remain later work. FastAPI and SQLite stay the foundation.
+[ADR-0023](../../02-architecture/adr/0023-resource-registry-and-module-boundaries.md)
+records the migration and dependency maintenance decisions.

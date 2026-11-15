@@ -27,34 +27,34 @@ def test_unexpected_api_error_is_safe_and_correlated(
     def synthetic_failure() -> None:
         raise RuntimeError("private-exception-text synthetic-password")
 
-    client = TestClient(app)
-    with caplog.at_level(logging.ERROR):
-        response = client.get(
-            "/synthetic-failure", headers={"X-Request-ID": "untrusted-reference"}
+    with TestClient(app) as client:
+        with caplog.at_level(logging.ERROR):
+            response = client.get(
+                "/synthetic-failure", headers={"X-Request-ID": "untrusted-reference"}
+            )
+        assert response.status_code == 500
+        data = response.json()
+        assert data["error_code"] == "internal_error"
+        assert data["operation"] == "synthetic_failure"
+        assert len(data["request_id"]) == 32
+        assert response.headers["X-Request-ID"] == data["request_id"]
+        assert response.headers["Cache-Control"] == "no-store"
+        assert datetime.fromisoformat(data["timestamp"]).tzinfo is not None
+        assert data["request_id"] in caplog.text
+        assert "test_error_diagnostics.py:" in caplog.text
+        for secret in (
+            "private-exception-text",
+            "synthetic-password",
+            "untrusted-reference",
+        ):
+            assert secret not in response.text + caplog.text
+        assert client.get("/info").status_code == 404
+        assert (
+            client.get(
+                "/api/v1/info", headers={"Authorization": f"Bearer {TOKEN}"}
+            ).status_code
+            == 200
         )
-    assert response.status_code == 500
-    data = response.json()
-    assert data["error_code"] == "internal_error"
-    assert data["operation"] == "synthetic_failure"
-    assert len(data["request_id"]) == 32
-    assert response.headers["X-Request-ID"] == data["request_id"]
-    assert response.headers["Cache-Control"] == "no-store"
-    assert datetime.fromisoformat(data["timestamp"]).tzinfo is not None
-    assert data["request_id"] in caplog.text
-    assert "test_error_diagnostics.py:" in caplog.text
-    for secret in (
-        "private-exception-text",
-        "synthetic-password",
-        "untrusted-reference",
-    ):
-        assert secret not in response.text + caplog.text
-    assert client.get("/info").status_code == 404
-    assert (
-        client.get(
-            "/api/v1/info", headers={"Authorization": f"Bearer {TOKEN}"}
-        ).status_code
-        == 200
-    )
 
 
 @pytest.mark.parametrize("status", [400, 401, 403, 404, 409, 422, 429, 503])
@@ -69,7 +69,8 @@ def test_http_errors_preserve_status_detail_and_headers(
     def synthetic_http_error() -> None:
         raise HTTPException(status, "Safe explanation", headers={"Retry-After": "5"})
 
-    response = TestClient(app).get("/synthetic-http-error")
+    with TestClient(app) as client:
+        response = client.get("/synthetic-http-error")
     assert response.status_code == status
     assert response.json()["detail"] == "Safe explanation"
     assert response.json()["error_code"] == f"http_{status}"
@@ -81,24 +82,27 @@ def test_validation_does_not_echo_input_or_context(tmp_path: Path) -> None:
     app = create_app(
         Settings(data_dir=tmp_path, api_token=TOKEN), executor=FakeExecutor()
     )
-    client = TestClient(app)
-    response = client.post(
-        "/ui-api/auth/login",
-        headers={"X-CSRF-Token": _csrf(client)},
-        json={"api_token": {"secret": "synthetic-secret"}},
-    )
-    assert response.status_code == 422
-    assert response.json()["error_code"] == "validation_error"
-    assert "synthetic-secret" not in response.text
-    assert "input" not in response.json()["detail"][0]
-    assert "ctx" not in response.json()["detail"][0]
-    response = client.post(
-        "/ui-api/auth/login",
-        headers={"X-CSRF-Token": _csrf(client)},
-        json={"api_token": TOKEN, "synthetic-private-field": "synthetic-private-value"},
-    )
-    assert response.status_code == 422
-    assert "synthetic-private" not in response.text
+    with TestClient(app) as client:
+        response = client.post(
+            "/ui-api/auth/login",
+            headers={"X-CSRF-Token": _csrf(client)},
+            json={"api_token": {"secret": "synthetic-secret"}},
+        )
+        assert response.status_code == 422
+        assert response.json()["error_code"] == "validation_error"
+        assert "synthetic-secret" not in response.text
+        assert "input" not in response.json()["detail"][0]
+        assert "ctx" not in response.json()["detail"][0]
+        response = client.post(
+            "/ui-api/auth/login",
+            headers={"X-CSRF-Token": _csrf(client)},
+            json={
+                "api_token": TOKEN,
+                "synthetic-private-field": "synthetic-private-value",
+            },
+        )
+        assert response.status_code == 422
+        assert "synthetic-private" not in response.text
 
 
 async def test_middleware_non_http_and_interrupted_response(

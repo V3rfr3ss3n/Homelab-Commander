@@ -1,6 +1,6 @@
 ---
 title: Resource and versioned capability contracts
-status: proposed
+status: accepted
 updated: 2026-11-15
 tags: [architecture, contracts, capabilities, compatibility]
 ---

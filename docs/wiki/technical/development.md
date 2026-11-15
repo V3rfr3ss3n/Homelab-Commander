@@ -39,7 +39,7 @@ or expired exceptions remain blocking even when tests pass. SE-2026-001 was reso
 by updating the dependency graph; the expiry mechanism remains and the audit has
 no advisory ignores. Never remove an expiry check to hide an unresolved finding.
 
-The current development baseline is HA 2026.10.4 with its matching frontend/plugin.
+The current development baseline is HA 2026.10.4 with its pinned test plugin and the explicitly tested frontend pairing below.
 A single reviewed replacement installs fixed Pillow 13.0.0 in the development graph;
 Pillow is absent from production. See [ADR-0010](../../02-architecture/adr/0010-secure-test-dependency-replacements.md)
 for compatibility evidence and the criterion for removing that replacement.
@@ -115,3 +115,12 @@ Local acceptance:
 line/branch thresholds. This branch does not change version, publish an image or
 request a release. Local approval precedes merge; a development release requires
 a separate owner request.
+
+## Dependency maintenance baseline
+
+The registry follow-up tests HA Core 2026.10.4 with frontend 20261028.5, HTTPX2 2.16.0,
+Playwright 1.65.0, Mypy 2.4.1 and Ruff 0.17.4, using one frozen lockfile. This is a tested
+pairing, not a claim that frontend/Core release numbers match. Runtime pins advance
+to FastAPI 0.162.4 and ansible-core 2.22.0. FastAPI telemetry/exporters are explicitly
+disabled and the callback suppresses no_log payloads. Reviewed Builder/setup-uv
+actions remain SHA-pinned. See the [review](../../05-reviews/2026-11-15-registry-foundation-review.md).

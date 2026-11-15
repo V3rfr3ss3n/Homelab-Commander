@@ -1,7 +1,7 @@
 """Explicit loopback-only UI preview with disposable data and synthetic execution."""
 
 from argparse import ArgumentParser
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -245,7 +245,7 @@ def create_preview(data_dir: Path, *, history_failure_once: bool = False) -> Fas
     original_lifespan = app.router.lifespan_context
 
     @asynccontextmanager
-    async def lifespan(application: FastAPI) -> AsyncIterator[None]:
+    async def lifespan(application: FastAPI) -> AsyncGenerator[None]:
         async with original_lifespan(application):
             await seed_demo(settings, executor)
             yield

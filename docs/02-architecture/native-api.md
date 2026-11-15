@@ -228,3 +228,30 @@ History filters and buckets use a registered deterministic timestamp function
 rather than SQLite's version-dependent `unixepoch(..., 'subsec')`. Existing ISO
 values, UTC offsets, IDs and stored data remain unchanged; the half-open interval
 includes `start` and excludes `end`, with microsecond precision.
+
+## Resource registry (schema 11)
+
+Authenticated GET `/resources` lists active registry entries with `limit=1..100`
+(default 25) and `offset>=0`; GET `/resources/{id}` returns one entry. Both are
+available under `/api/v1` and `/ui-api`. External routes keep Bearer auth; UI uses
+session/Ingress, with CSRF on writes. Existing Host/job API and Info capability-list
+shape remain unchanged.
+
+Admin metadata writes: POST `/resources/services` accepts name, service_type,
+binding `{provider_id,connection_id,external_id}` and optional host_id; POST
+`/resources/instances` accepts name, VM/container kind, binding and optional host_id
+and reconciles the same external identity to the same UUID. No provider is contacted.
+PATCH `/resources/{id}/host` explicitly links/unlinks a service (nullable host_id).
+GET `/resources/{id}/relationships` reads directed edges with `limit=1..100`
+(default 100) and `offset>=0`; POST/DELETE
+`/resource-relationships` accepts kind, source and target `{kind,id}` references.
+DELETE `/resources/{id}` tombstones non-host metadata; use the original host endpoint
+for Host removal. Invalid/missing identities give safe 409/404 responses; malformed
+DTOs give 422. Duplicate bindings, mismatched kinds, cyclic edges and conflicting
+one-to-one VM/Host identities are rejected transactionally. A conflicting generic
+host edge never silently reassigns a service.
+
+Bindings are opaque backend configuration references, not stored credentials or
+connectivity evidence. Resource metadata may be sensitive and is not exported as
+failure diagnostics. These endpoints grant no remote execution permission. See
+[ADR-0023](adr/0023-resource-registry-and-module-boundaries.md).

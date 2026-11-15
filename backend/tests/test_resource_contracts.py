@@ -379,4 +379,4 @@ async def test_projection_preserves_database_jobs_review_and_v1(tmp_path: Path) 
         assert str(job.id) in {
             item["id"] for item in client.get("/api/v1/jobs", headers=AUTH).json()
         }
-        assert client.get("/api/v1/resources", headers=AUTH).status_code == 404
+        assert client.get("/api/v1/resources", headers=AUTH).status_code == 200

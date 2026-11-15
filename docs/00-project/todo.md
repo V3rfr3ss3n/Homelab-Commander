@@ -12,7 +12,10 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## In Arbeit
 
-- [ ] GitHub #41: Ressourcen-/Capability-Verträge mit ADR und additiver
+- [ ] #42/#61: persistente Registry mit Modulgrenzen und gemeinsam geprüftem
+  Dependabot-Follow-up. Separater Review-MR; kein Release oder Provider-Start.
+
+- [x] GitHub #41: Ressourcen-/Capability-Verträge mit ADR und additiver
   Migrationsstrategie. Eigener Review-MR; keine Registry-/Provider-Aktivierung.
 - [x] GitHub #62/#63 vom Owner abgenommen und mit !37 zusammengeführt:
   Jobverlauf, Fehlerfarben und sichere Diagnosen. Kein Release ausgelöst.
