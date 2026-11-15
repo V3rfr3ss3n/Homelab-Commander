@@ -71,3 +71,14 @@ the first acknowledgement timestamp idempotently and only accepts failed jobs.
 Notice selection excludes reviewed failures, keeping the established later-success
 resolution rule. The historical last failure remains independent. See
 [ADR-0014](../../02-architecture/adr/0014-guided-setup-and-failure-review.md).
+
+## Resource registry migration
+
+Schema 11 backfills existing Host UUIDs without rewriting host/job/task records or
+SSH identity. Atomic triggers keep legacy host creation, rename and removal in
+sync. Host removal unlinks independent services; registry IDs remain as tombstones.
+Active provider bindings are unique, and explicit VM/Host linking rejects ambiguous
+identities. Migration, backfill and version marker share a rollback boundary; first
+initialization is serialized off the event loop. Back up DB and SSH files together;
+no safe downgrade after new writes is implied. See
+[ADR-0023](../../02-architecture/adr/0023-resource-registry-and-module-boundaries.md).

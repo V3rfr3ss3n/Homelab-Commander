@@ -3,7 +3,7 @@
 import asyncio
 import secrets
 import socket
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Annotated, Literal
 from uuid import UUID
@@ -54,6 +54,9 @@ from .models import (
     UiSessionResponse,
 )
 from .onboarding import OnboardingCommand, SetupOptions, setup_command
+from .resources.application import ResourceRegistry
+from .resources.repository import SqliteResourceRepository
+from .resources.routes import install_resource_routes
 from .ssh_keys import SshKeyStore
 from .task_compatibility import TaskCompatibilityService
 from .timeline import JobTimeline, TimelineService, validate_period
@@ -118,7 +121,7 @@ def create_app(
     trusted_ingress_addresses = ingress_proxy_addresses or frozenset()
 
     @asynccontextmanager
-    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
         nonlocal trusted_ingress_addresses
         if resolved.ingress_mode and ingress_proxy_addresses is None:
             trusted_ingress_addresses = await _resolve_supervisor_ingress_addresses()
@@ -136,6 +139,13 @@ def create_app(
         lifespan=lifespan,
         docs_url="/api/docs",
         openapi_url="/api/openapi.json",
+        telemetry={
+            "tracing": False,
+            "metrics": False,
+            "logs": False,
+            "operation_spans": False,
+            "auto_configure": False,
+        },
     )
     install_error_handlers(app)
 
@@ -178,6 +188,13 @@ def create_app(
     authenticated = [Depends(authorize)]
     ui_authenticated = [Depends(authorize_ui)]
     ui_mutation = [Depends(authorize_ui), Depends(verify_csrf)]
+    install_resource_routes(
+        app,
+        ResourceRegistry(SqliteResourceRepository(database)),
+        authenticated,
+        ui_authenticated,
+        ui_mutation,
+    )
 
     def info_response() -> InfoResponse:
         return InfoResponse(

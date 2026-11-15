@@ -149,8 +149,8 @@ synthetischen Backend. Ein neuer Entwicklungsrechner installiert den Browser
 einmalig mit `make browser-install`; CI installiert Chromium samt Systempaketen
 vor `make quality`.
 
-`home-assistant-frontend` ist ausschließlich eine versionsgleich zu Home
-Assistant gepinnte Entwicklungsabhängigkeit. Die isolierte HA-Testumgebung lädt
+`home-assistant-frontend` ist ausschließlich eine mit der gepinnten Home-
+Assistant-Version gemeinsam getestete Entwicklungsabhängigkeit. Die isolierte HA-Testumgebung lädt
 damit den echten `frontend`-/`panel_custom`-Lifecycle. In einer regulären Home-
 Assistant-Installation gehört dieses Paket bereits zur Plattform und wird nicht
 von der Custom Integration ausgeliefert oder nachinstalliert.

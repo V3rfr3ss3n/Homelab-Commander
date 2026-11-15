@@ -37,7 +37,9 @@ tags: [architecture, adr, index]
 
 | [[0021-safe-failure-diagnostics-and-history]] | accepted | Sichere Fehlerdiagnosen und SQLite-kompatibler Jobverlauf |
 
-| [[0022-resource-and-capability-contracts]] | proposed | Ressourcenidentitäten, versionierte Capabilities und additive Kompatibilität |
+| [[0022-resource-and-capability-contracts]] | accepted | Ressourcenidentitäten, versionierte Capabilities und additive Kompatibilität |
+
+| [[0023-resource-registry-and-module-boundaries]] | proposed | Registry, additive Migration, Modulgrenzen und geprüfte Dependency-Updates |
 
 Neue ADRs verwenden [[../../templates/adr-template|die ADR-Vorlage]]. Akzeptierte
 ADRs werden nicht rückwirkend umgeschrieben; eine neue ADR ersetzt die alte und

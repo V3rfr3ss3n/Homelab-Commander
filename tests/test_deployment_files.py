@@ -1,6 +1,7 @@
 """Static deployment security and consistency checks."""
 
 import json
+import re
 import struct
 from pathlib import Path
 
@@ -156,12 +157,17 @@ def test_public_app_repository_metadata_is_complete() -> None:
 def test_container_workflow_builds_multi_arch_and_gates_publication() -> None:
     """Public images use the HA builder and an anonymous runtime gate."""
     workflow = (ROOT / ".github/workflows/container.yml").read_text()
-    builder_ref = (
-        "home-assistant/builder/actions/"
-        "prepare-multi-arch-matrix@4de35182ce1e329181bffcbcc84d33db5e2c7e10"
+    builder_refs = re.findall(
+        r"uses: home-assistant/builder/actions/([a-z-]+)@([^\s]+)", workflow
     )
-    assert builder_ref in workflow
-    assert workflow.count("@4de35182ce1e329181bffcbcc84d33db5e2c7e10") == 4
+    assert sorted(name for name, _sha in builder_refs) == [
+        "build-image",
+        "build-image",
+        "prepare-multi-arch-matrix",
+        "publish-multi-arch-manifest",
+    ]
+    assert all(re.fullmatch(r"[0-9a-f]{40}", sha) for _name, sha in builder_refs)
+    assert len({sha for _name, sha in builder_refs}) == 1
     assert 'ARCHITECTURES: \'["amd64", "aarch64"]\'' in workflow
     assert "image-name: ${{ env.IMAGE_NAME }}" in workflow
     assert "if: needs.policy.outputs.publish != 'true'" in workflow

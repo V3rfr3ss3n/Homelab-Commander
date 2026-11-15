@@ -124,6 +124,15 @@ async def test_timeline_group_opens_exact_table_window(
                 "pointerover", {"pointerType": "mouse"}
             )
             await expect(center).to_be_focused()
+            # Pointer movement/scrolling must not hide a keyboard-focused orbit.
+            await page.locator("#history-chart").dispatch_event("pointerleave")
+            await page.locator("#history a[data-point]").last.dispatch_event(
+                "pointerover", {"pointerType": "mouse"}
+            )
+            # An overlapping history refresh preserves focus on the same group.
+            await page.evaluate("renderHistory()")
+            await expect(center).to_be_visible()
+            await expect(center).to_be_focused()
             await center.click()
             await expect(page.locator("#jobs-section")).to_be_visible()
             await expect(page.locator("#history-total")).to_have_text("3 jobs")

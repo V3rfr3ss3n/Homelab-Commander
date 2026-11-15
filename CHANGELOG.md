@@ -7,6 +7,8 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ### Fixed
 
+- Keep a keyboard-focused timeline orbit usable during pointer movement and
+  overlapping history refreshes.
 - Preserve graph/table job history on older SQLite runtimes without the subsecond
   modifier, including UTC offsets and precise start/end boundaries.
 - Show failed-job titles in the error color with an explicit outcome label;
@@ -14,15 +16,22 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ### Added
 
+- Persistent resource registry with additive Host backfill, hostless services,
+  explicit VM/Host identity reconciliation, transactional relationships and admin
+  metadata APIs. Group the resource feature and SQLite lifecycle into clear modules.
+
 - Inert typed resource/capability contracts, provider assessment/validation ports
-  and a compatibility/migration design for the next architecture stage. No new
-  provider or resource API is activated.
+  and a compatibility/migration design underpin the registry foundation. New
+  provider execution remains deferred.
 
 - Safe expandable/copyable failure diagnostics and retry/recovery indications.
   API errors add request references; worker failures retain a protected job reference.
 - An explicit synthetic preview option to demonstrate history failure and recovery.
 
 ### Security
+
+- Integrate the deferred dependency/action updates under one tested lockfile;
+  explicitly disable FastAPI telemetry and suppress Ansible no_log payloads.
 
 - Avoid raw unexpected exception traces in worker/API/HA configuration logging,
   suppress backend HTTP access logs and redact validation input/context/extra keys.

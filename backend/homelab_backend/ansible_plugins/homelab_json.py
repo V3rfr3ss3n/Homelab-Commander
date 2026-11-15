@@ -22,6 +22,11 @@ class CallbackModule(CallbackBase):  # type: ignore[misc]  # Untyped Ansible plu
     CALLBACK_NAME = "homelab_json"
 
     def _emit(self, event: str, result: CallbackTaskResult) -> None:
+        if result.result.get("_ansible_no_log", False):
+            self._display.display(
+                f'{RESULT_PREFIX}{{"event":{json.dumps(event)},"result":{{"censored":true}}}}'
+            )
+            return
         self._handle_warnings_and_exception(result)
         serialized = self._dump_results(result.result, indent=None)
         envelope = f'{{"event":{json.dumps(event)},"result":{serialized}}}'

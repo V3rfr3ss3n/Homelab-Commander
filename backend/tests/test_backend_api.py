@@ -690,6 +690,7 @@ def test_ui_session_cookie_is_secure_on_https_and_invalid_cookie_is_cleared(
         )
         assert "Secure" in login.headers["set-cookie"]
 
+        client.cookies.clear()
         client.cookies.set(
             UI_SESSION_COOKIE,
             "invalid-opaque-session",
