@@ -235,3 +235,5 @@ button[data-action=check_updates]:hover{border-color:var(--line);color:var(--tex
 .history-error{border-left:3px solid var(--danger);padding:10px;color:var(--danger);background:var(--bg)}
 .history-recovered{font-size:12px;color:var(--accent);padding:8px 0}
 .message-body{min-width:0}#error-details{font-size:12px;margin-top:8px}#error-details pre{max-height:35vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}#error-details summary{cursor:pointer}#message{align-items:flex-start;max-height:calc(100vh - 90px);overflow:auto}
+/* Group drafts remain separate from live inventory rendering. */
+.group-workspace{grid-column:1/-1}.group-workspace .row{gap:12px;flex-wrap:wrap}.group-workspace small{display:block;color:var(--muted)}#group-editor{margin:20px 0;padding:18px;border:1px solid var(--border);border-radius:12px}#group-rule-editor{margin:12px 0;border:1px solid var(--border);border-radius:8px}.group-rule label{min-width:120px}#group-preview-result{margin:16px 0;overflow-wrap:anywhere}.group-workspace input[data-resource-tags]{max-width:240px}

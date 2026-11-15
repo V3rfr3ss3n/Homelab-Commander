@@ -255,3 +255,33 @@ Bindings are opaque backend configuration references, not stored credentials or
 connectivity evidence. Resource metadata may be sensitive and is not exported as
 failure diagnostics. These endpoints grant no remote execution permission. See
 [ADR-0023](adr/0023-resource-registry-and-module-boundaries.md).
+
+## Groups and tags (schema 12)
+
+Both `/api/v1` and `/ui-api` expose the following authenticated metadata operations;
+UI writes and preview require existing CSRF. Status/diagnostic error handling is
+unchanged. Group membership is never execution authorization.
+
+| Method | Relative path | Result |
+| --- | --- | --- |
+| GET | `/groups?query=&limit=25&offset=0` | Name-filtered group definitions |
+| POST | `/groups` | New group with stable UUID (201) |
+| GET/PUT/DELETE | `/groups/{id}` | Read/replace/delete metadata; missing GET/DELETE 404 |
+| GET | `/groups/{id}/resources?limit=25&offset=0` | Current effective membership page |
+| POST | `/groups/preview?limit=25&offset=0` | Evaluate unsaved definition without writes |
+| GET | `/group-resources?query=&kind=&tag=&limit=25&offset=0` | Filtered registry facts page |
+| PUT | `/resources/{id}/tags` | Replace tags (`{"tags":["production"]}`), 204 |
+
+A definition contains `name`, `description`, `kind` (`manual`/`smart`), `members`
+(UUIDs, manual only) and nullable `rule`. A smart rule is
+`{"combine":"all","predicates":[{"field":"tag","value":"production"}]}`.
+The response adds `id`. Pages return `total`, `items`, `limit`, `offset`; `total`
+counts the entire selection, not the displayed slice. Items contain UUID, kind,
+name, distro and known status/tag/capability/relationship facts, no Host address.
+Absent capabilities are not inferred from the legacy Info capability list.
+
+Invalid request definitions return 422 without submitted values. Inconsistent writes,
+invalid stored rules and exceeded evaluation budgets return safe 409. Preview does
+not cache or authorize future execution. For exact rule semantics, migration,
+budgets, unknown values and future policy revalidation see
+[ADR-0024](adr/0024-bounded-resource-groups.md).

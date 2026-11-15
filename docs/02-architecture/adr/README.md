@@ -39,7 +39,9 @@ tags: [architecture, adr, index]
 
 | [[0022-resource-and-capability-contracts]] | accepted | Ressourcenidentitäten, versionierte Capabilities und additive Kompatibilität |
 
-| [[0023-resource-registry-and-module-boundaries]] | proposed | Registry, additive Migration, Modulgrenzen und geprüfte Dependency-Updates |
+| [[0023-resource-registry-and-module-boundaries]] | accepted | Registry, additive Migration, Modulgrenzen und geprüfte Dependency-Updates |
+
+| [[0024-bounded-resource-groups]] | proposed | Manuelle Gruppen, Tags und begrenzte deterministische Smart-Regeln |
 
 Neue ADRs verwenden [[../../templates/adr-template|die ADR-Vorlage]]. Akzeptierte
 ADRs werden nicht rückwirkend umgeschrieben; eine neue ADR ersetzt die alte und

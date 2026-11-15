@@ -1,7 +1,7 @@
 ---
 title: TODO
 status: active
-updated: 2026-11-15
+updated: 2026-11-16
 tags: [project, todo]
 ---
 
@@ -12,8 +12,9 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## In Arbeit
 
-- [ ] #42/#61: persistente Registry mit Modulgrenzen und gemeinsam geprüftem
-  Dependabot-Follow-up. Separater Review-MR; kein Release oder Provider-Start.
+- [ ] #43: manuelle Gruppen, Tags und begrenzte Smart-Regeln mit Vorschau und UI.
+  Eigener Review-MR; keine Gruppenaktionen oder Berechtigungsvergabe.
+- [x] #42/#61: Registry und Dependabot-Follow-up vom Owner abgenommen, !39 gemergt.
 
 - [x] GitHub #41: Ressourcen-/Capability-Verträge mit ADR und additiver
   Migrationsstrategie. Eigener Review-MR; keine Registry-/Provider-Aktivierung.

@@ -207,7 +207,7 @@ def legacy_database(tmp_path: Path) -> Database:
         connection.execute(
             "CREATE TABLE schema_migrations(version INTEGER PRIMARY KEY)"
         )
-        for version, migration in enumerate(_MIGRATIONS[:-1], 1):
+        for version, migration in enumerate(_MIGRATIONS[:10], 1):
             connection.executescript(migration)
             connection.execute("INSERT INTO schema_migrations VALUES(?)", (version,))
         now = datetime.now(UTC).isoformat()
@@ -271,7 +271,7 @@ async def test_dev5_backfill_is_additive_restart_safe_and_rollback_atomic(
     monkeypatch.setattr(
         storage,
         "MIGRATIONS",
-        (*_MIGRATIONS[:-1], _MIGRATIONS[-1] + "\nINSERT INTO missing_table VALUES(1);"),
+        (*_MIGRATIONS[:10], _MIGRATIONS[10] + "\nINSERT INTO missing_table VALUES(1);"),
     )
     with pytest.raises(sqlite3.OperationalError, match="missing_table"):
         await database.async_migrate()
@@ -285,7 +285,7 @@ async def test_dev5_backfill_is_additive_restart_safe_and_rollback_atomic(
         await database.async_fetch_one(
             "SELECT MAX(version) AS v FROM schema_migrations"
         )
-    )["v"] == len(_MIGRATIONS) - 1
+    )["v"] == 10
     monkeypatch.setattr(storage, "MIGRATIONS", _MIGRATIONS)
     await database.async_migrate()
     await database.async_migrate()

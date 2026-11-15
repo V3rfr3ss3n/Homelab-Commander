@@ -29,6 +29,9 @@ from .custom_tasks import CustomTaskRepository, ShellTasksDisabledError
 from .dashboard import DashboardService, DashboardSummary, JobPage
 from .database import Database
 from .errors import install_error_handlers
+from .groups.application import GroupService
+from .groups.repository import SqliteGroupStore
+from .groups.routes import install_group_routes
 from .hosts import DuplicateHostError, HostRepository
 from .jobs import JobManager, JobRepository, JobSort
 from .models import (
@@ -60,7 +63,7 @@ from .resources.routes import install_resource_routes
 from .ssh_keys import SshKeyStore
 from .task_compatibility import TaskCompatibilityService
 from .timeline import JobTimeline, TimelineService, validate_period
-from .ui import UI_HTML, UI_JAVASCRIPT, UI_STYLESHEET
+from .ui import GROUP_JAVASCRIPT, UI_HTML, UI_JAVASCRIPT, UI_STYLESHEET
 from .ui_sessions import UI_SESSION_COOKIE, UI_SESSION_COOKIE_PATH, UiSessionStore
 from .version import __version__
 from .visible_checks import HostCheckPreferences, VisibleChecks
@@ -188,6 +191,13 @@ def create_app(
     authenticated = [Depends(authorize)]
     ui_authenticated = [Depends(authorize_ui)]
     ui_mutation = [Depends(authorize_ui), Depends(verify_csrf)]
+    install_group_routes(
+        app,
+        GroupService(SqliteGroupStore(database)),
+        authenticated,
+        ui_authenticated,
+        ui_mutation,
+    )
     install_resource_routes(
         app,
         ResourceRegistry(SqliteResourceRepository(database)),
@@ -242,6 +252,14 @@ def create_app(
     )
     async def user_interface_javascript() -> Response:
         return Response(UI_JAVASCRIPT, media_type="application/javascript")
+
+    @app.get(
+        "/groups.js",
+        include_in_schema=False,
+        dependencies=[Depends(authorize_ingress_source)],
+    )
+    async def group_javascript() -> Response:
+        return Response(GROUP_JAVASCRIPT, media_type="application/javascript")
 
     @app.get(
         "/ui.css",

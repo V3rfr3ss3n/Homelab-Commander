@@ -72,3 +72,7 @@ available. This establishes working boundaries incrementally; Linux extraction a
 policy/generic jobs remain later work. FastAPI and SQLite stay the foundation.
 [ADR-0023](../../02-architecture/adr/0023-resource-registry-and-module-boundaries.md)
 records the migration and dependency maintenance decisions.
+
+## Groups and tags
+
+The groups feature isolates pure bounded rules and immutable facts from SQLite and HTTP. See [ADR-0024](../../02-architecture/adr/0024-bounded-resource-groups.md) for fail-closed evaluation and future target revalidation.

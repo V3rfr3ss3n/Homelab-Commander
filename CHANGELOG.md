@@ -16,6 +16,9 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ### Added
 
+- Manual and smart resource groups, persisted tags, bounded membership previews,
+  filtering and an authenticated Groups workspace. Membership never grants access.
+
 - Persistent resource registry with additive Host backfill, hostless services,
   explicit VM/Host identity reconciliation, transactional relationships and admin
   metadata APIs. Group the resource feature and SQLite lifecycle into clear modules.
