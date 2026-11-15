@@ -74,3 +74,44 @@ The versioned preview and browser regressions share the same adapter. A single
 subsequent check preserves that result. The simulator keeps its own session state
 so stale inventory objects cannot resurrect removed packages or restart warnings. Selected/full updates remove exactly the
 simulated scope, and contradictory count/row snapshots are rejected before storage.
+
+## Local stabilization acceptance (#62 / #63)
+
+From the repository root, start the existing disposable synthetic preview:
+
+```bash
+uv sync --frozen
+uv run python -m homelab_backend.preview
+```
+
+Open `http://127.0.0.1:8100`. All host actions are simulated, including arbitrary
+addresses entered in this preview; data and its SSH identity are temporary.
+Stop the preview before starting a second instance on the same port. VS Code's
+existing local launcher uses this versioned module too.
+
+To reproduce one history failure, start instead:
+
+```bash
+uv run python -m homelab_backend.preview --history-failure-once
+```
+
+The first filtered history request fails with a synthetic HTTP 503. Open its
+technical details, copy the report and choose **Retry history**; seven days of
+seeded history return without resetting data. The fault option exists only on the
+explicit preview launcher, never on the normal backend entrypoint.
+
+Local acceptance:
+
+- Graph and table each show 14 seeded jobs over seven days; filter/reset both.
+- The historical failed card is red and explicitly says failed.
+- A history failure displays unavailable rather than zero; retry recovers.
+- In browser developer tools, go offline and refresh: existing history is stale.
+  Change filters while offline: history is unavailable. Restore the network and
+  retry; the view recovers. Do not use this procedure on production host actions.
+- Copy diagnostics: safe code, time, operation and reference are present; host
+  addresses, tokens and raw response/log content are absent.
+
+`make quality` remains the complete local merge gate, including independent 95%
+line/branch thresholds. This branch does not change version, publish an image or
+request a release. Local approval precedes merge; a development release requires
+a separate owner request.

@@ -11,6 +11,7 @@ def main() -> None:
         host="0.0.0.0",
         port=8099,
         proxy_headers=True,
+        access_log=False,
     )
 
 

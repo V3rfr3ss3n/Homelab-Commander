@@ -4,10 +4,17 @@ import asyncio
 import sqlite3
 from collections.abc import Callable, Sequence
 from contextlib import closing
+from datetime import datetime
 from pathlib import Path
 from typing import TypeVar
 
 T = TypeVar("T")
+
+
+def _timestamp(value: str) -> float:
+    """Convert persisted timezone-aware ISO dates without SQLite date modifiers."""
+    return datetime.fromisoformat(value).timestamp()
+
 
 _MIGRATIONS: tuple[str, ...] = (
     """
@@ -195,6 +202,10 @@ class Database:
         self._path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         connection = sqlite3.connect(self._path, timeout=10)
         connection.row_factory = sqlite3.Row
+        # SQLite before 3.42 silently returns NULL for unixepoch(..., 'subsec').
+        # Parse our typed ISO timestamps consistently, including microseconds and
+        # UTC offsets, without requiring a system SQLite upgrade or data rewrite.
+        connection.create_function("hlc_timestamp", 1, _timestamp, deterministic=True)
         connection.execute("PRAGMA foreign_keys = ON")
         connection.execute("PRAGMA journal_mode = WAL")
         return connection

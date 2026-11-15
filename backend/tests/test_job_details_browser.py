@@ -187,8 +187,14 @@ async def test_job_detail_refresh_ignores_recent_list_and_handles_log_error(
         )
         await page.locator("#refresh-job").click()
         await expect(page.locator("#job-log-note")).to_contain_text(
-            "Synthetic log unavailable"
+            "The backend is temporarily unavailable"
         )
+        await page.locator("#job-error-details").click()
+        await expect(page.locator("#error-diagnostic")).to_contain_text(
+            '"http_status": 503'
+        )
+        await expect(page.locator("#error-diagnostic")).to_contain_text(str(job.id))
+        await page.locator("#message-dismiss").click()
         await expect(page.locator("#job-state-badge")).to_have_text("success")
         await page.unroute(f"**/ui-api/jobs/{job.id}/log")
         await page.locator("#refresh-job").click()

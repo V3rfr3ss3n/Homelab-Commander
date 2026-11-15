@@ -237,6 +237,7 @@ async def test_existing_remote_native_reconfigure_keeps_manual_url(
         (CannotConnectError(), None, "cannot_connect"),
         (None, CannotConnectError(), "cannot_connect"),
         (None, InvalidStatusDataError(), "invalid_status_data"),
+        (RuntimeError("synthetic-private-exception"), None, "unknown"),
     ],
 )
 async def test_config_flow_errors(
@@ -245,6 +246,7 @@ async def test_config_flow_errors(
     semaphore_error: Exception | None,
     status_error: Exception | None,
     expected: str,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Expected service failures map to stable flow errors."""
     semaphore_patch, status_patch = _validation_patches(semaphore_error, status_error)
@@ -257,6 +259,9 @@ async def test_config_flow_errors(
 
     assert result["type"] is FlowResultType.FORM
     assert result["errors"] == {"base": expected}
+    assert "synthetic-private-exception" not in caplog.text
+    if expected == "unknown":
+        assert "config_flow.py:" in caplog.text
 
 
 async def test_config_flow_invalid_url(
@@ -393,6 +398,7 @@ async def test_reconfigure(
         (InvalidProjectError(), "invalid_project"),
         (InvalidStatusDataError(), "invalid_status_data"),
         (CannotConnectError(), "cannot_connect"),
+        (RuntimeError("synthetic-private-exception"), "unknown"),
     ],
 )
 async def test_reconfigure_errors(
@@ -401,6 +407,7 @@ async def test_reconfigure_errors(
     config_data: Mapping[str, str | int | bool],
     error: Exception,
     expected: str,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Reconfigure preserves the existing entry after validation failures."""
     mock_entry.add_to_hass(hass)
@@ -419,6 +426,9 @@ async def test_reconfigure_errors(
             result["flow_id"], changed
         )
     assert result["errors"] == {"base": expected}
+    assert "synthetic-private-exception" not in caplog.text
+    if expected == "unknown":
+        assert "config_flow.py:" in caplog.text
 
 
 @pytest.mark.parametrize(

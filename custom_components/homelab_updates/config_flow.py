@@ -1,7 +1,9 @@
 """UI configuration flows for Homelab Commander providers."""
 
 import logging
+import traceback
 from collections.abc import Mapping
+from pathlib import Path
 
 from homeassistant import config_entries
 from homeassistant.const import CONF_API_TOKEN
@@ -47,6 +49,15 @@ from .schema import schema as vol
 from .supervisor import async_discover_native_backend
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _failure_locations(error: Exception) -> str:
+    """Identify code paths without logging raw exceptions, source or locals."""
+    return ",".join(
+        f"{Path(frame.filename).name}:{frame.lineno}"
+        for frame in traceback.extract_tb(error.__traceback__)[-6:]
+    )
+
 
 type FlowData = dict[str, str | int | bool]
 type FlowResult = config_entries.ConfigFlowResult
@@ -174,7 +185,10 @@ class HomelabUpdatesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except Exception as err:  # Payloads are never included in UI errors.
                 errors["base"] = _flow_error(err)
                 if errors["base"] == "unknown":
-                    _LOGGER.exception("Unexpected exception during configuration")
+                    _LOGGER.error(
+                        "Unexpected configuration failure locations=%s",
+                        _failure_locations(err),
+                    )
             else:
                 await self.async_set_unique_id(_unique_id(data))
                 self._abort_if_unique_id_configured()
@@ -237,7 +251,10 @@ class HomelabUpdatesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except Exception as err:
                 errors["base"] = _flow_error(err)
                 if errors["base"] == "unknown":
-                    _LOGGER.exception("Unexpected exception during reconfiguration")
+                    _LOGGER.error(
+                        "Unexpected reconfiguration failure locations=%s",
+                        _failure_locations(err),
+                    )
             else:
                 unique_id = _unique_id(data)
                 for other in self.hass.config_entries.async_entries(DOMAIN):

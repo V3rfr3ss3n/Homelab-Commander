@@ -1,7 +1,7 @@
 ---
 title: Updates and jobs
 status: active
-updated: 2026-11-11
+updated: 2026-11-15
 tags: [wiki, user-guide]
 ---
 
@@ -186,3 +186,13 @@ use a neutral point color; their recorded outcome and the historical failure cur
 remain unchanged. A group is red if any matching job needs review, including jobs
 beyond the six previews. The last-failed-job highlight remains historical. Security, reboot and
 stale-host notices still reflect host state and are not dismissed by job review.
+
+## History and failure visibility
+
+The graph and table use the same stored timestamps and filters, including on older
+SQLite runtimes. Failed history requests show a persistent warning with retry and
+technical details, rather than zero jobs. Previously loaded results are marked
+stale only while their filters still match. **Last failed job** has a red title
+and an explicit failed label even after review; timeline attention colors retain
+their separate review meaning. See
+[troubleshooting](troubleshooting.md#copy-useful-failure-diagnostics).

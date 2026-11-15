@@ -810,6 +810,26 @@ async def test_native_client_rejects_http_and_payload_failures(
         await client.async_validate()
 
 
+@pytest.mark.parametrize("reference", ["a" * 32, "synthetic-secret", ""])
+async def test_native_failure_reference_is_allowlisted(
+    aioclient_mock: object,
+    aiohttp_client_session: ClientSession,
+    reference: str,
+) -> None:
+    """HA keeps HTTP status and valid correlation IDs, never response details."""
+    aioclient_mock.get(  # type: ignore[attr-defined]
+        f"{NATIVE_URL}/api/v1/jobs",
+        status=503,
+        headers={"X-Request-ID": reference},
+        content=b"synthetic-private-response",
+    )
+    with pytest.raises(CannotConnectError, match="HTTP 503") as raised:
+        await _native_client(aiohttp_client_session).async_get_tasks()
+    assert ("reference " in str(raised.value)) == (reference == "a" * 32)
+    assert "synthetic-secret" not in str(raised.value)
+    assert "synthetic-private-response" not in str(raised.value)
+
+
 async def test_native_client_covers_single_jobs_and_all_batch_phases(
     aioclient_mock: object,
     aiohttp_client_session: ClientSession,

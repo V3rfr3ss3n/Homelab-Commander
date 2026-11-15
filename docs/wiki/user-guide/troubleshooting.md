@@ -1,7 +1,7 @@
 ---
 title: Troubleshooting
 status: active
-updated: 2026-11-10
+updated: 2026-11-15
 tags: [wiki, user-guide]
 ---
 
@@ -84,3 +84,40 @@ never disable certificate verification. HTTPS targets are not retried over HTTP.
 Regular refreshes retain both successful and failed icon states, preventing repeat
 loads/flashing. Use **Retry saved website icons** after fixing the endpoint, or
 reload the page. The retry uses saved website settings; save edited URLs first.
+
+## Empty or unavailable job history
+
+Graph and table share time/host/state/action filters. An actually empty result
+shows an empty-state explanation. A failed request instead shows **History
+unavailable**, or marks an already loaded result **stale** for the same filters.
+Choose **Retry history** after checking connectivity. Changing filters does not
+relabel stale data from a different query. A successful retry restores the view
+and reports that history was refreshed.
+
+Older system SQLite versions do not support the `subsec` date modifier and can
+silently return no matches. Commander now converts persisted timestamps through a
+registered function independent of that modifier. No database reset, reinstall or
+host action is required; counts, timestamps and IDs are preserved.
+
+## Copy useful failure diagnostics
+
+Open **Technical details** on an error notification or history error, or
+**Technical error details** on a job/log loading error, then **Copy diagnostics**.
+The report contains version (or `unknown` before connection), component, static
+operation, safe error code, UTC timestamp and HTTP status/reference where
+available. A job request can include its technical job reference. It excludes
+hostnames, addresses, tokens, request/response bodies and command output.
+If clipboard access is unavailable, select the displayed details manually.
+
+For example, report: version `0.3.0-dev.5`, operation `GET jobs / timeline`,
+error `internal_error`, HTTP `500`, UTC time, the copied request reference and
+synthetic reproduction steps. A backend administrator can find the same reference
+and sanitized source location in backend logs. Worker failures use their job
+reference in the protected job log. Logs are not automatically uploaded.
+
+Persistent polling failures do not produce a new notification every cycle.
+Recovery is indicated; automatic retry is limited to reads and the existing
+visible status checks. Before repeating an update/reboot, inspect its job state.
+Never attach full job logs, infrastructure screenshots or HA exports to a public
+report. A red failed-job card records execution failure even after review; review
+changes attention, not the recorded outcome.

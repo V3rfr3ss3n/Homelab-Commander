@@ -1,6 +1,7 @@
 """HTTP adapter for the native Homelab Commander backend API."""
 
 import json
+import re
 from collections.abc import Mapping
 from datetime import datetime
 from typing import Final
@@ -177,7 +178,15 @@ class NativeBackendClient:
                 if response.status == 404 and not_found is not None:
                     raise BackendTaskError(not_found)
                 if response.status < 200 or response.status >= 300:
-                    raise CannotConnectError("The native backend returned an error")
+                    reference = response.headers.get("X-Request-ID", "")
+                    suffix = (
+                        f"; reference {reference}"
+                        if re.fullmatch(r"[a-f0-9]{32}", reference)
+                        else ""
+                    )
+                    raise CannotConnectError(
+                        f"The native backend returned HTTP {response.status}{suffix}"
+                    )
                 return await _read_json(response)
         except AuthenticationError, BackendTaskError, InvalidStatusDataError:
             raise

@@ -1,7 +1,7 @@
 ---
 title: Native API
 status: active
-updated: 2026-11-09
+updated: 2026-11-15
 tags: [wiki, technical]
 ---
 
@@ -95,3 +95,13 @@ Authenticated `GET /ui-api/onboarding` retains system/username/port and adds fix
 `restricted_key=true|false` and optional `source` IP/CIDR. Defaults are create, sh,
 none, true and empty. Unsupported/invalid values return 422. Rendering never applies
 configuration. Output is still the marked version-1 host connection JSON envelope.
+
+## Safe error references
+
+Failures retain HTTP status and `detail` and add a safe error code, request ID,
+UTC timestamp, component, static operation and version. The server-generated
+`X-Request-ID` connects an unexpected API failure to a sanitized backend code
+location. Validation responses exclude input values and exception context.
+Existing clients can ignore additive fields. No public diagnostic/log endpoint or
+new authentication mechanism is added. See the
+[failure contract](../../02-architecture/native-api.md#failure-diagnostics).
