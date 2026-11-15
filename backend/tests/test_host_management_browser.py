@@ -76,7 +76,13 @@ async def test_host_removal_returns_to_list_without_deleted_detail_requests(
         )
         await page.locator("[data-delete-host]").click()
         await page.locator("#confirm-accept").click()
-        await expect(page.locator("#message")).to_have_text("Synthetic removal failure")
+        await expect(page.locator("#message-text")).to_contain_text(
+            "The backend is temporarily unavailable"
+        )
+        assert (
+            "Synthetic removal failure"
+            not in await page.locator("#message").inner_text()
+        )
         assert await hosts.async_get(host.id) is not None
         await page.unroute(endpoint)
         with patch.object(executor, "async_execute", new_callable=AsyncMock) as execute:
@@ -170,8 +176,12 @@ async def test_edit_host_exposes_setup_copy_and_removal(
         )
         await page.locator("#host-delete").click()
         await page.locator("#confirm-accept").click()
-        await expect(page.locator("#host-form-error")).to_have_text(
+        await expect(page.locator("#host-form-error")).to_contain_text(
+            "The backend is temporarily unavailable"
+        )
+        assert (
             "Synthetic removal failure"
+            not in await page.locator("#host-form-error").inner_text()
         )
         await expect(page.locator("#host-dialog")).to_be_visible()
         assert await hosts.async_get(host.id) is not None

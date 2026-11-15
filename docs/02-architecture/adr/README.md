@@ -35,6 +35,8 @@ tags: [architecture, adr, index]
 | [[ADR-0020-package-selection-and-snapshots]] | accepted | Paket-Auswahljobs und konsistente Status-Snapshots |
 | [[ADR-0019-scoped-package-update]] | accepted | Paketdialog aktualisiert ein bestätigtes Paket gezielt |
 
+| [[0021-safe-failure-diagnostics-and-history]] | proposed | Sichere Fehlerdiagnosen und SQLite-kompatibler Jobverlauf |
+
 Neue ADRs verwenden [[../../templates/adr-template|die ADR-Vorlage]]. Akzeptierte
 ADRs werden nicht rückwirkend umgeschrieben; eine neue ADR ersetzt die alte und
 verlinkt sie als `superseded`.

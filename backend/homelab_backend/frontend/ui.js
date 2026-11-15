@@ -17,6 +17,7 @@ let selectedJobLog = null;
 let selectedJob = null;
 let selectedJobError = null;
 let selectedJobLogError = null;
+let selectedJobFailure=null;
 let selectedJobTruncated = false;
 let jobDetailRequest = 0;
 let renderedJobLog = null;
@@ -29,6 +30,7 @@ let packageSubmission=false;
 const skippedPackages = new Map();
 let visibleCheckTimer = null;
 let visibleCheckInFlight = false;
+let visibleCheckFailed=false;
 const VISIBLE_CHECK_INTERVAL_MS = 300000;
 function stopVisibleChecks(){if(visibleCheckTimer!==null)clearTimeout(visibleCheckTimer);visibleCheckTimer=null}
 function visibleHostView(){return document.visibilityState==="visible"&&["dashboard","hosts"].includes(view().name)}
@@ -39,8 +41,8 @@ function syncVisibleChecks(){
 async function checkVisibleHosts(){
   visibleCheckTimer=null;if(!connected||!visibleHostView()||!state.preferences?.enabled||visibleCheckInFlight)return;
   visibleCheckInFlight=true;
-  try{state.preferences=await request("preferences/host-checks");element("auto-host-checks").checked=state.preferences.enabled;if(connected&&visibleHostView()&&state.preferences.enabled){const jobs=await request("actions/check-visible",{method:"POST"});if(connected&&jobs.length){state.jobs=[...jobs,...state.jobs.filter(job=>!jobs.some(queued=>queued.id===job.id))];await refreshLiveState()}}}
-  catch(error){if(connected)message("Automatic host check failed. Retry with the check icon or Refresh.","error")}
+  try{const recovering=visibleCheckFailed;state.preferences=await request("preferences/host-checks");element("auto-host-checks").checked=state.preferences.enabled;if(connected&&visibleHostView()&&state.preferences.enabled){const jobs=await request("actions/check-visible",{method:"POST"});if(connected&&jobs.length){state.jobs=[...jobs,...state.jobs.filter(job=>!jobs.some(queued=>queued.id===job.id))];await refreshLiveState()}}visibleCheckFailed=false;if(recovering)message("Automatic host checks recovered.","success")}
+  catch(error){if(connected&&!visibleCheckFailed)showFailure(error,"Automatic host check failed. Retry with the check icon or Refresh.");visibleCheckFailed=true}
   finally{visibleCheckInFlight=false;if(connected&&visibleHostView()&&state.preferences?.enabled)visibleCheckTimer=setTimeout(checkVisibleHosts,VISIBLE_CHECK_INTERVAL_MS)}
 }
 
@@ -49,10 +51,30 @@ function element(id){return document.getElementById(id)}
 function syncSearch(id,value){const input=element(id);if(document.activeElement!==input)input.value=value}
 function escapeHtml(value){const node=document.createElement("div");node.textContent=value??"";return node.innerHTML.replaceAll('"',"&quot;").replaceAll("'","&#39;")}
 let messageTimer=null;
+let messageGeneration=0;
+let messageErrorGeneration=0;
+let lastDiagnostic=null;
+const SAFE_OPERATIONS=new Set(["auth","login","logout","session","info","hosts","jobs","page","timeline","log","review","custom-tasks","actions","check-updates","update","reboot","test-connection","task-compatibility","packages","preferences","host-checks","check-visible","public-key","dashboard","onboarding"]);
+function operationName(path,method){return `${method} ${path.split("?")[0].split("/").filter(part=>SAFE_OPERATIONS.has(part)).join(" / ")||"request"}`}
+class RequestFailure extends Error{
+  constructor(code,operation,httpStatus=null,requestId=null,jobReference=null){
+    const summaries={network_error:"Connection failed. Check the backend connection and retry.",invalid_response:"The backend returned an invalid response. Refresh or report this problem.",http_401:"Authentication failed. Reconnect to continue.",http_403:"Access was denied. Check your session and permissions.",http_404:"The requested item is no longer available.",http_409:"The action conflicts with the current state. Refresh before trying again.",http_503:"The backend is temporarily unavailable. Retry read-only requests or inspect the job before repeating an action.",http_422:"The request contains invalid values. Check the form and filters.",internal_error:"An internal backend error occurred. Inspect the job before repeating an action.",operation_failed:"The operation failed. Retry or report this problem."};
+    super(summaries[code]||`Request failed (${httpStatus||"unknown"}). Retry read-only requests or inspect the job before repeating an action.`);
+    if(code==="http_404"&&operation.includes("jobs"))this.message="Job not found. Return to history or refresh.";
+    this.diagnostic={version:/^[0-9]+\.[0-9]+\.[0-9]+(?:[-.a-z0-9]+)?$/i.test(state.info?.version||"")?state.info.version:"unknown",component:"management_ui",operation,error_code:code,timestamp:new Date().toISOString(),...(httpStatus?{http_status:httpStatus}:{}),...(/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(jobReference||"")?{job_reference:jobReference}:{}),...(/^[a-f0-9]{32}$/.test(requestId||"")?{request_id:requestId}:{})};
+  }
+}
+function showFailure(error,summary=""){
+  const failure=error instanceof RequestFailure?error:new RequestFailure("operation_failed","UI action");
+  message(summary||failure.message,"error");
+  element("error-details").querySelector("summary").textContent="Technical details";element("copy-error-diagnostic").innerHTML=buttonIcon("copy")+"Copy diagnostics";lastDiagnostic=failure.diagnostic;element("error-diagnostic").textContent=JSON.stringify(lastDiagnostic,null,2);element("error-details").hidden=false;
+}
+
 function message(value,kind="",link=null){
+  messageGeneration++;if(kind==="error"&&value)messageErrorGeneration++;
   if(messageTimer!==null)clearTimeout(messageTimer);messageTimer=null;
   const target=element("message"),anchor=element("message-link");
-  element("message-text").textContent=value;target.className=kind;target.hidden=!value;
+  element("error-details").hidden=true;element("error-details").open=false;element("error-details").querySelector("summary").textContent="";element("copy-error-diagnostic").textContent="";lastDiagnostic=null;element("error-diagnostic").textContent="";element("message-text").textContent=value;target.className=kind;target.hidden=!value;
   target.setAttribute("role",kind==="error"?"alert":"status");
   anchor.hidden=!link;if(link){anchor.href=link.href;anchor.textContent=link.label||"Open job"}else{anchor.removeAttribute("href");anchor.textContent=""}
   if(value&&kind==="success")messageTimer=setTimeout(()=>{target.hidden=true;messageTimer=null},8000);
@@ -67,27 +89,37 @@ function confirmAction(title,description,targets=[],confirmLabel="Confirm",optio
   accept.addEventListener("click",yes);cancel.addEventListener("click",no);dialog.addEventListener("cancel",escape);ack.addEventListener("change",changed);dialog.showModal();cancel.focus();
 })}
 function setBusy(button,busy){if(button)button.disabled=busy}
-function backendUnavailable(){state.unavailable=true;element("connection-hint").textContent="Backend unavailable. Displayed data may be out of date.";renderBackendStatus()}
+function backendUnavailable(error){
+  state.unavailable=true;element("connection-hint").textContent="Backend unavailable. Displayed data may be out of date.";renderBackendStatus();
+  if(connected&&["dashboard","jobs"].includes(view().name)&&!view().id){currentHistoryError=error;historyRecovered=false;renderHistory()}
+}
 function jobError(errorCode){const labels={apt_lock_unavailable:"APT is locked by another process",check_updates_apt_cache_refresh_failed:"Check updates failed during APT cache refresh",check_updates_facts_failed:"Check updates failed while collecting system facts",check_updates_package_list_failed:"Check updates failed while listing packages",check_updates_reboot_status_failed:"Check updates failed while reading reboot status",invalid_ansible_output:"Ansible returned an invalid structured result",python_interpreter_unavailable:"Python 3 is not available on the host",reboot_failed:"Reboot failed",sudo_unavailable:"Non-interactive sudo is not available",test_connection_failed:"SSH connection test failed",test_connection_facts_failed:"Connection test failed while collecting system facts",update_packages_failed:"Package update failed"};return labels[errorCode]||errorCode.replaceAll("_"," ")}
 function activeJobs(){const jobs=new Map(state.active_jobs.map(job=>[job.id,job]));for(const job of state.jobs)jobs.set(job.id,job);return [...jobs.values()].filter(job=>ACTIVE_JOB_STATES.has(job.state))}
 function hasActiveJobs(){return Boolean(selectedJob&&ACTIVE_JOB_STATES.has(selectedJob.state))||(state.dashboard?.running_jobs||state.dashboard?.queued_jobs||0)>0||activeJobs().length>0}
 function stopJobPolling(){if(jobPollTimer!==null)window.clearTimeout(jobPollTimer);jobPollTimer=null;jobPollFailureCount=0}
 function scheduleJobPolling(delay=ACTIVE_JOB_POLL_INTERVAL_MS){if(!connected||!hasActiveJobs()||jobPollTimer!==null||jobPollInFlight)return;jobPollTimer=window.setTimeout(pollJobs,delay)}
 function syncJobPolling(){if(connected&&hasActiveJobs())scheduleJobPolling();else stopJobPolling()}
-function clearProtectedData(){stateRequest++;clearWebsiteIcons();stopJobPolling();stopVisibleChecks();document.querySelectorAll("dialog[open]").forEach(d=>d.close());state={info:null,hosts:[],custom_tasks:[],jobs:[],active_jobs:[],public_key:""};currentHostPackages=null;skippedPackages.clear();selectedJobId=null;selectedJob=null;selectedJobLog=null;selectedJobError=null;selectedJobLogError=null;jobDetailRequest++;viewRequest++;for(const id of ["backend-status","job-highlights","dashboard","key","hosts","tasks","jobs","job-metadata","log","notices","history","activity","host-info","host-tasks","host-jobs"])element(id).replaceChildren();element("job-detail").hidden=true;element("protected-content").hidden=true;element("connect-placeholder").hidden=false;element("host-context").hidden=true;element("selection-info").textContent="";element("filter-count").textContent="0";closeSelection();closeTimelinePoint()}
+function clearProtectedData(){currentTimeline={points:[],total:0};currentJobPage={items:[],total:0,offset:0,limit:25};currentHostJobs=[];currentHostTasks=[];timelineKey=null;jobPageKey=null;currentHistoryError=null;historyRecovered=false;visibleCheckFailed=false;selectedJobFailure=null;stateRequest++;clearWebsiteIcons();stopJobPolling();stopVisibleChecks();document.querySelectorAll("dialog[open]").forEach(d=>d.close());state={info:null,hosts:[],custom_tasks:[],jobs:[],active_jobs:[],public_key:""};currentHostPackages=null;skippedPackages.clear();selectedJobId=null;selectedJob=null;selectedJobLog=null;selectedJobError=null;selectedJobLogError=null;jobDetailRequest++;viewRequest++;for(const id of ["backend-status","job-highlights","dashboard","key","hosts","tasks","jobs","job-metadata","log","notices","history","activity","host-info","host-tasks","host-jobs"])element(id).replaceChildren();element("job-detail").hidden=true;element("protected-content").hidden=true;element("connect-placeholder").hidden=false;element("host-context").hidden=true;element("selection-info").textContent="";element("filter-count").textContent="0";closeSelection();closeTimelinePoint()}
 function setDisconnected(hint="Enter your API token to load backend data."){connected=false;element("token").value="";element("token").disabled=ingress;clearProtectedData();element("connection-state").className="connection-state";element("connection-label").textContent="Not connected";element("connection-hint").textContent=hint;element("connect").hidden=false;element("refresh").hidden=true;element("connect").textContent=ingress?"Retry":"Connect";element("disconnect").hidden=true;element("token-field").hidden=ingress}
 function setConnecting(){element("connection-state").className="connection-state connecting";element("connection-label").textContent="Connecting…";element("connection-hint").textContent="Loading backend data."}
 function setConnected(){connected=true;element("token").disabled=true;element("connection-state").className="connection-state connected";element("connection-label").textContent="Connected";element("connection-hint").textContent="Backend data is loaded.";element("protected-content").hidden=false;element("connect-placeholder").hidden=true;element("connect").hidden=true;element("refresh").hidden=false;element("token-field").hidden=true;element("disconnect").hidden=ingress;syncJobPolling();syncVisibleChecks()}
 
 async function request(path,{method="GET",body}={}){
-  const headers={Accept:"application/json"};
+  const headers={Accept:"application/json"},operation=operationName(path,method);
+  const failure=(code,status=null,reference=null)=>new RequestFailure(code,operation,status,reference,path.match(/^jobs\/([a-f0-9-]{36})(?:\/|$)/i)?.[1]||null);
   if(method!=="GET")headers["X-CSRF-Token"]=csrf;
   if(body!==undefined)headers["Content-Type"]="application/json";
   let response;
   try{response=await fetch(new URL(path,apiBase),{method,headers,credentials:"same-origin",cache:"no-store",body:body===undefined?undefined:JSON.stringify(body)})}
-  catch(error){backendUnavailable();throw new Error(`Connection failed: ${error instanceof Error?error.message:"network error"}`)}
-  if(!response.ok){if(response.status>=500)backendUnavailable();let detail=`Request failed (${response.status})`;try{const payload=await response.json();if(typeof payload.detail==="string")detail=payload.detail}catch{}if(response.status===401||(ingress&&response.status===403))setDisconnected(ingress?"Your Ingress session is not authorized. Reopen or retry the panel.":"Session expired. Please connect again.");throw new Error(detail)}
-  return response.status===204?null:response.json();
+  catch{const error=failure("network_error");backendUnavailable(error);throw error}
+  const reference=response.headers.get("X-Request-ID");
+  if(!response.ok){
+    const expired=connected&&response.status===401;
+    if(path!=="auth/session"&&(response.status===401||(ingress&&response.status===403)))setDisconnected(ingress?"Your Ingress session is not authorized. Reopen or retry the panel.":"Session expired. Please connect again.");
+    const error=failure(response.status===500?"internal_error":`http_${response.status}`,response.status,reference);if(response.status>=500)backendUnavailable(error);if(expired)error.message="Authentication expired. Reconnect to continue.";if(ingress&&response.status===403)error.message="Ingress authorization expired. Reopen the panel to continue.";throw error;
+  }
+  if(response.status===204)return null;
+  try{return await response.json()}catch{const error=failure("invalid_response",response.status,reference);backendUnavailable(error);throw error}
 }
 
 let stateRequest=0;
@@ -110,15 +142,21 @@ async function refreshDashboard(){
 
 async function refreshLiveState(){const generation=++stateRequest;const [hosts,jobs,dashboard,active_jobs]=await Promise.all([request("hosts"),request("jobs"),request("dashboard"),loadActiveJobs()]);if(generation!==stateRequest)return;state={...state,hosts,jobs,dashboard,active_jobs,unavailable:false};await loadView();render();if(routeJobId())await loadJobRoute(true,false)}
 
-async function pollJobs(){jobPollTimer=null;if(!connected||!hasActiveJobs())return;jobPollInFlight=true;try{const recovered=jobPollFailureCount>0;await refreshLiveState();jobPollFailureCount=0;if(recovered)message("Live job updates recovered.","success")}catch(error){if(connected){if(jobPollFailureCount===0)message("Live job refresh failed; retrying automatically.","error");jobPollFailureCount+=1}}finally{jobPollInFlight=false;if(connected&&hasActiveJobs()){const index=Math.min(jobPollFailureCount,JOB_POLL_BACKOFF_MS.length-1);scheduleJobPolling(JOB_POLL_BACKOFF_MS[index])}}}
+async function pollJobs(){jobPollTimer=null;if(!connected||!hasActiveJobs())return;jobPollInFlight=true;try{const recovered=jobPollFailureCount>0;await refreshLiveState();jobPollFailureCount=0;if(recovered)message("Live job updates recovered.","success")}catch(error){if(connected){if(jobPollFailureCount===0)showFailure(error,"Live job refresh failed; retrying automatically.");jobPollFailureCount+=1}}finally{jobPollInFlight=false;if(connected&&hasActiveJobs()){const index=Math.min(jobPollFailureCount,JOB_POLL_BACKOFF_MS.length-1);scheduleJobPolling(JOB_POLL_BACKOFF_MS[index])}}}
 
-async function run(button,operation,success=""){setBusy(button,true);message(success?"Working…":"");try{const result=await operation();message(success,"success",result?.notification);return true}catch(error){message(error instanceof Error?error.message:"Request failed","error");return false}finally{setBusy(button,false)}}
+async function run(button,operation,success=""){
+  setBusy(button,true);
+  if(success||!element("message").classList.contains("error"))message(success?"Working…":"");
+  const generation=messageGeneration,errorGeneration=messageErrorGeneration;
+  try{const result=await operation();if(success?errorGeneration===messageErrorGeneration:generation===messageGeneration&&!element("message").classList.contains("error"))message(success,"success",result?.notification);return true}
+  catch(error){showFailure(error);return false}finally{setBusy(button,false)}
+}
 
-async function login(apiToken){const response=await fetch(new URL("auth/login",apiBase),{method:"POST",headers:{Accept:"application/json","Content-Type":"application/json","X-CSRF-Token":csrf},credentials:"same-origin",cache:"no-store",body:JSON.stringify({api_token:apiToken})});if(!response.ok){let detail="Authentication failed";try{const payload=await response.json();if(typeof payload.detail==="string")detail=payload.detail}catch{}throw new Error(detail)}}
+async function login(apiToken){await request("auth/login",{method:"POST",body:{api_token:apiToken}})}
 async function connect(event){event.preventDefault();const button=element("connect"),wasConnected=connected;let enteredToken="";if(!ingress&&!connected){enteredToken=element("token").value.trim();if(enteredToken.length<32){message("The API token must contain at least 32 characters.","error");return}element("token").value=""}setConnecting();const success=await run(button,async()=>{if(!ingress&&!wasConnected)await login(enteredToken);enteredToken="";await refreshDashboard()});enteredToken="";if(success)setConnected();else if(element("connection-label").textContent==="Connecting…"){if(wasConnected)setConnected();else setDisconnected("Connection failed. Check the backend and enter your API token to retry.")}}
 async function disconnect(){const button=element("disconnect");stopJobPolling();const success=await run(button,async()=>{await request("auth/logout",{method:"POST"})},"Disconnected");setDisconnected();message(success?"Disconnected":"Disconnect failed; local data was cleared.",success?"success":"error")}
 
-async function initialize(){setDisconnected();if(ingress){setConnecting();const success=await run(element("connect"),refreshDashboard);if(success)setConnected();return}let response;try{response=await fetch(new URL("auth/session",apiBase),{headers:{Accept:"application/json"},credentials:"same-origin",cache:"no-store"})}catch{message("Could not check the existing UI session.","error");return}if(response.status===401)return;if(!response.ok){message(`Session check failed (${response.status}).`,"error");return}setConnecting();const success=await run(element("connect"),refreshDashboard);if(success)setConnected();else setDisconnected("Session recovery failed. Please connect again.")}
+async function initialize(){setDisconnected();if(ingress){setConnecting();const success=await run(element("connect"),refreshDashboard);if(success)setConnected();return}try{await request("auth/session")}catch(error){if(error.diagnostic?.http_status!==401)showFailure(error,"Could not check the existing UI session.");return}setConnecting();const success=await run(element("connect"),refreshDashboard);if(success)setConnected();else setDisconnected("Session recovery failed. Please connect again.")}
 
 let viewRequest = 0;
 let currentHostTasks = [];
@@ -198,9 +236,17 @@ function renderBackendStatus(){const online=Boolean(state.info&&!state.unavailab
 function highlightJob(job,label){
   if(!job)return `<article class="job-highlight"><small>${label}</small><p class="empty">No job yet</p></article>`;
   const preview=job.short_error||(job.error_code?jobError(job.error_code):job.state==="success"?"Completed successfully":job.state==="running"?"Currently running":job.state==="queued"?"Waiting for a worker":"Job details available");
-  return `<article class="job-highlight"><small>${label}</small><a class="job-title" href="#/jobs/${job.id}" title="${escapeHtml(job.action)}">${escapeHtml(actionName(job.action))}</a><p>${escapeHtml(job.host_name||"All hosts")} · ${timeLabel(job.finished_at||job.created_at)}</p><p class="job-preview state-${job.state}" title="${escapeHtml(job.error_code||job.state)}">${escapeHtml(preview)}</p><div class="actions"><a href="#/jobs/${job.id}">Open job →</a>${job.log_available?`<button class="text-button" data-preview-log="${job.id}">Log preview</button>`:""}</div></article>`;
+  return `<article class="job-highlight"><small>${label}</small><a class="job-title state-${job.state}" href="#/jobs/${job.id}" title="${escapeHtml(job.action)}">${escapeHtml(actionName(job.action))}</a><p>${escapeHtml(job.host_name||"All hosts")} · ${timeLabel(job.finished_at||job.created_at)}</p><span class="highlight-state state-${job.state}">${escapeHtml(job.state)}</span><p class="job-preview state-${job.state}" title="${escapeHtml(job.error_code||job.state)}">${escapeHtml(preview)}</p><div class="actions"><a href="#/jobs/${job.id}">Open job →</a>${job.log_available?`<button class="text-button" data-preview-log="${job.id}">Log preview</button>`:""}</div></article>`;
 }
 let currentTimeline={points:[],total:0};
+let timelineKey=null,jobPageKey=null,currentHistoryError=null,historyRecovered=false;
+function historyKey(){return JSON.stringify([view().name,historyMode(),...["host_id","state","action","range","start","end","sort","offset"].map(key=>view().params.get(key))])}
+function validHistory(data,graph){
+  if(!data||!Number.isInteger(data.total)||data.total<0)return false;
+  if(!graph)return Array.isArray(data.items)&&data.items.every(job=>job&&typeof job.id==="string"&&["queued","running","success","failed","cancelled"].includes(job.state))&&Number.isInteger(data.offset)&&Number.isInteger(data.limit);
+  return Number.isFinite(Date.parse(data.start))&&Number.isFinite(Date.parse(data.end))&&Array.isArray(data.points)&&data.points.every(point=>point&&Array.isArray(point.jobs)&&point.counts&&Number.isFinite(Date.parse(point.timestamp))&&Number.isFinite(Date.parse(point.start))&&Number.isFinite(Date.parse(point.end))&&Number.isInteger(point.total));
+}
+
 let shownHosts=[];
 function historyMode(){const route=view();return route.params.get("display")||(route.name==="jobs"?"table":"graph")}
 function historyPeriod(){
@@ -257,8 +303,13 @@ function renderHistory(){
   if(period){syncSearch("history-start",localDateInput(period.start));syncSearch("history-end",localDateInput(period.end))}
   const dateFormat=new Intl.DateTimeFormat(navigator.language,{dateStyle:"medium",timeStyle:"short"});
   element("history-period").textContent=period?`${dateFormat.format(new Date(period.start))} – ${dateFormat.format(new Date(period.end))}`:"All stored jobs";
+  const available=(graph?timelineKey:jobPageKey)===historyKey(),failed=Boolean(currentHistoryError);
+  const status=element("history-status");status.hidden=!failed&&!historyRecovered;status.className=failed?"history-error":"history-recovered";
+  element("history-status-text").textContent=failed?`Could not load job history. ${available?"Displayed history is out of date.":"History is unavailable for these filters."}`:historyRecovered?"Job history refreshed.":"";
+  element("history-retry").hidden=!failed;element("history-error-details").hidden=!failed;
+  if(failed&&!available){element("history-total").textContent="History unavailable";element("history-chart").hidden=true;element("jobs-section").hidden=true;return}
   const historyCount=graph?currentTimeline.total:currentJobPage.total;
-  element("history-total").textContent=`${historyCount} ${historyCount===1?"job":"jobs"}`;
+  element("history-total").textContent=`${historyCount} ${historyCount===1?"job":"jobs"}${failed?" · stale":""}`;
   if(!graph)return;
   const width=900,height=365,left=98,right=98,top=90,bottom=90,plotHeight=height-top-bottom,points=currentTimeline.points;
   const start=Date.parse(currentTimeline.start),end=Date.parse(currentTimeline.end),max=Math.max(1,...points.map(p=>p.total));
@@ -458,9 +509,16 @@ async function loadView(){
     currentHostPackages=null;
   }
   if(["dashboard","jobs"].includes(route.name)&&!route.id){
-    const params=jobQuery();
-    if(historyMode()==="graph"){params.delete("offset");params.delete("sort");const timeline=await request(`jobs/timeline?${params}`);if(current())currentTimeline=timeline}
-    else{const page=await request(`jobs/page?${params}`);if(current())currentJobPage=page}
+    const params=jobQuery(),graph=historyMode()==="graph",key=historyKey();
+    try{
+      if(graph){params.delete("offset");params.delete("sort")}
+      const path=`jobs/${graph?"timeline":"page"}?${params}`,data=await request(path);
+      if(!current())return;
+      if(!validHistory(data,graph))throw new RequestFailure("invalid_response",operationName(path,"GET"));
+      state.unavailable=false;renderBackendStatus();historyRecovered=Boolean(currentHistoryError);if(historyRecovered&&lastDiagnostic===currentHistoryError.diagnostic)message("Job history refreshed.","success");currentHistoryError=null;
+      if(graph){currentTimeline=data;timelineKey=key}else{currentJobPage=data;jobPageKey=key}
+    }catch(error){if(current()){currentHistoryError=error instanceof RequestFailure?error:new RequestFailure("invalid_response","GET job history");historyRecovered=false}}
+
   }
 }
 
@@ -517,7 +575,7 @@ function jobRerunReason(job){
   return "";
 }
 function renderSelectedJob(){
-  const detail=element("job-detail");detail.hidden=!selectedJobId;
+  const detail=element("job-detail");detail.hidden=!selectedJobId;element("job-error-details").hidden=!selectedJobFailure;
   if(!selectedJobId)return;
   const job=selectedJob;
   if(!job){element("review-job").hidden=true;element("job-rerun-note").hidden=true;element("job-metadata").innerHTML=`<h2>${selectedJobError?"Job unavailable":"Loading job…"}</h2><p class="${selectedJobError?"error":"sub"}">${escapeHtml(selectedJobError||"Loading job…")}</p>`;element("log").textContent="";element("job-log-note").textContent=selectedJobError?"Job output is unavailable.":"Loading job…";for(const id of ["rerun-job","copy-job-log","download-job-log"])element(id).disabled=true;return}
@@ -560,18 +618,18 @@ async function loadJobRoute(force=false,refreshLog=true){
   const changed=selectedJobId!==jobId;
   if(!force&&!changed&&selectedJob)return;
   const generation=++jobDetailRequest;selectedJobId=jobId;
-  if(changed){selectedJob=null;selectedJobLog=null;selectedJobTruncated=false;selectedJobLogError=null;selectedJobError=null;element("job-log-search").value="";jobLogMatches=[];jobLogMatch=0;updateLogMatch();renderedJobLog=null}
+  if(changed){selectedJob=null;selectedJobLog=null;selectedJobTruncated=false;selectedJobLogError=null;selectedJobError=null;selectedJobFailure=null;element("job-log-search").value="";jobLogMatches=[];jobLogMatch=0;updateLogMatch();renderedJobLog=null}
   renderSelectedJob();
   const current=()=>generation===jobDetailRequest&&routeJobId()===jobId;
   try{
     const job=await request(`jobs/${jobId}`);if(!current())return;
     selectedJob=job;selectedJobError=null;state.unavailable=false;renderBackendStatus();state.jobs=[job,...state.jobs.filter(item=>item.id!==job.id)];renderSelectedJob();renderSelection();syncJobPolling();
     if(job.log_available&&(refreshLog||selectedJobLog===null)){
-      try{const log=await request(`jobs/${jobId}/log`);if(!current())return;selectedJobLog=log.output;selectedJobTruncated=log.truncated;selectedJobLogError=null}
-      catch(error){if(!current())return;selectedJobLogError=error.message}
+      try{const log=await request(`jobs/${jobId}/log`);if(!current())return;selectedJobLog=log.output;selectedJobTruncated=log.truncated;selectedJobLogError=null;selectedJobFailure=null}
+      catch(error){if(!current())return;selectedJobLogError=error.message;selectedJobFailure=error}
     }
     if(current())renderSelectedJob();
-  }catch(error){if(!current())return;selectedJobError=error.message;renderSelectedJob();throw error}
+  }catch(error){if(!current())return;selectedJobError=error.message;selectedJobFailure=error;renderSelectedJob();throw error}
 }
 async function rerunJob(button){
   const job=selectedJob;if(!job||jobRerunPending||jobRerunReason(job))return;
@@ -625,13 +683,13 @@ async function generateSetup(){
   catch(error){if(generation===setupRequest)element("setup-status").textContent="Could not prepare script. Check the username, port and optional source IP/CIDR."}
 }
 
-async function addHost(event){event.preventDefault();const name=element("host-name").value.trim(),address=element("host-address").value.trim(),username=element("host-user").value.trim(),port=Number(element("host-port").value);if(!validHost({name,address,username,port})){element("host-form-error").textContent="Complete all fields with a valid SSH address, user and port.";return}let websites;try{websites=element("host-websites").value.split("\n").filter(line=>line.trim()).map(line=>{const parts=line.split("|").map(value=>value.trim());if(parts.length<2||parts.length>3||!parts[0])throw Error("Use name | website URL | optional icon URL for each website.");const [name,address,icon]=parts,url=new URL(address),iconUrl=icon?new URL(icon):null;for(const value of [url,iconUrl])if(value&&(!["http:","https:"].includes(value.protocol)||value.username||value.password))throw Error("Websites and icons require HTTP(S) URLs without credentials.");return {name,url:url.href,...(iconUrl?{icon_url:iconUrl.href}:{})}})}catch(error){element("host-form-error").textContent=error.message;return}const result=await mutate(event.submitter,editingHost?`hosts/${editingHost.id}`:"hosts",editingHost?"PATCH":"POST",{name,address,username,port,websites},editingHost?"Host updated":"Host added");if(result){element("host-dialog").close();element("host-form").reset()}else element("host-form-error").textContent=element("message").textContent}
+async function addHost(event){event.preventDefault();const name=element("host-name").value.trim(),address=element("host-address").value.trim(),username=element("host-user").value.trim(),port=Number(element("host-port").value);if(!validHost({name,address,username,port})){element("host-form-error").textContent="Complete all fields with a valid SSH address, user and port.";return}let websites;try{websites=element("host-websites").value.split("\n").filter(line=>line.trim()).map(line=>{const parts=line.split("|").map(value=>value.trim());if(parts.length<2||parts.length>3||!parts[0])throw Error("Use name | website URL | optional icon URL for each website.");const [name,address,icon]=parts,url=new URL(address),iconUrl=icon?new URL(icon):null;for(const value of [url,iconUrl])if(value&&(!["http:","https:"].includes(value.protocol)||value.username||value.password))throw Error("Websites and icons require HTTP(S) URLs without credentials.");return {name,url:url.href,...(iconUrl?{icon_url:iconUrl.href}:{})}})}catch(error){element("host-form-error").textContent=error.message;return}const result=await mutate(event.submitter,editingHost?`hosts/${editingHost.id}`:"hosts",editingHost?"PATCH":"POST",{name,address,username,port,websites},editingHost?"Host updated":"Host added");if(result){element("host-dialog").close();element("host-form").reset()}else element("host-form-error").textContent=element("message-text").textContent}
 function validHost(h){return typeof h.name==="string"&&h.name.trim().length>0&&h.name.length<=100&&typeof h.address==="string"&&/^[A-Za-z0-9][A-Za-z0-9.:-]{0,254}$/.test(h.address)&&typeof h.username==="string"&&/^[a-z_][a-z0-9_-]{0,31}$/.test(h.username)&&Number.isInteger(h.port)&&h.port>0&&h.port<65536}
 function importHost(event){const text=event.clipboardData?.getData("text")||"";if(!text.includes("HLC_HOST_BEGIN")&&!text.trim().startsWith("{"))return;event.preventDefault();try{if(text.length>16384)throw Error("Import is too large");const match=text.match(/HLC_HOST_BEGIN\s*([\s\S]*?)\s*HLC_HOST_END/);const data=JSON.parse(match?match[1]:text);if(data.format!=="homelab-commander-host"||data.version!==1)throw Error("Unsupported host import format or version");if(!Array.isArray(data.addresses)||data.addresses.length===0||data.addresses.length>64||data.addresses.some(address=>!validHost({...data,address})))throw Error("Invalid host import fields");element("host-name").value=data.name;element("host-user").value=data.username;element("host-port").value=data.port;element("import-address").replaceChildren(...data.addresses.map(address=>new Option(address,address)));element("address-choice").hidden=data.addresses.length===1;element("host-address").value=data.addresses.length===1?data.addresses[0]:"";if(data.addresses.length>1)element("import-address").prepend(new Option("Choose a reachable address","",true,true));element("host-form-error").textContent=data.addresses.length>1?"Choose one of the reported addresses before saving.":""}catch(error){element("host-form-error").textContent=error.message}}
 function openTaskDialog(task=null){editingTask=task;taskTargetHost=view().name==="hosts"&&view().id?view().id:view().params.get("host_id");element("task-form").reset();element("task-name").value=task?.name||"";element("task-description").value=task?.description||"";element("task-mode").value=task?.mode||"command";element("task-argv").value=task?.argv?JSON.stringify(task.argv):"";element("task-shell").value=task?.shell_command||"";for(const field of ["distributions","versions","programs","packages"])element(`task-${field}`).value=(task?.requirements?.[field]||[]).join(", ");element("task-sudo").checked=task?.requirements?.requires_sudo||false;element("task-enabled").checked=task?.enabled??true;element("task-form-error").textContent="";element("task-target").textContent=taskTargetHost?"After saving, check compatibility and assign this task to the current host.":"After saving, open a host to check compatibility and assign this task.";element("task-dialog-title").textContent=task?"Edit task":"Create task";element("task-dialog").showModal()}
-async function addTask(event){event.preventDefault();try{const mode=element("task-mode").value;const requirements={requires_sudo:element("task-sudo").checked};for(const field of ["distributions","versions","programs","packages"])requirements[field]=element(`task-${field}`).value.split(",").map(v=>v.trim()).filter(Boolean);const body={name:element("task-name").value.trim(),description:element("task-description").value.trim(),mode,argv:mode==="command"?JSON.parse(element("task-argv").value):null,shell_command:mode==="shell"?element("task-shell").value:null,enabled:element("task-enabled").checked,requirements};if(mode==="command"&&(!Array.isArray(body.argv)||!body.argv.length||body.argv.some(v=>typeof v!=="string"||!v)))throw Error("Enter a non-empty JSON string array.");if(await mutate(event.submitter,editingTask?`custom-tasks/${editingTask.id}`:"custom-tasks",editingTask?"PATCH":"POST",body,editingTask?"Task updated":"Task added"))element("task-dialog").close();else element("task-form-error").textContent=element("message").textContent}catch(error){element("task-form-error").textContent=error.message}}
+async function addTask(event){event.preventDefault();try{const mode=element("task-mode").value;const requirements={requires_sudo:element("task-sudo").checked};for(const field of ["distributions","versions","programs","packages"])requirements[field]=element(`task-${field}`).value.split(",").map(v=>v.trim()).filter(Boolean);const body={name:element("task-name").value.trim(),description:element("task-description").value.trim(),mode,argv:mode==="command"?JSON.parse(element("task-argv").value):null,shell_command:mode==="shell"?element("task-shell").value:null,enabled:element("task-enabled").checked,requirements};if(mode==="command"&&(!Array.isArray(body.argv)||!body.argv.length||body.argv.some(v=>typeof v!=="string"||!v)))throw Error("Enter a non-empty JSON string array.");if(await mutate(event.submitter,editingTask?`custom-tasks/${editingTask.id}`:"custom-tasks",editingTask?"PATCH":"POST",body,editingTask?"Task updated":"Task added"))element("task-dialog").close();else element("task-form-error").textContent=element("message-text").textContent}catch(error){element("task-form-error").textContent=error.message}}
 async function copyText(value){if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(value);return}const area=document.createElement("textarea");area.value=value;area.setAttribute("readonly","");area.style.position="fixed";area.style.opacity="0";(document.querySelector("dialog[open]")||document.body).appendChild(area);area.select();const copied=document.execCommand("copy");area.remove();if(!copied)throw Error("Clipboard unavailable. Select and copy the displayed text manually.")}
-async function copySetup(button){if(!setupCommand||button.disabled)return;const copied=await run(button,()=>copyText(setupCommand),"Setup command copied");element("setup-status").textContent=copied?"Script copied. Run it on the target as root.":element("message").textContent;updateSetupConsent()}
+async function copySetup(button){if(!setupCommand||button.disabled)return;const copied=await run(button,()=>copyText(setupCommand),"Setup command copied");element("setup-status").textContent=copied?"Script copied. Run it on the target as root.":element("message-text").textContent;updateSetupConsent()}
 
 
 async function copyKey(button){if(!state.public_key){message("Connect before copying the public key.","error");return}await run(button,()=>copyText(state.public_key),"Copied")}
@@ -646,7 +704,7 @@ async function removeHost(button,hostId){
     location.hash="/hosts";
     await refreshDashboard();
   },"Host removed");
-  if(!success&&element("host-dialog").open)element("host-form-error").textContent=element("message").textContent;
+  if(!success&&element("host-dialog").open)element("host-form-error").textContent=element("message-text").textContent;
 }
 async function hostClick(event){const button=event.target.closest("button");if(!button)return;const hostId=button.dataset.host;if(button.dataset.action&&hostId){const action=button.dataset.action;if(action==="update-package"){if(button.dataset.package)await updatePackages(button,button.dataset.package);return}if(["update","reboot"].includes(action)&&!await confirmAction(action==="reboot"?"Restart host?":"Run system update?",`${action==="reboot"?"Restart":"Run regular system updates on"} ${state.hosts.find(host=>host.id===hostId)?.name||"this host"}?`,[],action==="reboot"?"Restart":"Queue update"))return;await mutate(button,hostActionPath(hostId,action),"POST",undefined,`${action.replace("_"," ")} queued`);return}if(button.dataset.deleteHost){await removeHost(button,button.dataset.deleteHost);return}if(button.dataset.editHost)openHostDialog(state.hosts.find(value=>value.id===button.dataset.editHost))}
 async function taskClick(event){const button=event.target.closest("button");if(!button)return;const host=button.dataset.host;if(button.dataset.task&&host){if(await confirmAction("Run custom task?",`Run ${state.custom_tasks.find(task=>task.id===button.dataset.task)?.name||"this task"} on ${state.hosts.find(item=>item.id===host)?.name||"this host"}? Prerequisites will be checked again.`,[],"Run task"))await mutate(button,customTaskPath(host,button.dataset.task),"POST",undefined,"Task queued");return}if(button.dataset.checkTask){await run(button,async()=>{await request(`hosts/${host}/tasks/${button.dataset.checkTask}/check`,{method:"POST"});await loadView();render()},"Compatibility checked");return}if(button.dataset.assignTask){const result=currentHostTasks.find(c=>c.task_id===button.dataset.assignTask);await mutate(button,`hosts/${host}/tasks/${button.dataset.assignTask}/assignment`,"PUT",{enabled:!result?.enabled},"Assignment updated");return}if(button.dataset.unassignTask){await mutate(button,`hosts/${host}/tasks/${button.dataset.unassignTask}/assignment`,"DELETE",undefined,"Task unassigned");return}if(button.dataset.toggleTask){const task=state.custom_tasks.find(t=>t.id===button.dataset.toggleTask);await mutate(button,`custom-tasks/${task.id}`,"PATCH",{enabled:!task.enabled},"Task updated");return}if(button.dataset.deleteTask){if(await confirmAction("Delete task?",`Delete ${state.custom_tasks.find(task=>task.id===button.dataset.deleteTask)?.name||"this task"}?`,[],"Delete task"))await mutate(button,`custom-tasks/${button.dataset.deleteTask}`,"DELETE",undefined,"Task deleted");return}if(button.dataset.editTask)openTaskDialog(state.custom_tasks.find(value=>value.id===button.dataset.editTask))}
@@ -697,7 +755,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   element("copy-job-link").addEventListener("click",event=>run(event.currentTarget,()=>copyText(new URL(`#/jobs/${selectedJobId}`,location.href).href),"Job link copied"));
   element("copy-job-log").addEventListener("click",event=>run(event.currentTarget,()=>copyText(selectedJobLog||""),"Redacted log copied"));
   element("download-job-log").addEventListener("click",downloadJobLog);
-  element("rerun-job").addEventListener("click",event=>rerunJob(event.currentTarget).catch(error=>message(error.message,"error")));
+  element("rerun-job").addEventListener("click",event=>rerunJob(event.currentTarget).catch(error=>showFailure(error)));
   element("job-log-search").addEventListener("input",()=>renderJobLog(true));
   for(const [id,delta] of [["job-log-next",1],["job-log-previous",-1]])element(id).addEventListener("click",()=>{jobLogMatch=(jobLogMatch+delta+jobLogMatches.length)%jobLogMatches.length;updateLogMatch(true)});
   element("job-log-wrap").addEventListener("change",event=>element("log").classList.toggle("wrap-log",event.target.checked));
@@ -715,6 +773,12 @@ document.addEventListener("DOMContentLoaded",()=>{
   element("auto-host-checks").addEventListener("change",event=>{stopVisibleChecks();state.preferences={enabled:event.target.checked};return run(event.target,async()=>{state.preferences=await request("preferences/host-checks",{method:"PATCH",body:{enabled:event.target.checked}});stopVisibleChecks();render()},"Host check preference saved")});
   document.addEventListener("visibilitychange",syncVisibleChecks);
   element("log-preview-link").addEventListener("click",()=>element("log-preview").close());
+  element("job-error-details").addEventListener("click",()=>showFailure(selectedJobFailure));
+  element("history-retry").addEventListener("click",()=>run(null,async()=>{await loadView();render()}));
+  element("history-error-details").addEventListener("click",()=>showFailure(currentHistoryError,"Could not load job history. Retry the history request."));
+  element("copy-error-diagnostic").addEventListener("click",async event=>{const button=event.currentTarget;try{await copyText(JSON.stringify(lastDiagnostic,null,2));button.textContent="Copied"}catch{button.textContent="Copy unavailable; select the details"}});
+  window.addEventListener("error",event=>{if(event.error)showFailure(new RequestFailure("operation_failed","Unhandled UI failure"))});
+  window.addEventListener("unhandledrejection",()=>showFailure(new RequestFailure("operation_failed","Unhandled UI failure")));
   window.addEventListener("hashchange",()=>{if(connected)run(null,async()=>{await loadView();render();await loadJobRoute()})});initialize();
 });
 window.addEventListener("pagehide",()=>{stopJobPolling();stopVisibleChecks()});

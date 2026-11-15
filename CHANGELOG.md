@@ -5,6 +5,24 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ## [Unreleased]
 
+### Fixed
+
+- Preserve graph/table job history on older SQLite runtimes without the subsecond
+  modifier, including UTC offsets and precise start/end boundaries.
+- Show failed-job titles in the error color with an explicit outcome label;
+  distinguish unavailable history from empty results and mark cached results stale.
+
+### Added
+
+- Safe expandable/copyable failure diagnostics and retry/recovery indications.
+  API errors add request references; worker failures retain a protected job reference.
+- An explicit synthetic preview option to demonstrate history failure and recovery.
+
+### Security
+
+- Avoid raw unexpected exception traces in worker/API/HA configuration logging,
+  suppress backend HTTP access logs and redact validation input/context/extra keys.
+
 ## [0.3.0-dev.5] - Unpublished
 
 ### Added

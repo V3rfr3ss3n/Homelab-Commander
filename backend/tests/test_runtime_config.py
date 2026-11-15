@@ -143,6 +143,7 @@ def test_uvicorn_main_uses_factory_and_safe_listener() -> None:
         host="0.0.0.0",
         port=8099,
         proxy_headers=True,
+        access_log=False,
     )
 
 

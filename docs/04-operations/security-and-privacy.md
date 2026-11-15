@@ -211,3 +211,19 @@ failure states survive UI refresh; stale entries and logout cancel/remove cached
 attempts. Operators explicitly retry from Edit host. External browser/Cloudflare
 access policies remain authoritative. See
 [ADR-0015](../02-architecture/adr/0015-stable-website-icons.md).
+
+## Safe failure diagnostics (ADR-0021)
+
+Unexpected request/worker failures record only a server-generated request reference
+or technical job reference, static operation and bounded source filenames/line
+numbers. Exception messages, source lines, locals, request targets, query values,
+response bodies and configuration are not logged by this boundary. The standard
+backend entrypoint disables HTTP access logs, which otherwise include request
+targets and query strings. HA configuration failures no longer log raw exception
+tracebacks; only bounded safe code locations remain. HTTP error references are accepted by the HA adapter only as exactly
+32 lowercase hexadecimal characters; untrusted response details remain excluded.
+
+Validation errors remove submitted input/context and replace unknown extra-field
+names before serialization. The UI diagnostic copy action exports an allowlist,
+not exception/response strings. It neither sends telemetry nor changes protected
+job-log access. Existing HTTP status, CSRF and authentication boundaries remain.

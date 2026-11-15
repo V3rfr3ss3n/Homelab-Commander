@@ -366,6 +366,7 @@ async def test_job_manager_handles_stale_identities_and_claims(tmp_path: Path) -
 
 async def test_job_manager_sanitizes_unknown_failures_and_large_output(
     tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Unexpected errors expose only a stable code and logs remain byte bounded."""
     database = Database(tmp_path / "failure.db")
@@ -390,7 +391,12 @@ async def test_job_manager_sanitizes_unknown_failures_and_large_output(
     persisted = await repository.async_get(job.id)
     assert persisted is not None
     assert persisted.error_code == "internal_execution_error"
-    assert await repository.async_log(job.id) is not None
+    log = await repository.async_log(job.id)
+    assert log is not None
+    assert str(job.id) in log.output
+    assert str(job.id) in caplog.text
+    assert "synthetic internal detail" not in log.output + caplog.text
+    assert "test_jobs.py:" in caplog.text
 
     assert _safe_output("synthetic\x00", None) == ("synthetic", False)
     output, truncated = _safe_output("å" * MAX_JOB_LOG_BYTES, host)

@@ -1,7 +1,7 @@
 """The actual VS Code/CLI preview must obey the package snapshot contract."""
 
 import asyncio
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -120,11 +120,33 @@ def test_contradictory_adapter_snapshot_cannot_clear_stored_status(
 
 def test_preview_entrypoint_binds_loopback_and_disables_proxy_trust() -> None:
     with patch("uvicorn.run") as run:
-        main()
+        main([])
     assert run.call_args.kwargs["host"] == "127.0.0.1"
     assert run.call_args.kwargs["port"] == 8100
     assert run.call_args.kwargs["proxy_headers"] is False
     assert run.call_args.kwargs["access_log"] is False
+
+
+def test_preview_history_failure_once_recovers_without_losing_jobs(
+    tmp_path: Path,
+) -> None:
+    with TestClient(
+        create_preview(tmp_path, history_failure_once=True),
+        client=("127.0.0.1", 50000),
+    ) as client:
+        now = datetime.now(UTC)
+        params = {
+            "start": (now - timedelta(days=7)).isoformat(),
+            "end": now.isoformat(),
+        }
+        assert client.get("/ui-api/jobs/page").status_code == 200
+        failed = client.get("/ui-api/jobs/timeline", params=params)
+        assert failed.status_code == 503
+        assert len(failed.headers["X-Request-ID"]) == 32
+        recovered = client.get("/ui-api/jobs/timeline", params=params)
+        assert recovered.status_code == 200
+        assert recovered.json()["total"] == 14
+        assert client.get("/ui-api/jobs/page", params=params).json()["total"] == 14
 
 
 async def test_preview_vim_update_and_package_toolbar_on_desktop_and_mobile(

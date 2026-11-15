@@ -6,7 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 from .database import Database
-from .jobs import JOB_TIME, NEEDS_REVIEW, JobRepository, job_filter
+from .jobs import JOB_TIMESTAMP, NEEDS_REVIEW, JobRepository, job_filter
 from .models import Job, JobAction, JobState
 
 
@@ -55,10 +55,10 @@ class TimelineService:
         clause, parameters = job_filter(host_id, state, False, start, end, action)
         width = (end - start).total_seconds() / bins
         rows = await self._database.async_fetch_all(
-            f"SELECT CAST((unixepoch({JOB_TIME}, 'subsec') - ?) / ? AS INTEGER) "
+            f"SELECT CAST(({JOB_TIMESTAMP} - ?) / ? AS INTEGER) "
             f"AS bucket, jobs.state, COUNT(*) AS count, "
             f"SUM({NEEDS_REVIEW}) AS review_required, "
-            f"AVG(unixepoch({JOB_TIME}, 'subsec')) AS timestamp "
+            f"AVG({JOB_TIMESTAMP}) AS timestamp "
             f"FROM jobs{clause} GROUP BY bucket,jobs.state ORDER BY bucket",
             (start.timestamp(), width, *parameters),
         )

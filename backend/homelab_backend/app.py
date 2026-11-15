@@ -28,6 +28,7 @@ from .config import Settings
 from .custom_tasks import CustomTaskRepository, ShellTasksDisabledError
 from .dashboard import DashboardService, DashboardSummary, JobPage
 from .database import Database
+from .errors import install_error_handlers
 from .hosts import DuplicateHostError, HostRepository
 from .jobs import JobManager, JobRepository, JobSort
 from .models import (
@@ -136,6 +137,7 @@ def create_app(
         docs_url="/api/docs",
         openapi_url="/api/openapi.json",
     )
+    install_error_handlers(app)
 
     async def authorize(
         credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],

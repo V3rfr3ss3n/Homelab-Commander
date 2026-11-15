@@ -28,6 +28,9 @@ GitHub milestone creation and assigning milestone IDs still require repository t
 - [#39](https://github.com/V3rfr3ss3n/Homelab-Commander/issues/39) — HA Backend App version discovery and reliable upgrades.
 - [#60](https://github.com/V3rfr3ss3n/Homelab-Commander/issues/60) — Ansible GPL and bundled-dependency compliance review.
 - [#61](https://github.com/V3rfr3ss3n/Homelab-Commander/issues/61) — Deferred Dependabot changes after dev.5.
+- [#62](https://github.com/V3rfr3ss3n/Homelab-Commander/issues/62) — Dashboard history and failed-outcome visibility.
+- [#63](https://github.com/V3rfr3ss3n/Homelab-Commander/issues/63) — Error-handling audit and safe actionable diagnostics.
+- #62/#63 form the current local-test stabilization block; #41 follows separately. No development release is implied.
 - This work remains active across all six milestones. #38 and #39 are existing issues, not duplicated.
 
 ## Intended label taxonomy

@@ -12,6 +12,11 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## In Arbeit
 
+- [ ] Gemeinsamer Stabilisierungs-MR für GitHub #62/#63: SQLite-kompatibler
+  Jobverlauf, Fehlerfarben und sichere Diagnosen. Lokale Abnahme und Review
+  stehen vor Merge; #41 bleibt ein separater Folgeschritt. Kein Versionssprung
+  oder Release in diesem Block.
+
 - [ ] T-032 Den Release Candidate `0.3.0-dev.4` nach Merge öffentlich bauen und
   die [[../04-operations/public-install-checklist|frische Installation]] sowie
   den App-Store-Upgrade von dev.3 auf dev.4 mit erhaltener `/data` und

@@ -15,6 +15,7 @@ from .automation import (
 )
 from .custom_tasks import CustomTaskRepository
 from .database import Database
+from .failure_logging import log_internal_failure
 from .hosts import HostRepository
 from .models import Host, Job, JobAction, JobLog, JobState
 from .task_compatibility import TaskCompatibilityService
@@ -22,6 +23,7 @@ from .task_compatibility import TaskCompatibilityService
 MAX_JOB_LOG_BYTES = 64 * 1024
 _MUTATING_ACTIONS = frozenset({JobAction.UPDATE, JobAction.REBOOT})
 JOB_TIME = "COALESCE(jobs.finished_at,jobs.started_at,jobs.created_at)"
+JOB_TIMESTAMP = f"hlc_timestamp({JOB_TIME})"
 NEEDS_REVIEW = (
     "(jobs.state='failed' AND jobs.reviewed_at IS NULL "
     "AND NOT EXISTS(SELECT 1 FROM jobs later WHERE later.state='success' "
@@ -115,11 +117,11 @@ class JobRepository:
         order = "jobs.finished_at DESC" if completed else "jobs.created_at DESC"
         if sort is not None:
             order = {
-                "newest": f"{JOB_TIME} DESC",
-                "oldest": f"{JOB_TIME} ASC",
-                "host": f"hosts.name COLLATE NOCASE ASC, {JOB_TIME} DESC",
-                "action": f"jobs.action ASC, {JOB_TIME} DESC",
-                "state": f"jobs.state ASC, {JOB_TIME} DESC",
+                "newest": f"{JOB_TIMESTAMP} DESC",
+                "oldest": f"{JOB_TIMESTAMP} ASC",
+                "host": f"hosts.name COLLATE NOCASE ASC, {JOB_TIMESTAMP} DESC",
+                "action": f"jobs.action ASC, {JOB_TIMESTAMP} DESC",
+                "state": f"jobs.state ASC, {JOB_TIMESTAMP} DESC",
             }[sort]
         rows = await self._database.async_fetch_all(
             f"{_SELECT}{clause} ORDER BY {order}, jobs.id DESC LIMIT ? OFFSET ?",
@@ -376,8 +378,14 @@ class JobManager:
             await self._finish_failure(
                 job, host, err.code, err.output, exit_code=err.exit_code
             )
-        except Exception:
-            await self._finish_failure(job, host, "internal_execution_error", "")
+        except Exception as error:
+            log_internal_failure(error, str(job.id), "execute_job")
+            await self._finish_failure(
+                job,
+                host,
+                "internal_execution_error",
+                f"Internal execution failure. Reference: {job.id}",
+            )
 
     async def _execute_builtin(self, job: Job, host: Host) -> ExecutionResult:
         if job.package_names:
@@ -507,10 +515,10 @@ def job_filter(
         clauses.append("jobs.action = ?")
         parameters.append(action)
     if start is not None:
-        clauses.append(f"unixepoch({JOB_TIME}, 'subsec') >= ?")
+        clauses.append(f"{JOB_TIMESTAMP} >= ?")
         parameters.append(start.timestamp())
     if end is not None:
-        clauses.append(f"unixepoch({JOB_TIME}, 'subsec') < ?")
+        clauses.append(f"{JOB_TIMESTAMP} < ?")
         parameters.append(end.timestamp())
     if completed:
         clauses.append("jobs.finished_at IS NOT NULL")

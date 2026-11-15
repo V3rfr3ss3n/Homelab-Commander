@@ -1,14 +1,17 @@
 """Explicit loopback-only UI preview with disposable data and synthetic execution."""
 
-from collections.abc import AsyncIterator
+from argparse import ArgumentParser
+from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import uvicorn
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from .app import create_app
 from .automation import ExecutionResult, HostSnapshot
@@ -197,7 +200,36 @@ async def seed_demo(settings: Settings, executor: PreviewExecutor) -> None:
             )
 
 
-def create_preview(data_dir: Path) -> FastAPI:
+class PreviewHistoryFailure:
+    """One explicit, loopback-only synthetic failure followed by normal recovery."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+        self.pending = True
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if (
+            self.pending
+            and scope["type"] == "http"
+            and (scope.get("client") or (None,))[0] == "127.0.0.1"
+            and scope["path"] in {"/ui-api/jobs/timeline", "/ui-api/jobs/page"}
+            and b"start=" in scope["query_string"]
+        ):
+            self.pending = False
+            reference = uuid4().hex
+            await JSONResponse(
+                {
+                    "detail": "Synthetic preview history failure",
+                    "error_code": "http_503",
+                },
+                status_code=503,
+                headers={"X-Request-ID": reference, "Cache-Control": "no-store"},
+            )(scope, receive, send)
+            return
+        await self.app(scope, receive, send)
+
+
+def create_preview(data_dir: Path, *, history_failure_once: bool = False) -> FastAPI:
     """Simulate Ingress locally: loopback is the only accepted UI source."""
     settings = Settings(
         data_dir=data_dir,
@@ -208,6 +240,8 @@ def create_preview(data_dir: Path) -> FastAPI:
     app = create_app(
         settings, executor=executor, ingress_proxy_addresses=frozenset({"127.0.0.1"})
     )
+    if history_failure_once:
+        app.add_middleware(PreviewHistoryFailure)
     original_lifespan = app.router.lifespan_context
 
     @asynccontextmanager
@@ -220,11 +254,16 @@ def create_preview(data_dir: Path) -> FastAPI:
     return app
 
 
-def main() -> None:
+def main(argv: Sequence[str] | None = None) -> None:
     """Use fresh disposable data on every F5 launch; never production state."""
+    parser = ArgumentParser(description=__doc__)
+    parser.add_argument("--history-failure-once", action="store_true")
+    arguments = parser.parse_args(argv)
     with TemporaryDirectory(prefix="homelab-commander-vscode-demo-") as directory:
         uvicorn.run(
-            create_preview(Path(directory)),
+            create_preview(
+                Path(directory), history_failure_once=arguments.history_failure_once
+            ),
             host="127.0.0.1",
             port=8100,
             proxy_headers=False,
