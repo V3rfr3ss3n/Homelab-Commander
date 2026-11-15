@@ -41,7 +41,10 @@ class FakeExecutor:
         self.fail = fail
         self.calls: list[tuple[JobAction, UUID]] = []
 
-    async def async_execute(self, action: JobAction, host: Host) -> ExecutionResult:
+    async def async_execute(
+        self, action: JobAction, host: Host, package_name: str | None = None
+    ) -> ExecutionResult:
+        del package_name
         self.calls.append((action, host.id))
         if self.fail:
             raise AutomationExecutionError(
@@ -85,9 +88,11 @@ class PendingExecutor(FakeExecutor):
         super().__init__()
         self.release = asyncio.Event()
 
-    async def async_execute(self, action: JobAction, host: Host) -> ExecutionResult:
+    async def async_execute(
+        self, action: JobAction, host: Host, package_name: str | None = None
+    ) -> ExecutionResult:
         await self.release.wait()
-        return await super().async_execute(action, host)
+        return await super().async_execute(action, host, package_name)
 
     async def async_release(self) -> None:
         self.release.set()

@@ -6,13 +6,13 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from .database import Database
-from .models import Host, HostCreate, HostPatch, HostWebsite
+from .models import Host, HostCreate, HostPatch, HostWebsite, PackageInfo
 
 _SELECT = (
     "SELECT id, name, address, port, username, package_provider, "
     "distribution, distribution_version, kernel, updates, security_updates, "
     "reboot_required, status, checked_at, created_at, updated_at, "
-    "websites_json FROM hosts"
+    "websites_json, packages_json FROM hosts"
 )
 
 
@@ -39,8 +39,8 @@ class HostRepository:
             await self._database.async_execute(
                 "INSERT INTO hosts "
                 "(id, name, address, port, username, package_provider, "
-                "created_at, updated_at, websites_json) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "created_at, updated_at, websites_json, packages_json) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 _values(host),
             )
         except sqlite3.IntegrityError as err:
@@ -73,7 +73,8 @@ class HostRepository:
         try:
             await self._database.async_execute(
                 "UPDATE hosts SET name = ?, address = ?, port = ?, username = ?, "
-                "package_provider = ?, updated_at = ?, websites_json = ? WHERE id = ?",
+                "package_provider = ?, updated_at = ?, websites_json = ?, "
+                "packages_json = ? WHERE id = ?",
                 (
                     updated.name,
                     updated.address,
@@ -83,6 +84,9 @@ class HostRepository:
                     updated.updated_at.isoformat(),
                     json.dumps([
                         site.model_dump(mode="json") for site in updated.websites
+                    ]),
+                    json.dumps([
+                        package.model_dump(mode="json") for package in updated.packages
                     ]),
                     str(updated.id),
                 ),
@@ -127,12 +131,14 @@ class HostRepository:
         reboot_required: bool,
         status: str,
         checked_at: datetime,
+        packages: tuple[PackageInfo, ...],
     ) -> None:
         """Persist one normalized status snapshot."""
         await self._database.async_execute(
             "UPDATE hosts SET distribution = ?, distribution_version = ?, "
             "kernel = ?, updates = ?, security_updates = ?, reboot_required = ?, "
-            "status = ?, checked_at = ?, updated_at = ? WHERE id = ?",
+            "status = ?, checked_at = ?, updated_at = ?, packages_json = ? "
+            "WHERE id = ?",
             (
                 distribution,
                 distribution_version,
@@ -143,6 +149,7 @@ class HostRepository:
                 status,
                 checked_at.isoformat(),
                 datetime.now(UTC).isoformat(),
+                json.dumps([package.model_dump(mode="json") for package in packages]),
                 str(host_id),
             ),
         )
@@ -159,6 +166,7 @@ def _values(host: Host) -> tuple[object, ...]:
         host.created_at.isoformat(),
         host.updated_at.isoformat(),
         json.dumps([site.model_dump(mode="json") for site in host.websites]),
+        json.dumps([package.model_dump(mode="json") for package in host.packages]),
     )
 
 
@@ -173,6 +181,10 @@ def _host_from_row(row: sqlite3.Row) -> Host:
         websites=tuple(
             HostWebsite.model_validate(site)
             for site in json.loads(row["websites_json"])
+        ),
+        packages=tuple(
+            PackageInfo.model_validate(package)
+            for package in json.loads(row["packages_json"])
         ),
         distribution=row["distribution"],
         distribution_version=row["distribution_version"],

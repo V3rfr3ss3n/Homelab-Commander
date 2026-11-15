@@ -1,7 +1,7 @@
 ---
 title: TODO
 status: active
-updated: 2026-11-11
+updated: 2026-11-14
 tags: [project, todo]
 ---
 
@@ -19,6 +19,11 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
   `version_latest` auf dev.3 bleibt ein offener Abnahmefehler. Owner-Entscheidung
   2026-11-11: dev.4 nach grünen automatischen Gates veröffentlichen; Store/App-
   Upgrade wird anschließend vom Operator geprüft, ohne separate Testinstanz.
+
+- [x] `0.3.0-dev.5` Paketdetails: persistierte, auf 50 Einträge begrenzte
+  Hostpaketlisten, zwei read-only Endpunkte und Hostdetailkarte geliefert.
+  Einzel-/Auswahl-/Gesamtupdates, Skip all und konsistente Nachprüfung ergänzt.
+  Vor Veröffentlichung: [dev.5-Abnahme](../05-reviews/2026-11-14-dev5-acceptance.md).
 
 - [x] dev.4-Stabilisierung: explizite Browser-Lokalisierung und vollständige aktive
   Jobseiten für Hostzähler/Aktionssperren; gemeinsamer Stand aus !30–!33.

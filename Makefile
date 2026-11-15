@@ -1,4 +1,4 @@
-.PHONY: audit browser-install docs format format-check lint privacy quality quality-fast release-check test types
+.PHONY: audit browser-install docs format format-check lint privacy quality quality-fast release-check test tests types
 
 browser-install:
 	uv run playwright install chromium
@@ -19,6 +19,8 @@ types:
 test:
 	uv run pytest --cov --cov-branch --cov-report=term-missing --cov-report=json
 	uv run python scripts/check_coverage.py
+
+tests: test
 
 audit:
 	uv run python scripts/check_security_exceptions.py

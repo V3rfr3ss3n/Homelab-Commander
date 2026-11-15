@@ -1,6 +1,7 @@
 """Persistent asynchronous job queue and lifecycle service."""
 
 import asyncio
+import json
 import sqlite3
 from contextlib import suppress
 from datetime import UTC, datetime
@@ -26,6 +27,8 @@ NEEDS_REVIEW = (
     "AND NOT EXISTS(SELECT 1 FROM jobs later WHERE later.state='success' "
     "AND later.host_id IS jobs.host_id AND later.action=jobs.action "
     "AND later.custom_task_id IS jobs.custom_task_id "
+    "AND later.package_name IS jobs.package_name "
+    "AND later.package_names_json = jobs.package_names_json "
     "AND later.created_at>jobs.created_at))"
 )
 JobSort = Literal["newest", "oldest", "host", "action", "state"]
@@ -33,7 +36,9 @@ JobSort = Literal["newest", "oldest", "host", "action", "state"]
 _SELECT = (
     "SELECT jobs.id, jobs.action, jobs.host_id, hosts.name AS host_name, jobs.state, "
     "jobs.created_at, jobs.started_at, jobs.finished_at, jobs.exit_code, "
-    "jobs.error_code, jobs.reboot_required, jobs.custom_task_id, jobs.reviewed_at, "
+    "jobs.error_code, jobs.reboot_required, jobs.custom_task_id, "
+    "jobs.package_name, jobs.package_names_json, "
+    "jobs.reviewed_at, "
     f"{NEEDS_REVIEW} AS needs_review, "
     "EXISTS(SELECT 1 FROM job_logs WHERE job_logs.job_id = jobs.id) "
     "AS log_available FROM jobs LEFT JOIN hosts ON hosts.id = jobs.host_id"
@@ -53,26 +58,34 @@ class JobRepository:
         *,
         host_name: str | None = None,
         custom_task_id: UUID | None = None,
+        package_name: str | None = None,
+        package_names: tuple[str, ...] = (),
     ) -> Job:
         now = datetime.now(UTC)
+        package_names = tuple(sorted(package_names))
         job = Job(
             id=uuid4(),
             action=action,
             host_id=host_id,
             host_name=host_name,
             custom_task_id=custom_task_id,
+            package_name=package_name,
+            package_names=package_names,
             state=JobState.QUEUED,
             created_at=now,
         )
         await self._database.async_execute(
             "INSERT INTO jobs "
-            "(id, action, host_id, custom_task_id, state, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
+            "(id, action, host_id, custom_task_id, package_name, "
+            "package_names_json, state, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 str(job.id),
                 job.action,
                 str(host_id),
                 str(custom_task_id) if custom_task_id is not None else None,
+                package_name,
+                json.dumps(package_names),
                 job.state,
                 now.isoformat(),
             ),
@@ -263,12 +276,24 @@ class JobManager:
                 await worker
         self._workers.clear()
 
-    async def async_enqueue(self, action: JobAction, host_id: UUID) -> Job:
+    async def async_enqueue(
+        self,
+        action: JobAction,
+        host_id: UUID,
+        package_name: str | None = None,
+        package_names: tuple[str, ...] = (),
+    ) -> Job:
         """Validate the exact target before creating persistent work."""
         host = await self._hosts.async_get(host_id)
         if host is None:
             raise KeyError("Host not found")
-        job = await self._repository.async_create(action, host_id, host_name=host.name)
+        job = await self._repository.async_create(
+            action,
+            host_id,
+            host_name=host.name,
+            package_name=package_name,
+            package_names=package_names,
+        )
         self._queue.put_nowait(job.id)
         return job
 
@@ -343,9 +368,9 @@ class JobManager:
                     )
             elif job.action in _MUTATING_ACTIONS:
                 async with lock:
-                    result = await self._executor.async_execute(job.action, host)
+                    result = await self._execute_builtin(job, host)
             else:
-                result = await self._executor.async_execute(job.action, host)
+                result = await self._execute_builtin(job, host)
             await self._finish_success(job, host, result)
         except AutomationExecutionError as err:
             await self._finish_failure(
@@ -353,6 +378,17 @@ class JobManager:
             )
         except Exception:
             await self._finish_failure(job, host, "internal_execution_error", "")
+
+    async def _execute_builtin(self, job: Job, host: Host) -> ExecutionResult:
+        if job.package_names:
+            return await self._executor.async_execute(
+                job.action, host, package_names=job.package_names
+            )
+        if job.package_name is not None:
+            return await self._executor.async_execute(
+                job.action, host, job.package_name
+            )
+        return await self._executor.async_execute(job.action, host)
 
     async def _finish_success(
         self, job: Job, host: Host, result: ExecutionResult
@@ -369,6 +405,7 @@ class JobManager:
                 reboot_required=snapshot.reboot_required,
                 status=snapshot.status,
                 checked_at=snapshot.checked_at,
+                packages=snapshot.packages,
             )
         output, truncated = _safe_output(result.output, host)
         await self._repository.async_finish(
@@ -421,6 +458,8 @@ def _job_from_row(row: sqlite3.Row) -> Job:
         custom_task_id=(
             UUID(row["custom_task_id"]) if row["custom_task_id"] is not None else None
         ),
+        package_name=row["package_name"],
+        package_names=tuple(json.loads(row["package_names_json"])),
         state=JobState(row["state"]),
         created_at=datetime.fromisoformat(row["created_at"]),
         started_at=(

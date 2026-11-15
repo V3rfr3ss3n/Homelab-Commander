@@ -1,7 +1,7 @@
 ---
 title: User Guide
 status: active
-updated: 2026-10-31
+updated: 2026-11-14
 tags: [wiki, user-guide]
 ---
 
@@ -12,7 +12,8 @@ installations can keep their provider; see [configuration](configuration.md).
 
 1. [Install the integration and backend](installation.md).
 2. [Configure the connection and authentication](configuration.md).
-3. [Add hosts and verify access](hosts.md).
+3. [Add hosts and verify access](hosts.md), then review
+   [package details and selection](host-package-details.md) in the dev.5 candidate.
 4. [Check status, install updates and inspect jobs](updates-and-jobs.md).
 5. [Create optional custom tasks](custom-tasks.md).
 

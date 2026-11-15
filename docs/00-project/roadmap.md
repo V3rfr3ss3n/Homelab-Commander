@@ -1,7 +1,7 @@
 ---
 title: Roadmap
 status: active
-updated: 2026-08-21
+updated: 2026-11-12
 tags: [project, roadmap]
 ---
 
@@ -36,7 +36,10 @@ kaschiert.
 
 ## `0.3.x` – Maintenance workflows
 
-- Paketdetails und kompakte Releaseinformationen
+- [x] `0.3.0-dev.5`: Paketdetails mit begrenzter Speicherung, read-only API und
+  Paketdialog und gezielten Einzel-/Auswahlupdates zur Review vorbereitet;
+  [dev.5-Abnahme](../05-reviews/2026-11-14-dev5-acceptance.md) bleibt vor Release offen.
+- Kompakte Releaseinformationen
 - optionale Snapshot-/Backup-Vorbedingungen
 - Hosttypen, Proxmox-Metadaten und Maintenance Mode
 - konfigurierbare Update Policies ohne automatische Reboots
