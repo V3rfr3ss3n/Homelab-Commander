@@ -43,9 +43,13 @@ class BlockingExecutor:
         self.calls = 0
         self.active = 0
         self.maximum_active = 0
+        self.package_names: list[str | None] = []
 
-    async def async_execute(self, _action: JobAction, _host: Host) -> ExecutionResult:
+    async def async_execute(
+        self, _action: JobAction, _host: Host, package_name: str | None = None
+    ) -> ExecutionResult:
         self.calls += 1
+        self.package_names.append(package_name)
         call = self.calls
         self.active += 1
         self.maximum_active = max(self.maximum_active, self.active)
@@ -74,7 +78,10 @@ class BlockingExecutor:
 class ExplodingExecutor(BlockingExecutor):
     """Exercise the defensive unknown-exception boundary."""
 
-    async def async_execute(self, _action: JobAction, _host: Host) -> ExecutionResult:
+    async def async_execute(
+        self, _action: JobAction, _host: Host, package_name: str | None = None
+    ) -> ExecutionResult:
+        del package_name
         raise RuntimeError("synthetic internal detail")
 
 
@@ -116,6 +123,41 @@ async def test_mutating_jobs_are_serialized_per_host(tmp_path: Path) -> None:
         await manager.async_stop()
 
 
+async def test_package_update_job_persists_and_executes_target_name(
+    tmp_path: Path,
+) -> None:
+    """The scoped package identity survives persistence and reaches the executor."""
+    database = Database(tmp_path / "package-update.db")
+    await database.async_migrate()
+    hosts = HostRepository(database)
+    host = await hosts.async_create(
+        HostCreate(
+            name="Node 01",
+            address="node-01.example.invalid",
+            username="automation",
+        )
+    )
+    repository = JobRepository(database)
+    executor = BlockingExecutor()
+    manager = JobManager(
+        repository,
+        hosts,
+        CustomTaskRepository(database, allow_shell=False),
+        executor,
+    )
+    await manager.async_start()
+    try:
+        queued = await manager.async_enqueue(JobAction.UPDATE, host.id, "curl")
+        executor.release_first.set()
+        await manager.async_wait_idle()
+        persisted = await repository.async_get(queued.id)
+        assert persisted is not None
+        assert persisted.package_name == "curl"
+        assert executor.package_names == ["curl"]
+    finally:
+        await manager.async_stop()
+
+
 def test_debian_apt_provider_parses_updates_and_never_requests_reboot() -> None:
     """APT normalization counts package rows and security sources."""
     provider = DebianAptProvider()
@@ -128,6 +170,20 @@ def test_debian_apt_provider_parses_updates_and_never_requests_reboot() -> None:
     assert status.updates == 2
     assert status.security_updates == 1
     assert status.reboot_required
+    assert [item.model_dump() for item in status.packages] == [
+        {
+            "name": "package-a",
+            "old_version": "1.0",
+            "new_version": "2.0",
+            "is_security": False,
+        },
+        {
+            "name": "package-b",
+            "old_version": "2.0",
+            "new_version": "3.0",
+            "is_security": True,
+        },
+    ]
     assert provider.update_module == (
         "ansible.builtin.apt",
         "update_cache=true upgrade=dist",
@@ -143,6 +199,24 @@ def test_debian_apt_provider_parses_updates_and_never_requests_reboot() -> None:
         "/usr/bin/apt",
         "list",
         "--upgradable",
+    )
+
+
+def test_debian_apt_provider_bounds_details_but_keeps_total() -> None:
+    output = "".join(
+        f"package-{index}/stable {'2'} amd64 [upgradable from: 1]\n"
+        for index in range(51)
+    )
+    status = DebianAptProvider().parse_updates(output, reboot_required=False)
+    assert status.updates == 51
+    assert len(status.packages) == 50
+    assert status.packages[0].name == "package-0"
+    assert status.packages[-1].name == "package-49"
+    assert (
+        DebianAptProvider()
+        .parse_updates("Listing...\n", reboot_required=False)
+        .packages
+        == ()
     )
 
 

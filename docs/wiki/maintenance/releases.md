@@ -1,7 +1,7 @@
 ---
 title: Releases and compatibility
 status: active
-updated: 2026-11-11
+updated: 2026-11-14
 tags: [wiki, maintenance]
 ---
 
@@ -113,3 +113,10 @@ Publication results are recorded in the
 [release notes](https://github.com/V3rfr3ss3n/Homelab-Commander/releases/tag/v0.3.0-dev.4).
 See the [candidate evidence](../../05-reviews/2026-11-11-dev4-stabilization.md) for
 completed checks and remaining limits; individual MR runs are not release evidence.
+
+## 0.3.0-dev.5 preparation (unpublished)
+
+Package details and explicit single/selected/full updates are under review.
+[dev.5 acceptance](../../05-reviews/2026-11-14-dev5-acceptance.md) lists the required
+functional, persistence, quality, artifact and operator-upgrade checks. Source
+version bumps alone are not an installable release.

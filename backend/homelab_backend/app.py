@@ -37,12 +37,15 @@ from .models import (
     CustomTaskPatch,
     Host,
     HostCreate,
+    HostListItem,
     HostPatch,
     InfoResponse,
     Job,
     JobAction,
     JobLog,
     JobState,
+    PackagesResponse,
+    PackageUpdateRequest,
     PublicKeyResponse,
     SshUser,
     TaskCompatibility,
@@ -308,13 +311,21 @@ def create_app(
             algorithm="ssh-ed25519", public_key=await keys.async_public_key()
         )
 
-    @app.get("/api/v1/hosts", response_model=list[Host], dependencies=authenticated)
-    async def list_hosts() -> tuple[Host, ...]:
-        return await hosts.async_list()
+    @app.get(
+        "/api/v1/hosts",
+        response_model=list[HostListItem],
+        dependencies=authenticated,
+    )
+    async def list_hosts() -> tuple[HostListItem, ...]:
+        return tuple(
+            HostListItem.model_validate(host.model_dump(exclude={"packages"}))
+            for host in await hosts.async_list()
+        )
 
     @app.post(
         "/api/v1/hosts",
         response_model=Host,
+        response_model_exclude={"packages"},
         status_code=status.HTTP_201_CREATED,
         dependencies=authenticated,
     )
@@ -324,15 +335,40 @@ def create_app(
         except DuplicateHostError as err:
             raise HTTPException(status.HTTP_409_CONFLICT, str(err)) from err
 
-    @app.get("/api/v1/hosts/{host_id}", response_model=Host, dependencies=authenticated)
+    @app.get(
+        "/api/v1/hosts/{host_id}",
+        response_model=Host,
+        response_model_exclude={"packages"},
+        dependencies=authenticated,
+    )
     async def get_host(host_id: UUID) -> Host:
         host = await hosts.async_get(host_id)
         if host is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Host not found")
         return host
 
+    @app.get(
+        "/api/v1/hosts/{host_id}/packages",
+        response_model=PackagesResponse,
+        dependencies=authenticated,
+    )
+    async def get_host_packages(host_id: UUID) -> PackagesResponse:
+        host = await hosts.async_get(host_id)
+        if host is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Host not found")
+        return PackagesResponse(
+            packages=host.packages,
+            total=host.updates,
+            security_updates=host.security_updates,
+            checked_at=host.checked_at,
+            provider=host.package_provider if host.checked_at is not None else None,
+        )
+
     @app.patch(
-        "/api/v1/hosts/{host_id}", response_model=Host, dependencies=authenticated
+        "/api/v1/hosts/{host_id}",
+        response_model=Host,
+        response_model_exclude={"packages"},
+        dependencies=authenticated,
     )
     async def patch_host(host_id: UUID, data: HostPatch) -> Host:
         try:
@@ -353,9 +389,16 @@ def create_app(
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Host not found")
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-    async def enqueue(action: JobAction, host_id: UUID) -> Job:
+    async def enqueue(
+        action: JobAction,
+        host_id: UUID,
+        package_name: str | None = None,
+        package_names: tuple[str, ...] = (),
+    ) -> Job:
         try:
-            return await jobs.async_enqueue(action, host_id)
+            return await jobs.async_enqueue(
+                action, host_id, package_name, package_names
+            )
         except KeyError as err:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Host not found") from err
 
@@ -383,8 +426,16 @@ def create_app(
         status_code=status.HTTP_202_ACCEPTED,
         dependencies=authenticated,
     )
-    async def update_host(host_id: UUID) -> Job:
-        return await enqueue(JobAction.UPDATE, host_id)
+    async def update_host(
+        host_id: UUID,
+        data: PackageUpdateRequest | None = None,
+    ) -> Job:
+        return await enqueue(
+            JobAction.UPDATE,
+            host_id,
+            data.package_name if data is not None else None,
+            data.package_names or () if data is not None else (),
+        )
 
     @app.post(
         "/api/v1/hosts/{host_id}/actions/reboot",
@@ -703,7 +754,10 @@ def create_app(
     async def ui_snapshot() -> dict[str, object]:
         """Return the bounded data needed by the Ingress management page."""
         return {
-            "hosts": await hosts.async_list(),
+            "hosts": [
+                host.model_dump(exclude={"packages"})
+                for host in await hosts.async_list()
+            ],
             "custom_tasks": await custom_tasks.async_list(),
             "jobs": await jobs_repository.async_list(limit=50),
             "public_key": await keys.async_public_key(),
@@ -714,9 +768,33 @@ def create_app(
     async def ui_info() -> InfoResponse:
         return info_response()
 
-    @app.get("/ui-api/hosts", response_model=list[Host], dependencies=ui_authenticated)
-    async def ui_list_hosts() -> tuple[Host, ...]:
-        return await hosts.async_list()
+    @app.get(
+        "/ui-api/hosts",
+        response_model=list[HostListItem],
+        dependencies=ui_authenticated,
+    )
+    async def ui_list_hosts() -> tuple[HostListItem, ...]:
+        return tuple(
+            HostListItem.model_validate(host.model_dump(exclude={"packages"}))
+            for host in await hosts.async_list()
+        )
+
+    @app.get(
+        "/ui-api/hosts/{host_id}/packages",
+        response_model=PackagesResponse,
+        dependencies=ui_authenticated,
+    )
+    async def ui_get_host_packages(host_id: UUID) -> PackagesResponse:
+        host = await hosts.async_get(host_id)
+        if host is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Host not found")
+        return PackagesResponse(
+            packages=host.packages,
+            total=host.updates,
+            security_updates=host.security_updates,
+            checked_at=host.checked_at,
+            provider=host.package_provider if host.checked_at is not None else None,
+        )
 
     @app.get(
         "/ui-api/public-key",
@@ -764,6 +842,7 @@ def create_app(
     @app.post(
         "/ui-api/hosts",
         response_model=Host,
+        response_model_exclude={"packages"},
         status_code=status.HTTP_201_CREATED,
         dependencies=ui_mutation,
     )
@@ -776,6 +855,7 @@ def create_app(
     @app.patch(
         "/ui-api/hosts/{host_id}",
         response_model=Host,
+        response_model_exclude={"packages"},
         dependencies=ui_mutation,
     )
     async def ui_patch_host(host_id: UUID, data: HostPatch) -> Host:
@@ -851,12 +931,23 @@ def create_app(
         status_code=status.HTTP_202_ACCEPTED,
         dependencies=ui_mutation,
     )
-    async def ui_host_action(host_id: UUID, action: JobAction) -> Job:
+    async def ui_host_action(
+        host_id: UUID,
+        action: JobAction,
+        data: PackageUpdateRequest | None = None,
+    ) -> Job:
+        if data is not None and action is not JobAction.UPDATE:
+            raise HTTPException(422, "Package scope is only valid for updates")
         if action is JobAction.CUSTOM_TASK:
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_CONTENT, "Task ID required"
             )
-        return await enqueue(action, host_id)
+        return await enqueue(
+            action,
+            host_id,
+            data.package_name if data else None,
+            data.package_names or () if data else (),
+        )
 
     @app.post(
         "/ui-api/hosts/{host_id}/tasks/{task_id}",

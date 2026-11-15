@@ -12,7 +12,7 @@ from typing import Protocol
 from pydantic import ValidationError
 
 from .ansible_result import RESULT_PREFIX
-from .models import CustomTask, CustomTaskMode, Host, JobAction, ProbeFacts
+from .models import CustomTask, CustomTaskMode, Host, JobAction, PackageInfo, ProbeFacts
 from .package_providers import package_provider
 
 
@@ -28,6 +28,17 @@ class HostSnapshot:
     reboot_required: bool
     status: str
     checked_at: datetime
+    packages: tuple[PackageInfo, ...] = ()
+
+    def __post_init__(self) -> None:
+        """Reject contradictory adapter snapshots before they replace stored status."""
+        if not (
+            0 <= self.security_updates <= self.updates
+            and len(self.packages) <= self.updates
+            and sum(package.is_security for package in self.packages)
+            <= self.security_updates
+        ):
+            raise ValueError("Package snapshot counts do not match its rows")
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,7 +54,14 @@ class ExecutionResult:
 class AutomationExecutor(Protocol):
     """Execute one built-in operation for exactly one host."""
 
-    async def async_execute(self, action: JobAction, host: Host) -> ExecutionResult:
+    async def async_execute(
+        self,
+        action: JobAction,
+        host: Host,
+        package_name: str | None = None,
+        *,
+        package_names: tuple[str, ...] = (),
+    ) -> ExecutionResult:
         """Run the operation without blocking the event loop."""
 
     async def async_execute_custom(
@@ -79,7 +97,14 @@ class AnsibleExecutor:
         self._known_hosts_path = known_hosts_path
         self._command_timeout = command_timeout
 
-    async def async_execute(self, action: JobAction, host: Host) -> ExecutionResult:
+    async def async_execute(
+        self,
+        action: JobAction,
+        host: Host,
+        package_name: str | None = None,
+        *,
+        package_names: tuple[str, ...] = (),
+    ) -> ExecutionResult:
         """Execute a built-in action; reboot is never inferred from update."""
         if action is JobAction.TEST_CONNECTION:
             return await self._async_test_connection(host)
@@ -87,7 +112,14 @@ class AnsibleExecutor:
             return await self._async_check(host)
         if action is JobAction.UPDATE:
             provider = package_provider(host.package_provider)
-            module, arguments = provider.update_module
+            names = package_names or (
+                (package_name,) if package_name is not None else ()
+            )
+            module, arguments = (
+                provider.selected_update_module(names)
+                if names
+                else provider.update_module
+            )
             _, update_output = await self._async_module(
                 host,
                 module,
@@ -237,6 +269,7 @@ class AnsibleExecutor:
             reboot_required=package_status.reboot_required,
             status="ok",
             checked_at=datetime.now().astimezone(),
+            packages=package_status.packages,
         )
         phase_outputs.extend((package_output, reboot_output))
         output = "\n".join(phase_outputs)

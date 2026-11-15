@@ -19,6 +19,8 @@ from backend.homelab_backend.ansible_result import RESULT_PREFIX
 from backend.homelab_backend.automation import (
     AnsibleExecutor,
     AutomationExecutionError,
+    ExecutionResult,
+    HostSnapshot,
     _classify_failure,
     _extract_module_payload,
     _facts_arguments,
@@ -29,6 +31,7 @@ from backend.homelab_backend.models import (
     CustomTaskMode,
     Host,
     JobAction,
+    PackageInfo,
 )
 
 
@@ -156,6 +159,36 @@ async def test_check_and_update_normalize_snapshot_without_rebooting(
     assert all(
         "reboot" not in str(call).split(",")[1]
         for call in executor._async_module.await_args_list[:1]
+    )
+
+
+async def test_update_scopes_to_named_package_or_keeps_full_upgrade(
+    tmp_path: Path,
+) -> None:
+    """Scoped updates target one APT package; absent names retain full upgrades."""
+    executor = AnsibleExecutor(tmp_path / "key", tmp_path / "known_hosts")
+    executor._async_check = AsyncMock(  # type: ignore[method-assign]
+        return_value=ExecutionResult(output="checked")
+    )
+    executor._async_module = AsyncMock(return_value=({}, "updated"))  # type: ignore[method-assign]
+
+    await executor.async_execute(JobAction.UPDATE, _host(), "curl")
+    scoped = executor._async_module.await_args
+    assert scoped.args[1:] == (
+        "ansible.builtin.apt",
+        "update_cache=true name=curl state=latest only_upgrade=true",
+    )
+    assert scoped.kwargs == {
+        "become": True,
+        "failure_code": "update_packages_failed",
+    }
+
+    executor._async_module.reset_mock()
+    await executor.async_execute(JobAction.UPDATE, _host())
+    full = executor._async_module.await_args
+    assert full.args[1:] == (
+        "ansible.builtin.apt",
+        "update_cache=true upgrade=dist",
     )
 
 
@@ -578,3 +611,54 @@ async def test_controller_paths_are_writable_isolated_and_cleaned(
     assert all(not path.exists() for path in (*paths, *scopes))
     assert os.environ["ANSIBLE_HOME"] == inherited_home
     assert os.environ["ANSIBLE_SSH_CONTROL_PATH_DIR"] == inherited_control
+
+
+@pytest.mark.parametrize("selected", [False, True])
+async def test_package_updates_use_latest_and_refresh_remaining_snapshot(
+    tmp_path: Path, selected: bool
+) -> None:
+    """Installed packages must upgrade; the result is a measured fresh snapshot."""
+    executor = AnsibleExecutor(tmp_path / "key", tmp_path / "known_hosts")
+    snapshot = HostSnapshot(
+        distribution="Debian",
+        distribution_version="12",
+        kernel="synthetic",
+        updates=1,
+        security_updates=0,
+        reboot_required=True,
+        status="ok",
+        checked_at=datetime.now(UTC),
+        packages=(PackageInfo(name="openssl", old_version="1", new_version="2"),),
+    )
+    with (
+        patch.object(
+            executor, "_async_module", new=AsyncMock(return_value=({}, "Updated"))
+        ) as module,
+        patch.object(
+            executor,
+            "_async_check",
+            new=AsyncMock(
+                return_value=ExecutionResult(output="Checked", snapshot=snapshot)
+            ),
+        ) as check,
+    ):
+        result = (
+            await executor.async_execute(
+                JobAction.UPDATE, _host(), package_names=("curl", "git")
+            )
+            if selected
+            else await executor.async_execute(JobAction.UPDATE, _host(), "curl")
+        )
+        args = module.await_args.args
+        assert args[1] == "ansible.builtin.apt"
+        assert (
+            args[2]
+            == "update_cache=true name="
+            + ("curl,git" if selected else "curl")
+            + " state=latest only_upgrade=true"
+        )
+        assert "upgrade=dist" not in args[2]
+        check.assert_awaited_once_with(_host(), refresh_cache=False)
+        assert result.snapshot == snapshot
+        assert result.reboot_required
+        assert module.await_count == 1

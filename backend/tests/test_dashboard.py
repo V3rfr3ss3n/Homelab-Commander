@@ -242,6 +242,8 @@ async def test_migration_preserves_legacy_tasks_hosts_and_jobs(tmp_path: Path) -
     database = Database(path)
     await database.async_migrate()
     await database.async_migrate()
+    migrated_columns = await database.async_fetch_all("PRAGMA table_info(hosts)")
+    assert "packages_json" in {row["name"] for row in migrated_columns}
     tasks = CustomTaskRepository(database, allow_shell=False)
     assert (await tasks.async_get(UUID(task_id))).host_ids == (UUID(host_id),)
     service = TaskCompatibilityService(

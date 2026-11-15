@@ -1,7 +1,7 @@
 ---
 title: Produktanforderungen
 status: accepted
-updated: 2026-11-09
+updated: 2026-11-14
 tags: [product, requirements]
 ---
 
@@ -277,6 +277,21 @@ wird beim Parser in Tests festgeschrieben.
 
 ## Host workspace and maintenance controls
 
+## Package details
+
+- **REQ-PKG-001 MUST:** Each successful host update check stores at most 50
+  upgradable package details in stable parser order: name, old version, new
+  version and security flag. The real parsed count remains available as `total`.
+- **REQ-PKG-002 MUST:** Package details are persisted on the host record and are
+  exposed only through read-only per-host package endpoints. Host list responses
+  remain lean and contain no package rows.
+- **REQ-PKG-003 MUST:** Host details show a Package details card with versions,
+  security badges, name/security sorting, check count/time and the existing
+  explicit check action. Unknown and zero-update states are clearly distinguished.
+- **REQ-PKG-004 MUST:** A package-row Update action confirms the exact package and
+  queues an update scoped to that package. Global Update actions continue to queue
+  a full host update.
+
 - **REQ-UI-HOST-WORKSPACE MUST:** Host details show available system, SSH, freshness,
   task assignment/readiness, recent-job and inventory facts with scoped links.
   Missing facts remain unknown; OS/kernel markers do not assert unreported hardware
@@ -291,3 +306,10 @@ wird beim Parser in Tests festgeschrieben.
   filters with a one-action reset. Custom time windows count once. Graph filters
   apply valid changes directly; sort controls belong to table mode. Dashboard hosts
   occupy the side column below notices and reflow on mobile.
+
+- **REQ-PKG-005 MUST:** The dialog supports Skip all, Select all and explicit
+  selected-package updates in one recoverable job, with exact targets and no
+  implicit reboot. Empty selection cannot fall back to a full upgrade.
+- **REQ-PKG-006 MUST:** Queueing does not zero measured status. A fresh post-update
+  check commits rows and counts together; failures retain the last known snapshot.
+  Scoped reruns retain names; display bounds and full-update effects are explicit.

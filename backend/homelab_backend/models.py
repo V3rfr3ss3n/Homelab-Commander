@@ -19,6 +19,57 @@ HostAddress = Annotated[
     str, Field(min_length=1, max_length=255, pattern=r"^[A-Za-z0-9][A-Za-z0-9.:-]*$")
 ]
 SshUser = Annotated[str, Field(pattern=r"^[a-z_][a-z0-9_-]{0,31}$")]
+PackageName = Annotated[
+    str,
+    Field(
+        min_length=1,
+        max_length=255,
+        pattern=r"^[a-z0-9][a-z0-9+.-]*(?::[a-z0-9]+)?$",
+    ),
+]
+
+MAX_PACKAGE_DETAILS = 50
+
+
+class PackageInfo(BaseModel):
+    """One normalized upgradable package row."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, str_strip_whitespace=True)
+    name: str
+    old_version: str
+    new_version: str
+    is_security: bool = False
+
+
+class PackagesResponse(BaseModel):
+    """Bounded package detail response with the unbounded parser count."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    packages: tuple[PackageInfo, ...]
+    total: int
+    security_updates: int = 0
+    checked_at: datetime | None
+    provider: str | None
+
+
+class PackageUpdateRequest(BaseModel):
+    """Exactly one explicit single-package or bounded selection scope."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, str_strip_whitespace=True)
+    package_name: PackageName | None = None
+    package_names: tuple[PackageName, ...] | None = Field(
+        default=None, min_length=1, max_length=MAX_PACKAGE_DETAILS
+    )
+
+    @model_validator(mode="after")
+    def validate_scope(self) -> PackageUpdateRequest:
+        if (self.package_name is None) == (self.package_names is None):
+            raise ValueError("Provide exactly one package scope")
+        if self.package_names and len(set(self.package_names)) != len(
+            self.package_names
+        ):
+            raise ValueError("Package selection must not contain duplicates")
+        return self
 
 
 class HostWebsite(BaseModel):
@@ -70,7 +121,32 @@ class HostPatch(BaseModel):
 class Host(BaseModel):
     """Persisted host with stable UUID identity."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    id: UUID
+    name: str
+    address: str
+    port: int
+    username: str
+    package_provider: str
+    websites: tuple[HostWebsite, ...] = ()
+    packages: tuple[PackageInfo, ...] = ()
+    distribution: str | None = None
+    distribution_version: str | None = None
+    kernel: str | None = None
+    updates: int = 0
+    security_updates: int = 0
+    reboot_required: bool = False
+    status: str | None = None
+    checked_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class HostListItem(BaseModel):
+    """Host fields exposed by collection endpoints, without package details."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     id: UUID
     name: str
@@ -129,6 +205,8 @@ class Job(BaseModel):
     host_id: UUID | None
     host_name: str | None = None
     custom_task_id: UUID | None = None
+    package_name: str | None = None
+    package_names: tuple[str, ...] = ()
     state: JobState
     created_at: datetime
     started_at: datetime | None = None

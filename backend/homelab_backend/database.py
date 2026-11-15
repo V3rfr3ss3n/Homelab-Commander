@@ -143,6 +143,15 @@ _MIGRATIONS: tuple[str, ...] = (
     """
     ALTER TABLE jobs ADD COLUMN reviewed_at TEXT;
     """,
+    """
+    ALTER TABLE hosts ADD COLUMN packages_json TEXT NOT NULL DEFAULT '[]';
+    """,
+    """
+    ALTER TABLE jobs ADD COLUMN package_name TEXT;
+    """,
+    """
+    ALTER TABLE jobs ADD COLUMN package_names_json TEXT NOT NULL DEFAULT '[]';
+    """,
 )
 
 

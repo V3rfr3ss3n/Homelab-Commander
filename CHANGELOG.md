@@ -5,6 +5,26 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.3.0-dev.5] - Unpublished
+
+### Added
+
+- Per-host package details and a sortable dialog with single, selected and
+  full updates, Skip all/Select all and explicit maintenance confirmation. Package details are stored as a bounded snapshot of up to
+  50 rows while the count reports every available update.
+
+### Fixed
+
+- Upgrade installed named packages with APT latest/only-upgrade and retain the
+  measured status until the post-update check. Keep rows and counts coherent.
+- Preserve update scope across worker recovery/rerun and render readable package
+  timestamps instead of HTML source in the dialog.
+
+### Upgrade notes
+
+- The backend applies its database migration automatically. Existing hosts show
+  package details after their next successful check.
+
 ## [0.3.0-dev.4] - 2026-11-11
 
 ### Added
