@@ -1,7 +1,7 @@
 ---
 title: Future platform GitHub planning register
 status: active
-updated: 2026-11-15
+updated: 2026-11-16
 tags: [planning, github, milestones, issues, labels]
 ---
 
@@ -25,6 +25,30 @@ features have shipped.
 | 4 | M4 — Proxmox & Infrastructure | Nodes, VM/LXC identity/discovery and safe lifecycle planning | [#55](https://github.com/V3rfr3ss3n/Homelab-Commander/issues/55) |
 | 5 | M5 — Automation & External Services | Semaphore, n8n, events/workflows | [#56](https://github.com/V3rfr3ss3n/Homelab-Commander/issues/56)–[#57](https://github.com/V3rfr3ss3n/Homelab-Commander/issues/57) |
 | 6 | M6 — Secure AI Operations | Agent identity, read API, restricted updates and human approval | [#58](https://github.com/V3rfr3ss3n/Homelab-Commander/issues/58)–[#59](https://github.com/V3rfr3ss3n/Homelab-Commander/issues/59) |
+
+
+## Cross-milestone operator UI and code-quality direction (proposed ADR-0025)
+
+[ADR-0025](../02-architecture/adr/0025-operator-ui-and-incremental-modularity.md) is a **proposed** operator UX/modularity design on PR #68; planning agreement is not approval to implement all pictured capabilities. Track the M1/cross-cutting foundation in [#69](https://github.com/V3rfr3ss3n/Homelab-Commander/issues/69) and defer complete localization infrastructure to [#70](https://github.com/V3rfr3ss3n/Homelab-Commander/issues/70).
+
+**Shared UI direction:** English-only until another locale achieves audited 100% user-facing-string coverage, locale settings and browser/CI validation. Compact sidebar (Overview, Resources, Operations, Activity, Settings); balanced density; existing unified resource/list rows with sort, selection and top-right filter/selection context. Reuse the existing right-hand contextual operation actions, never add a duplicated command toolbar. Groups/Tags are searchable/filterable facets and persistent editors, not extra main navigation destinations; Minecraft is a Managed Service under Resources > Services. Proxmox should start as identity/discovery and useful direct links rather than reproducing its entire console.
+
+**Daily operation:** preserve direct host actions such as check updates/start update. Package-by-package review is optional by default where safely supported, while required provider/policy/security checks remain mandatory; Arch partial upgrades and unreviewed AUR execution are never normalized. No automatic/scheduled update feature is authorized by this note: any future configuration must be explicitly reviewed against scheduler and policy contracts. Guided onboarding and tips are optional, dismissible first-run aids, not permanent dashboards. Advanced flows may open focused dialogs; avoid compulsory timelines/wizards for routine actions.
+
+**Milestone-specific UI placement:**
+
+| Milestone | Operator-facing result | Limits and reusable patterns |
+| --- | --- | --- |
+| M1 (#41–46) | Compact shell groundwork, Hosts/Resources + Groups/Tags discovery, existing Operations and Activity context | #69 defines preparation; PR #68 group previews remain non-executing; #44/#46 gate group targeting and approval |
+| M2 (#47–51) | The same host list gains distro/package capability and optional detailed review | Keep quick update, provider-aware restrictions, mandatory AUR review before any separately approved execution; no automatic updates implied |
+| M3 (#52–54) | Minecraft **within Services**, linked to existing hosts; extensions, backup and protected restore details in focused views | Reuse lists/detail panels, separate destructive confirmations; preserve Pterodactyl Client API limits |
+| M4 (#55) | Proxmox-linked resources/relationships and external links | Focus discovery and identity reconciliation; do not rebuild Proxmox console without explicit use case or approval |
+| M5 (#56–57) | Semaphore/n8n integrations and workflows under Operations/Integrations | Detailed information architecture provisional until real policies, triggers and provider contracts are designed |
+| M6 (#58–59) | Agent access, read-only discovery and separately governed approvals | UX provisional; backend default deny and nondelegable human authorization always take precedence |
+
+**Visual references (examples only, not acceptance criteria).** Milestone mockups can be appended **at the bottom of each milestone's planning material** once corrected examples are versioned/uploaded. Required caption: _"UI Concept – Non-binding visual example. This image illustrates one possible layout, may show unimplemented features, and does not amend the approved specification, issue acceptance criteria, provider contracts or authorization rules."_ Do not add unverified local image paths or treat a rendered button as an implementation requirement. M5/M6 illustrations remain especially provisional.
+
+**Code-quality scope:** audit frontend/backend/HA coupling; choose narrow vertical feature slices and shared presentation contracts rather than a big-bang rewrite. Preserve FastAPI/SQLite modular-monolith architecture, `/api/v1`, identities, migration guarantees, authenticated API/Ingress, sanitized errors, release-check, and synthetic no-host-action tests.
 
 ## Cross-cutting platform reliability (not a seventh sequential feature milestone)
 
