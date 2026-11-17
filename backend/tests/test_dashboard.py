@@ -532,11 +532,13 @@ async def test_worker_redacts_the_connection_it_actually_used(tmp_path: Path) ->
     db, hosts, tasks, executor, service, host, task = await _services(tmp_path)
     await service.async_check(task.id, host.id)
     await service.async_assign(task.id, host.id, enabled=True)
+    # Capture the current connection in the scope; the first lookup below is
+    # deliberately stale to exercise redaction of the connection actually used.
+    await hosts.async_patch(host.id, HostPatch(address="node-02.example.invalid"))
     repository = JobRepository(db)
     job = await repository.async_create(
         JobAction.CUSTOM_TASK, host.id, custom_task_id=task.id
     )
-    await hosts.async_patch(host.id, HostPatch(address="node-02.example.invalid"))
     original_get = hosts.async_get
     reads = 0
 

@@ -1,7 +1,7 @@
 ---
 title: TODO
 status: active
-updated: 2026-11-16
+updated: 2026-11-17
 tags: [project, todo]
 ---
 
@@ -162,8 +162,15 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## UI foundation review (#43 / #69)
 
-- [ ] Owner acceptance of PR #68 / MR !40 Resources facets, contextual groups/tags,
+- [x] Owner acceptance and merge of PR #68 / MR !40 (2026-11-17): Resources facets, contextual groups/tags,
   shared list mechanics and [design contracts](../design/README.md).
 - [ ] Later isolated shell/client extraction and legacy-list migration per the
   [migration plan](../design/migration-plan.md); no release or wholesale rewrite.
 - [ ] Publish reviewed group/UI Wiki snapshot only after explicit owner approval.
+
+## Resource job foundation (#44)
+
+- [ ] Review schema-13 target/context migration, deterministic Host/Service conflicts
+  and uncertain-effect recovery; implementation on `feat/resource-job-execution`.
+- [ ] Owner synthetic preview acceptance, then explicit merge; no Dev release requested.
+- [ ] #46 policy/approval boundaries precede any live generic/group execution.

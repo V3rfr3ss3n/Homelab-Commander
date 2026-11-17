@@ -1,7 +1,7 @@
 ---
 title: Development, tests and CI
 status: active
-updated: 2026-11-15
+updated: 2026-11-17
 tags: [wiki, technical]
 ---
 
@@ -135,3 +135,12 @@ Hosts, Tasks and Jobs remain regression checks. The
 [component contracts](../../design/component-contracts.md) define selection/lifetimes.
 Frontend behavioral tests run in Chromium; Python coverage percentages are not a
 JavaScript branch-coverage claim. New Wiki sources await owner snapshot approval.
+
+## Resource jobs (#44)
+
+Run `uv run pytest backend/tests/test_resource_jobs.py backend/tests/test_resource_jobs_browser.py --no-cov`
+for target snapshots, upgrade/rollback, conflict ordering, cancellation, safe restart,
+API/auth/provenance and browser recovery. Only synthetic operation handlers are
+injected; production has no generic execution binding. `execution/` owns scope values,
+resource locks, target resolution and the SQLite job adapter; `jobs.py` remains the
+legacy-compatible worker. Full `make release-check` remains required for review.

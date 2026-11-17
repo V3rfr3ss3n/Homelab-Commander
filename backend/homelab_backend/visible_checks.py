@@ -7,6 +7,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 from .database import Database
+from .execution.scope import ExecutionContext, JobCaller
 from .hosts import HostRepository
 from .jobs import JobManager
 from .models import Job, JobAction
@@ -53,7 +54,11 @@ class VisibleChecks:
             if await self._claim(host.id, now):
                 try:
                     jobs.append(
-                        await self._jobs.async_enqueue(JobAction.CHECK_UPDATES, host.id)
+                        await self._jobs.async_enqueue(
+                            JobAction.CHECK_UPDATES,
+                            host.id,
+                            context=ExecutionContext(caller=JobCaller.VISIBLE_STATUS),
+                        )
                     )
                 except KeyError:
                     # A host removed after the claim must never be contacted.

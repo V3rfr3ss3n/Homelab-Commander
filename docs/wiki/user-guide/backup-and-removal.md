@@ -1,7 +1,7 @@
 ---
 title: Backup, recovery and removal
 status: active
-updated: 2026-11-10
+updated: 2026-11-17
 tags: [wiki, user-guide]
 ---
 
@@ -24,7 +24,8 @@ Stop the backend, restore the complete data directory with appropriate ownership
 and private-key permissions, then start the same compatible application version.
 Verify health and inventory before deliberately testing a host. A backend restart
 invalidates standalone UI sessions; sign in again. Interrupted running jobs are
-requeued on startup, so review job state and recovery behavior before restarting
+handled conservatively on startup: interrupted mutations fail with uncertain remote
+effects and require inspection before any explicit retry. Review job state before restarting
 a deployment with in-flight operations.
 
 ## Remove one managed host

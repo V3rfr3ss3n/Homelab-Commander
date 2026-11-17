@@ -917,12 +917,13 @@ def test_ingress_management_routes_cover_crud_actions_and_errors(
             == 422
         )
         _assign_task(client, host["id"], task["id"])
-        assert (
-            client.post(
-                f"/ui-api/hosts/{host['id']}/tasks/{task['id']}", headers=headers
-            ).status_code
-            == 202
+        task_job = client.post(
+            f"/ui-api/hosts/{host['id']}/tasks/{task['id']}", headers=headers
         )
+        assert task_job.status_code == 202
+        # Removal now correctly conflicts with running work. Complete this
+        # synthetic operation before testing the independent CRUD cleanup.
+        assert _terminal_job(client, task_job.json()["id"])["state"] == "success"
         assert (
             client.post(
                 f"/ui-api/hosts/{host['id']}/tasks/{missing_id}", headers=headers

@@ -14,6 +14,8 @@ from pydantic import (
     model_validator,
 )
 
+from .execution.scope import JobExecution
+
 HostName = Annotated[str, Field(min_length=1, max_length=100)]
 HostAddress = Annotated[
     str, Field(min_length=1, max_length=255, pattern=r"^[A-Za-z0-9][A-Za-z0-9.:-]*$")
@@ -175,6 +177,7 @@ class JobAction(StrEnum):
     UPDATE = "update"
     REBOOT = "reboot"
     CUSTOM_TASK = "custom_task"
+    RESOURCE_OPERATION = "resource_operation"
 
 
 class JobState(StrEnum):
@@ -188,6 +191,16 @@ class JobState(StrEnum):
 
 
 _SHORT_JOB_ERRORS = {
+    "execution_interrupted": (
+        "Execution was interrupted; remote effects are uncertain. "
+        "Inspect the resource before retrying."
+    ),
+    "execution_scope_changed": (
+        "The execution target or task changed. Review and start a new job."
+    ),
+    "operation_not_permitted": (
+        "The resource operation is unavailable or not authorized."
+    ),
     "apt_lock_unavailable": "APT is locked by another process",
     "invalid_ansible_output": "Ansible returned an invalid structured result",
     "python_interpreter_unavailable": "Python 3 is not available on the host",
@@ -217,6 +230,11 @@ class Job(BaseModel):
     reviewed_at: datetime | None = None
     needs_review: bool = False
     reboot_required: bool | None = None
+
+    execution: JobExecution | None = None
+    interrupted_at: datetime | None = None
+    interrupted_started_at: datetime | None = None
+    recovery_count: int = 0
 
     # Mypy does not yet understand Pydantic's decorator above a property.
     @computed_field  # type: ignore[prop-decorator]

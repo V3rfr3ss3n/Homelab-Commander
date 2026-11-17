@@ -1,240 +1,62 @@
-"""Persistent asynchronous job queue and lifecycle service."""
+"""Persistent asynchronous worker with deterministic resource conflicts."""
 
 import asyncio
-import json
-import sqlite3
 from contextlib import suppress
-from datetime import UTC, datetime
-from typing import Literal
-from uuid import UUID, uuid4
+from typing import Protocol
+from uuid import UUID
 
-from .automation import (
-    AutomationExecutionError,
-    AutomationExecutor,
-    ExecutionResult,
-)
+from .automation import AutomationExecutionError, AutomationExecutor, ExecutionResult
+from .contracts.resources import ResourceKind, ResourceRef
 from .custom_tasks import CustomTaskRepository
-from .database import Database
+from .execution.locks import ResourceLocks
+from .execution.repository import (
+    DEFAULT_CONTEXT,
+)
+from .execution.repository import (
+    JOB_TIMESTAMP as JOB_TIMESTAMP,
+)
+from .execution.repository import (
+    NEEDS_REVIEW as NEEDS_REVIEW,
+)
+from .execution.repository import (
+    JobRepository as JobRepository,
+)
+from .execution.repository import (
+    JobSort as JobSort,
+)
+from .execution.repository import (
+    job_filter as job_filter,
+)
+from .execution.scope import ExecutionContext, OperationScope
 from .failure_logging import log_internal_failure
 from .hosts import HostRepository
-from .models import Host, Job, JobAction, JobLog, JobState
+from .models import Host, Job, JobAction, JobState
 from .task_compatibility import TaskCompatibilityService
 
 MAX_JOB_LOG_BYTES = 64 * 1024
-_MUTATING_ACTIONS = frozenset({JobAction.UPDATE, JobAction.REBOOT})
-JOB_TIME = "COALESCE(jobs.finished_at,jobs.started_at,jobs.created_at)"
-JOB_TIMESTAMP = f"hlc_timestamp({JOB_TIME})"
-NEEDS_REVIEW = (
-    "(jobs.state='failed' AND jobs.reviewed_at IS NULL "
-    "AND NOT EXISTS(SELECT 1 FROM jobs later WHERE later.state='success' "
-    "AND later.host_id IS jobs.host_id AND later.action=jobs.action "
-    "AND later.custom_task_id IS jobs.custom_task_id "
-    "AND later.package_name IS jobs.package_name "
-    "AND later.package_names_json = jobs.package_names_json "
-    "AND later.created_at>jobs.created_at))"
-)
-JobSort = Literal["newest", "oldest", "host", "action", "state"]
-
-_SELECT = (
-    "SELECT jobs.id, jobs.action, jobs.host_id, hosts.name AS host_name, jobs.state, "
-    "jobs.created_at, jobs.started_at, jobs.finished_at, jobs.exit_code, "
-    "jobs.error_code, jobs.reboot_required, jobs.custom_task_id, "
-    "jobs.package_name, jobs.package_names_json, "
-    "jobs.reviewed_at, "
-    f"{NEEDS_REVIEW} AS needs_review, "
-    "EXISTS(SELECT 1 FROM job_logs WHERE job_logs.job_id = jobs.id) "
-    "AS log_available FROM jobs LEFT JOIN hosts ON hosts.id = jobs.host_id"
-)
 
 
-class JobRepository:
-    """Persist queue state and bounded output independently of workers."""
+class ResourceOperation(Protocol):
+    """Statically injected feature port; production installs none until #46.
 
-    def __init__(self, database: Database) -> None:
-        self._database = database
+    Authorization is mandatory at enqueue and immediately before execution.
+    Metadata, capability readiness and approval references confer no permission.
+    """
 
-    async def async_create(
-        self,
-        action: JobAction,
-        host_id: UUID,
-        *,
-        host_name: str | None = None,
-        custom_task_id: UUID | None = None,
-        package_name: str | None = None,
-        package_names: tuple[str, ...] = (),
-    ) -> Job:
-        now = datetime.now(UTC)
-        package_names = tuple(sorted(package_names))
-        job = Job(
-            id=uuid4(),
-            action=action,
-            host_id=host_id,
-            host_name=host_name,
-            custom_task_id=custom_task_id,
-            package_name=package_name,
-            package_names=package_names,
-            state=JobState.QUEUED,
-            created_at=now,
-        )
-        await self._database.async_execute(
-            "INSERT INTO jobs "
-            "(id, action, host_id, custom_task_id, package_name, "
-            "package_names_json, state, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                str(job.id),
-                job.action,
-                str(host_id),
-                str(custom_task_id) if custom_task_id is not None else None,
-                package_name,
-                json.dumps(package_names),
-                job.state,
-                now.isoformat(),
-            ),
-        )
-        return job
+    operation: str
+    kind: ResourceKind
 
-    async def async_get(self, job_id: UUID) -> Job | None:
-        row = await self._database.async_fetch_one(
-            f"{_SELECT} WHERE jobs.id = ?", (str(job_id),)
-        )
-        return _job_from_row(row) if row is not None else None
+    async def async_authorize(
+        self, scope: OperationScope, context: ExecutionContext
+    ) -> bool:
+        """Revalidate policy/identity; missing or unknown authority returns False."""
 
-    async def async_list(
-        self,
-        *,
-        limit: int = 100,
-        offset: int = 0,
-        host_id: UUID | None = None,
-        state: JobState | None = None,
-        completed: bool = False,
-        start: datetime | None = None,
-        end: datetime | None = None,
-        action: JobAction | None = None,
-        sort: JobSort | None = None,
-    ) -> tuple[Job, ...]:
-        clause, parameters = job_filter(host_id, state, completed, start, end, action)
-        order = "jobs.finished_at DESC" if completed else "jobs.created_at DESC"
-        if sort is not None:
-            order = {
-                "newest": f"{JOB_TIMESTAMP} DESC",
-                "oldest": f"{JOB_TIMESTAMP} ASC",
-                "host": f"hosts.name COLLATE NOCASE ASC, {JOB_TIMESTAMP} DESC",
-                "action": f"jobs.action ASC, {JOB_TIMESTAMP} DESC",
-                "state": f"jobs.state ASC, {JOB_TIMESTAMP} DESC",
-            }[sort]
-        rows = await self._database.async_fetch_all(
-            f"{_SELECT}{clause} ORDER BY {order}, jobs.id DESC LIMIT ? OFFSET ?",
-            (*parameters, limit, offset),
-        )
-        return tuple(_job_from_row(row) for row in rows)
-
-    async def async_count(
-        self,
-        *,
-        host_id: UUID | None = None,
-        state: JobState | None = None,
-        start: datetime | None = None,
-        end: datetime | None = None,
-        action: JobAction | None = None,
-    ) -> int:
-        clause, parameters = job_filter(host_id, state, False, start, end, action)
-        row = await self._database.async_fetch_one(
-            f"SELECT COUNT(*) AS count FROM jobs{clause}", parameters
-        )
-        return row["count"] if row is not None else 0
-
-    async def async_unresolved_failure(self) -> Job | None:
-        row = await self._database.async_fetch_one(
-            f"SELECT jobs.id FROM jobs WHERE {NEEDS_REVIEW} "
-            "ORDER BY jobs.created_at DESC LIMIT 1"
-        )
-        return await self.async_get(UUID(row["id"])) if row else None
-
-    async def async_review(self, job_id: UUID) -> Job:
-        """Acknowledge one failed job without changing its outcome or log."""
-        await self._database.async_execute(
-            "UPDATE jobs SET reviewed_at = COALESCE(reviewed_at, ?) "
-            "WHERE id = ? AND state = 'failed'",
-            (datetime.now(UTC).isoformat(), str(job_id)),
-        )
-        job = await self.async_get(job_id)
-        if job is None:
-            raise KeyError("Job not found")
-        if job.state != JobState.FAILED:
-            raise ValueError("Only failed jobs can be marked as reviewed")
-        return job
-
-    async def async_recover_queued(self) -> tuple[UUID, ...]:
-        """Return queued work after safely recovering interrupted jobs."""
-        await self._database.async_execute(
-            "UPDATE jobs SET state = 'queued', started_at = NULL "
-            "WHERE state = 'running'"
-        )
-        rows = await self._database.async_fetch_all(
-            "SELECT id FROM jobs WHERE state = 'queued' ORDER BY created_at"
-        )
-        return tuple(UUID(row["id"]) for row in rows)
-
-    async def async_claim(self, job_id: UUID) -> bool:
-        return bool(
-            await self._database.async_execute(
-                "UPDATE jobs SET state = 'running', started_at = ? "
-                "WHERE id = ? AND state = 'queued'",
-                (datetime.now(UTC).isoformat(), str(job_id)),
-            )
-        )
-
-    async def async_finish(
-        self,
-        job_id: UUID,
-        *,
-        state: JobState,
-        output: str,
-        truncated: bool,
-        exit_code: int | None = None,
-        error_code: str | None = None,
-        reboot_required: bool | None = None,
-    ) -> None:
-        """Atomically store terminal state and its bounded output."""
-
-        def finish(connection: sqlite3.Connection) -> None:
-            connection.execute(
-                "UPDATE jobs SET state = ?, finished_at = ?, exit_code = ?, "
-                "error_code = ?, reboot_required = ? WHERE id = ?",
-                (
-                    state,
-                    datetime.now(UTC).isoformat(),
-                    exit_code,
-                    error_code,
-                    int(reboot_required) if reboot_required is not None else None,
-                    str(job_id),
-                ),
-            )
-            connection.execute(
-                "INSERT OR REPLACE INTO job_logs(job_id, output, truncated) "
-                "VALUES (?, ?, ?)",
-                (str(job_id), output, int(truncated)),
-            )
-
-        await self._database.async_transaction(finish)
-
-    async def async_log(self, job_id: UUID) -> JobLog | None:
-        row = await self._database.async_fetch_one(
-            "SELECT output, truncated FROM job_logs WHERE job_id = ?",
-            (str(job_id),),
-        )
-        if row is None:
-            return None
-        return JobLog(
-            job_id=job_id,
-            output=row["output"],
-            truncated=bool(row["truncated"]),
-        )
+    async def async_execute(self, scope: OperationScope) -> ExecutionResult:
+        """Execute the exact typed scope; never add implicit reboot or parameters."""
 
 
 class JobManager:
-    """Run persistent jobs with bounded concurrency and per-host mutation locks."""
+    """Run persistent jobs with bounded workers and canonical resource conflicts."""
 
     def __init__(
         self,
@@ -245,6 +67,7 @@ class JobManager:
         *,
         worker_count: int = 2,
         compatibility: TaskCompatibilityService | None = None,
+        operations: tuple[ResourceOperation, ...] = (),
     ) -> None:
         if worker_count < 1 or worker_count > 16:
             raise ValueError("worker_count must be between 1 and 16")
@@ -258,10 +81,16 @@ class JobManager:
         self._worker_count = worker_count
         self._queue: asyncio.Queue[UUID] = asyncio.Queue()
         self._workers: list[asyncio.Task[None]] = []
-        self._host_locks: dict[UUID, asyncio.Lock] = {}
+        self._locks = ResourceLocks()
+        self._operations = {(item.kind, item.operation): item for item in operations}
+        if len(self._operations) != len(operations):
+            raise ValueError("Duplicate resource operation binding")
 
     async def async_start(self) -> None:
         """Recover persistent work and start bounded workers."""
+        if self._workers:
+            raise RuntimeError("Job manager is already started")
+        self._queue = asyncio.Queue()
         for job_id in await self._repository.async_recover_queued():
             self._queue.put_nowait(job_id)
         self._workers = [
@@ -284,8 +113,12 @@ class JobManager:
         host_id: UUID,
         package_name: str | None = None,
         package_names: tuple[str, ...] = (),
+        *,
+        context: ExecutionContext = DEFAULT_CONTEXT,
     ) -> Job:
         """Validate the exact target before creating persistent work."""
+        if action in {JobAction.CUSTOM_TASK, JobAction.RESOURCE_OPERATION}:
+            raise ValueError("Use the dedicated operation entrance")
         host = await self._hosts.async_get(host_id)
         if host is None:
             raise KeyError("Host not found")
@@ -295,6 +128,7 @@ class JobManager:
             host_name=host.name,
             package_name=package_name,
             package_names=package_names,
+            context=context,
         )
         self._queue.put_nowait(job.id)
         return job
@@ -303,7 +137,13 @@ class JobManager:
         """Wait until all currently queued work has reached persistence."""
         await self._queue.join()
 
-    async def async_enqueue_custom(self, task_id: UUID, host_id: UUID) -> Job:
+    async def async_enqueue_custom(
+        self,
+        task_id: UUID,
+        host_id: UUID,
+        *,
+        context: ExecutionContext = DEFAULT_CONTEXT,
+    ) -> Job:
         """Queue one enabled custom task with two validated identities."""
         host = await self._hosts.async_get(host_id)
         if host is None:
@@ -313,13 +153,46 @@ class JobManager:
             raise KeyError("Custom task not found")
         if not task.enabled:
             raise ValueError("Custom task is disabled")
-        await self._compatibility.async_require(task_id, host_id)
+        permitted_task, _ = await self._compatibility.async_require(task_id, host_id)
         job = await self._repository.async_create(
             JobAction.CUSTOM_TASK,
             host_id,
             host_name=host.name,
             custom_task_id=task_id,
+            context=context,
         )
+        if (
+            job.execution is None
+            or job.execution.scope.task_revision
+            != permitted_task.updated_at.isoformat()
+        ):
+            await self._finish_failure(job, host, "execution_scope_changed", "")
+            raise ValueError("Task changed while queueing")
+        self._queue.put_nowait(job.id)
+        return job
+
+    async def async_enqueue_resource(
+        self, target: ResourceRef, operation: str, *, context: ExecutionContext
+    ) -> Job:
+        """Internal feature entrance, default-denied and not exposed over HTTP."""
+        handler = self._operations.get((target.kind, operation))
+        if handler is None or context.approval_id is not None:
+            raise ValueError("Resource operation is not permitted")
+
+        scope = await self._repository.async_prepare_resource(target, operation)
+        if not await handler.async_authorize(scope, context):
+            raise ValueError("Resource operation is not permitted")
+        job = await self._repository.async_create(
+            JobAction.RESOURCE_OPERATION,
+            scope.execution_host_id,
+            target=target,
+            operation=operation,
+            context=context,
+        )
+        # Do not broaden a target after authorization if its association changed.
+        if job.execution is None or job.execution.scope != scope:
+            await self._finish_failure(job, None, "execution_scope_changed", "")
+            raise ValueError("Execution target changed while queueing")
         self._queue.put_nowait(job.id)
         return job
 
@@ -328,64 +201,134 @@ class JobManager:
             job_id = await self._queue.get()
             try:
                 await self._async_run(job_id)
+            except Exception as error:
+                log_internal_failure(error, str(job_id), "execute_job")
+                await self._repository.async_finish(
+                    job_id,
+                    state=JobState.FAILED,
+                    output=f"Internal execution failure. Reference: {job_id}",
+                    truncated=False,
+                    error_code="internal_execution_error",
+                )
             finally:
                 self._queue.task_done()
 
     async def _async_run(self, job_id: UUID) -> None:
         job = await self._repository.async_get(job_id)
-        if job is None or job.host_id is None:
+        if job is None or job.state is not JobState.QUEUED:
             return
-        host = await self._hosts.async_get(job.host_id)
-        if host is None:
+        if job.execution is None:
             await self._finish_failure(job, None, "host_not_found", "")
             return
-        if not await self._repository.async_claim(job_id):
-            return
-        lock = self._host_locks.setdefault(host.id, asyncio.Lock())
-        try:
-            if job.action is JobAction.CUSTOM_TASK:
-                if job.custom_task_id is None:
-                    await self._finish_failure(job, host, "custom_task_not_found", "")
+        # Waiting jobs remain queued. Claim only after all conflicts are held.
+        async with self._locks.hold(job.execution.scope.conflicts):
+            if not await self._repository.async_claim(job_id):
+                return
+            host = await self._hosts.async_get(job.host_id) if job.host_id else None
+            try:
+                if job.action is not JobAction.RESOURCE_OPERATION and host is None:
+                    await self._finish_failure(job, None, "host_not_found", "")
                     return
-                custom_task = await self._custom_tasks.async_get(job.custom_task_id)
-                if custom_task is None:
-                    await self._finish_failure(job, host, "custom_task_not_found", "")
+                if not await self._repository.async_scope_current(job.execution):
+                    await self._finish_failure(job, host, "execution_scope_changed", "")
                     return
-                async with lock:
+                if job.action is JobAction.RESOURCE_OPERATION:
+                    await self._run_resource(job, host)
+                    return
+                assert host is not None
+                scope = job.execution.scope
+                if (
+                    scope.operation != f"linux.{job.action}"
+                    or scope.package_name != job.package_name
+                    or scope.package_names != job.package_names
+                    or scope.custom_task_id != job.custom_task_id
+                ):
+                    await self._finish_failure(job, host, "execution_scope_changed", "")
+                    return
+                if job.action is JobAction.CUSTOM_TASK:
+                    if (
+                        job.custom_task_id is None
+                        or await self._custom_tasks.async_get(job.custom_task_id)
+                        is None
+                    ):
+                        await self._finish_failure(
+                            job, host, "custom_task_not_found", ""
+                        )
+                        return
                     try:
-                        (
-                            custom_task,
-                            current_host,
-                        ) = await self._compatibility.async_require(
-                            custom_task.id, host.id, fresh=True
+                        custom_task, host = await self._compatibility.async_require(
+                            job.custom_task_id, host.id, fresh=True
                         )
                     except KeyError, ValueError:
                         await self._finish_failure(
                             job, host, "custom_task_not_permitted", ""
                         )
                         return
-                    host = current_host
+                    if not await self._repository.async_scope_current(job.execution):
+                        await self._finish_failure(
+                            job, host, "execution_scope_changed", ""
+                        )
+                        return
                     result = await self._executor.async_execute_custom(
                         custom_task, host
                     )
-            elif job.action in _MUTATING_ACTIONS:
-                async with lock:
+                else:
                     result = await self._execute_builtin(job, host)
-            else:
-                result = await self._execute_builtin(job, host)
-            await self._finish_success(job, host, result)
-        except AutomationExecutionError as err:
-            await self._finish_failure(
-                job, host, err.code, err.output, exit_code=err.exit_code
-            )
-        except Exception as error:
-            log_internal_failure(error, str(job.id), "execute_job")
+                await self._finish_success(job, host, result)
+            except AutomationExecutionError as err:
+                await self._finish_failure(
+                    job,
+                    host,
+                    "resource_operation_failed"
+                    if job.action is JobAction.RESOURCE_OPERATION
+                    else err.code,
+                    "Resource operation failed."
+                    if job.action is JobAction.RESOURCE_OPERATION
+                    else err.output,
+                    exit_code=err.exit_code,
+                )
+            except Exception as error:
+                log_internal_failure(error, str(job.id), "execute_job")
+                await self._finish_failure(
+                    job,
+                    host,
+                    "internal_execution_error",
+                    f"Internal execution failure. Reference: {job.id}",
+                )
+
+    async def _run_resource(self, job: Job, host: Host | None) -> None:
+        assert job.execution is not None
+        scope = job.execution.scope
+        handler = self._operations.get((scope.target.kind, scope.operation))
+        if (
+            handler is None
+            or job.execution.context.approval_id is not None
+            or not await handler.async_authorize(scope, job.execution.context)
+        ):
+            await self._finish_failure(job, host, "operation_not_permitted", "")
+            return
+        if not await self._repository.async_scope_current(job.execution):
+            await self._finish_failure(job, host, "execution_scope_changed", "")
+            return
+        result = await handler.async_execute(scope)
+        if result.exit_code != 0:
             await self._finish_failure(
                 job,
                 host,
-                "internal_execution_error",
-                f"Internal execution failure. Reference: {job.id}",
+                "resource_operation_failed",
+                "Resource operation failed.",
+                exit_code=result.exit_code,
             )
+            return
+        # Feature output needs its own validated/redacted result contract before
+        # exposure. Generic foundation exports only safe completion metadata.
+        await self._repository.async_finish(
+            job.id,
+            state=JobState.SUCCESS,
+            output="Resource operation completed.",
+            truncated=False,
+            exit_code=result.exit_code,
+        )
 
     async def _execute_builtin(self, job: Job, host: Host) -> ExecutionResult:
         if job.package_names:
@@ -455,71 +398,3 @@ def _safe_output(output: str, host: Host | None) -> tuple[str, bool]:
     if len(encoded) <= MAX_JOB_LOG_BYTES:
         return redacted, False
     return encoded[:MAX_JOB_LOG_BYTES].decode("utf-8", errors="ignore"), True
-
-
-def _job_from_row(row: sqlite3.Row) -> Job:
-    return Job(
-        id=UUID(row["id"]),
-        action=JobAction(row["action"]),
-        host_id=UUID(row["host_id"]) if row["host_id"] is not None else None,
-        host_name=row["host_name"],
-        custom_task_id=(
-            UUID(row["custom_task_id"]) if row["custom_task_id"] is not None else None
-        ),
-        package_name=row["package_name"],
-        package_names=tuple(json.loads(row["package_names_json"])),
-        state=JobState(row["state"]),
-        created_at=datetime.fromisoformat(row["created_at"]),
-        started_at=(
-            datetime.fromisoformat(row["started_at"])
-            if row["started_at"] is not None
-            else None
-        ),
-        finished_at=(
-            datetime.fromisoformat(row["finished_at"])
-            if row["finished_at"] is not None
-            else None
-        ),
-        exit_code=row["exit_code"],
-        error_code=row["error_code"],
-        log_available=bool(row["log_available"]),
-        needs_review=bool(row["needs_review"]),
-        reviewed_at=(
-            datetime.fromisoformat(row["reviewed_at"])
-            if row["reviewed_at"] is not None
-            else None
-        ),
-        reboot_required=(
-            bool(row["reboot_required"]) if row["reboot_required"] is not None else None
-        ),
-    )
-
-
-def job_filter(
-    host_id: UUID | None,
-    state: JobState | None,
-    completed: bool,
-    start: datetime | None = None,
-    end: datetime | None = None,
-    action: JobAction | None = None,
-) -> tuple[str, tuple[object, ...]]:
-    clauses: list[str] = []
-    parameters: list[object] = []
-    if host_id is not None:
-        clauses.append("jobs.host_id = ?")
-        parameters.append(str(host_id))
-    if state is not None:
-        clauses.append("jobs.state = ?")
-        parameters.append(state)
-    if action is not None:
-        clauses.append("jobs.action = ?")
-        parameters.append(action)
-    if start is not None:
-        clauses.append(f"{JOB_TIMESTAMP} >= ?")
-        parameters.append(start.timestamp())
-    if end is not None:
-        clauses.append(f"{JOB_TIMESTAMP} < ?")
-        parameters.append(end.timestamp())
-    if completed:
-        clauses.append("jobs.finished_at IS NOT NULL")
-    return (" WHERE " + " AND ".join(clauses) if clauses else ""), tuple(parameters)

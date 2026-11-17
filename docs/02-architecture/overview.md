@@ -1,7 +1,7 @@
 ---
 title: Architektur
 status: accepted
-updated: 2026-11-15
+updated: 2026-11-17
 tags: [architecture, design]
 ---
 
@@ -90,8 +90,11 @@ rewritten by discovery. See [[adr/0009-supervisor-native-backend-discovery]].
 
 Der Backend-Kern trennt API, Application Services, Domainmodelle, Persistenz und
 Execution Adapter. SQLite speichert Hosts, Jobs und Custom Tasks. Ein begrenzter
-Worker nimmt Jobs aus der persistenten Queue; mutierende Aktionen werden pro
-Host serialisiert. SSH- und Ansible-Details gelangen nicht in API-Domainmodelle.
+Worker nimmt Jobs aus der persistenten Queue; Hostaktionen und verknüpfte
+Servicejobs werden über kanonische Ressourcenlocks koordiniert. Unterbrochene
+Mutationen werden als unklarer Fehler sichtbar und nicht automatisch wiederholt;
+siehe [ADR-0026](adr/0026-resource-jobs-and-safe-recovery.md). SSH- und
+Ansible-Details gelangen nicht in API-Domainmodelle.
 
 Der Ansible Adapter erzeugt pro Lauf ein isoliertes Ein-Host-Inventory. Alle
 Module verwenden `auto_silent` für dieselbe automatische Interpreter-Erkennung.

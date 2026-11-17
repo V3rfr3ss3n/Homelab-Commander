@@ -1,7 +1,7 @@
 ---
 title: Native API
 status: active
-updated: 2026-11-15
+updated: 2026-11-17
 tags: [wiki, technical]
 ---
 
@@ -81,7 +81,6 @@ does not schedule itself. Visibility/route/disconnect control belongs to the cli
 The fixed interval/cooldown is five minutes. See
 [ADR-0013](../../02-architecture/adr/0013-visible-dashboard-checks-and-websites.md).
 
-
 ### Job review and setup choices
 
 `POST /api/v1/jobs/{job_id}/review` (Bearer auth) and
@@ -120,3 +119,13 @@ Group/tag metadata, bounded preview and resource filters are documented in the [
 Resource discovery can additionally filter by group UUID and sort by name or kind,
 ascending or descending, before paging. Missing groups fail rather than silently
 showing all inventory. See the [API contract](../../02-architecture/native-api.md).
+
+## Resource job execution metadata
+
+Existing job responses add immutable `execution.scope` and `execution.context`,
+plus interruption/recovery metadata. Context identifies the authenticated entrance,
+not a claimed person or an approval grant. Legacy action bodies cannot override it.
+Interrupted mutations fail safely rather than automatically replaying; running Host
+connection changes/removal return 409. Generic service operations remain internal
+and default denied. See [the API contract](../../02-architecture/native-api.md)
+and [recovery guide](persistence.md).
