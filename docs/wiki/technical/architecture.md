@@ -1,7 +1,7 @@
 ---
 title: Architecture and contracts
 status: active
-updated: 2026-11-15
+updated: 2026-11-17
 tags: [wiki, technical]
 ---
 
@@ -60,7 +60,7 @@ SSH identity, jobs, review states, HA identifiers and `/api/v1` stay compatible.
 
 Supported, unsupported, unavailable and policy-blocked are distinct states. Technical
 availability never authorizes execution. The registry follows below; generic jobs,
-policy enforcement and real provider expansion remain separate downstream issues. See
+policy enforcement is described below; real provider expansion remains downstream. See
 [ADR-0022](../../02-architecture/adr/0022-resource-and-capability-contracts.md).
 
 ## Registry implementation and module layout
@@ -69,7 +69,7 @@ The follow-up registry block groups domain values, application/store ports, SQLi
 adapter and HTTP schemas/router under `resources/`. Storage and migration code
 lives under `persistence/`, while compatibility imports and the Host facade remain
 available. This establishes working boundaries incrementally; Linux extraction and
-policy/generic jobs remain later work. FastAPI and SQLite stay the foundation.
+generic execution activation remains later work. FastAPI and SQLite stay the foundation.
 [ADR-0023](../../02-architecture/adr/0023-resource-registry-and-module-boundaries.md)
 records the migration and dependency maintenance decisions.
 
@@ -86,3 +86,16 @@ The [design contracts](../../design/README.md) and
 [cross-layer inventory](../../design/architecture-inventory.md) distinguish this
 implemented slice from the proposed sidebar, legacy-list and policy work. ADR-0025
 remains proposed; no framework, provider privilege or new migration is introduced.
+
+
+## Policy and approval-domain foundation
+
+`policy/` separates pure identity/risk decisions, application guards, immutable
+approval lifecycle, HTTP identity binding and SQLite audit/state adapters. Shared
+checks protect metadata use cases and worker dispatch while preserving existing
+administrator maintenance. The generic feature-readiness callback cannot override
+policy. Future protected operations need an exact, expiring, single-use human
+approval and authoritative state validation; production currently installs no
+approval GUI, agent provisioner or generic service executor. Shared legacy entrances
+are not individual human attribution. See
+[ADR-0027](../../02-architecture/adr/0027-central-policy-and-approval-contracts.md).

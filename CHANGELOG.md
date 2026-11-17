@@ -19,6 +19,10 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ### Added
 
+- Central policy checks across mutating services and worker dispatch, safe denial
+  audit, immutable expiring single-use approval contracts and additive schema 14.
+  Existing admin workflows remain; no agent accounts or approval GUI are enabled.
+
 - Immutable resource job scopes and authenticated entrance metadata, additive schema
   13, Host/Service conflict locks and a default-deny internal operation boundary.
 

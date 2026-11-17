@@ -224,3 +224,16 @@ Service identities, typed relationships, versioned capability metadata and narro
 provider validation/assessment ports. They add no live provider, registry, generic
 executor or policy engine. Current Host/job APIs, SSH data and HA identifiers remain
 unchanged; additive rollout belongs to the linked implementation issues.
+
+
+## Central authorization and approval foundation (#46)
+
+The `policy/` slice owns immutable principals, explicit risk/operation policies,
+application guards and approval contracts; HTTP identity and SQLite adapters stay
+at its boundaries. Mutating use cases and worker dispatch share policy enforcement.
+Anonymous/agent/automation identities cannot inherit existing admin execution.
+The approval-domain service binds one immutable request to an exact scope and
+observed state, with nondelegable UI-human decisions and atomic one-use consumption.
+Production installs no agent resolver, generic execution handler or approval route.
+See [ADR-0027](adr/0027-central-policy-and-approval-contracts.md) for trusted internal
+composition, compatibility exceptions, audit, expiry and future M6 requirements.

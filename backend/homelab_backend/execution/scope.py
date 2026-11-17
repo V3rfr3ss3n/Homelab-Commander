@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from ..contracts.capabilities import RecoveryMode
 from ..contracts.resources import ResourceRef
+from ..policy.domain import Principal
 
 
 class JobCaller(StrEnum):
@@ -26,6 +27,7 @@ class ExecutionContext(BaseModel):
     caller: JobCaller = JobCaller.INTERNAL_ADMIN
     # Reserved for #46. No caller may turn this reference into permission.
     approval_id: UUID | None = None
+    principal: Principal | None = None
 
 
 class OperationScope(BaseModel):

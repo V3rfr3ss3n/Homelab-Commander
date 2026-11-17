@@ -7,6 +7,9 @@ from uuid import UUID, uuid4
 
 from .database import Database
 from .models import Host, HostCreate, HostPatch, HostWebsite, PackageInfo
+from .policy.application import PolicyGuard
+from .policy.domain import Permission
+from .policy.store import policy_for
 
 _SELECT = (
     "SELECT id, name, address, port, username, package_provider, "
@@ -27,11 +30,15 @@ class HostBusyError(DuplicateHostError):
 class HostRepository:
     """Manage stable host identities without exposing SQLite to the API."""
 
-    def __init__(self, database: Database) -> None:
+    def __init__(
+        self, database: Database, *, policy: PolicyGuard | None = None
+    ) -> None:
         self._database = database
+        self._policy = policy or policy_for(database)
 
     async def async_create(self, data: HostCreate) -> Host:
         """Create one host with a generated UUID."""
+        await self._policy.async_require(Permission.HOST_WRITE)
         now = datetime.now(UTC)
         host = Host(
             id=uuid4(),
@@ -67,6 +74,7 @@ class HostRepository:
 
     async def async_patch(self, host_id: UUID, patch: HostPatch) -> Host | None:
         """Update mutable fields while preserving the UUID."""
+        await self._policy.async_require(Permission.HOST_WRITE)
         current = await self.async_get(host_id)
         if current is None:
             return None
@@ -121,6 +129,7 @@ class HostRepository:
 
     async def async_delete(self, host_id: UUID) -> bool:
         """Delete one host and report whether it existed."""
+        await self._policy.async_require(Permission.HOST_WRITE)
         try:
             return bool(
                 await self._database.async_execute(
@@ -149,6 +158,7 @@ class HostRepository:
         packages: tuple[PackageInfo, ...],
     ) -> None:
         """Persist one normalized status snapshot."""
+        await self._policy.async_require(Permission.HOST_STATUS)
         await self._database.async_execute(
             "UPDATE hosts SET distribution = ?, distribution_version = ?, "
             "kernel = ?, updates = ?, security_updates = ?, reboot_required = ?, "

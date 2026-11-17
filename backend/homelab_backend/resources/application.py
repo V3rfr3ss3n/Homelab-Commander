@@ -10,6 +10,8 @@ from ..contracts.resources import (
     ResourceRef,
     ResourceRelationship,
 )
+from ..policy.application import PolicyGuard
+from ..policy.domain import Permission
 from .entities import RegistryConflict, RegistryResource
 
 
@@ -55,8 +57,9 @@ class ResourceStore(Protocol):
 
 
 class ResourceRegistry:
-    def __init__(self, store: ResourceStore) -> None:
+    def __init__(self, store: ResourceStore, policy: PolicyGuard | None = None) -> None:
         self._store = store
+        self._policy = policy or PolicyGuard()
 
     async def async_list(
         self, limit: int = 25, offset: int = 0
@@ -74,6 +77,7 @@ class ResourceRegistry:
         binding: ProviderBinding,
         host_id: UUID | None = None,
     ) -> ManagedServiceResource:
+        await self._policy.async_require(Permission.RESOURCE_WRITE)
         resource = ManagedServiceResource(
             uuid4(),
             _name(name),
@@ -90,6 +94,7 @@ class ResourceRegistry:
         binding: ProviderBinding,
         host_id: UUID | None = None,
     ) -> RegistryResource:
+        await self._policy.async_require(Permission.RESOURCE_WRITE)
         return await self._store.async_reconcile_instance(
             _name(name), kind, binding, host_id
         )
@@ -97,6 +102,7 @@ class ResourceRegistry:
     async def async_link_service(
         self, service_id: UUID, host_id: UUID | None
     ) -> RegistryResource:
+        await self._policy.async_require(Permission.RESOURCE_WRITE)
         return await self._store.async_link_service(service_id, host_id)
 
     async def async_relations(
@@ -106,12 +112,15 @@ class ResourceRegistry:
         return await self._store.async_relations(resource_id, limit, offset)
 
     async def async_add_relation(self, relation: ResourceRelationship) -> None:
+        await self._policy.async_require(Permission.RESOURCE_WRITE)
         await self._store.async_add_relation(relation)
 
     async def async_remove_relation(self, relation: ResourceRelationship) -> bool:
+        await self._policy.async_require(Permission.RESOURCE_WRITE)
         return await self._store.async_remove_relation(relation)
 
     async def async_remove(self, resource_id: UUID) -> bool:
+        await self._policy.async_require(Permission.RESOURCE_WRITE)
         return await self._store.async_remove(resource_id)
 
 

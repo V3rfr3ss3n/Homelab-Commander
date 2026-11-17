@@ -129,3 +129,13 @@ Interrupted mutations fail safely rather than automatically replaying; running H
 connection changes/removal return 409. Generic service operations remain internal
 and default denied. See [the API contract](../../02-architecture/native-api.md)
 and [recovery guide](persistence.md).
+
+
+## Central policy compatibility
+
+Existing authenticated admin actions retain their API and CSRF contracts. Job
+context adds a safe optional principal UUID/kind/source; it is never a credential or
+client-selected role. Policy rejection uses 403, compatible `detail` and existing
+safe diagnostics with `policy_denied`. Agent/automation subjects cannot use legacy
+admin/task/key routes. No agent token provisioner or approval API is enabled.
+See [the policy decision](../../02-architecture/adr/0027-central-policy-and-approval-contracts.md).

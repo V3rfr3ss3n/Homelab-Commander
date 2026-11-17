@@ -13,6 +13,9 @@ from .models import (
     CustomTaskPatch,
     TaskRequirements,
 )
+from .policy.application import PolicyGuard
+from .policy.domain import Permission
+from .policy.store import policy_for
 
 _SELECT = (
     "SELECT id, name, description, mode, argv_json, shell_command, enabled, "
@@ -27,11 +30,19 @@ class ShellTasksDisabledError(Exception):
 class CustomTaskRepository:
     """Manage validated task definitions with stable UUID identity."""
 
-    def __init__(self, database: Database, *, allow_shell: bool) -> None:
+    def __init__(
+        self,
+        database: Database,
+        *,
+        allow_shell: bool,
+        policy: PolicyGuard | None = None,
+    ) -> None:
         self._database = database
+        self._policy = policy or policy_for(database)
         self._allow_shell = allow_shell
 
     async def async_create(self, data: CustomTaskCreate) -> CustomTask:
+        await self._policy.async_require(Permission.TASK_WRITE)
         self._check_shell(data.mode)
         now = datetime.now(UTC)
         task = CustomTask(
@@ -59,6 +70,7 @@ class CustomTaskRepository:
     async def async_patch(
         self, task_id: UUID, patch: CustomTaskPatch
     ) -> CustomTask | None:
+        await self._policy.async_require(Permission.TASK_WRITE)
         current = await self.async_get(task_id)
         if current is None:
             return None
@@ -111,6 +123,7 @@ class CustomTaskRepository:
         return await self._with_hosts(updated)
 
     async def async_delete(self, task_id: UUID) -> bool:
+        await self._policy.async_require(Permission.TASK_WRITE)
         return bool(
             await self._database.async_execute(
                 "DELETE FROM custom_tasks WHERE id = ?", (str(task_id),)

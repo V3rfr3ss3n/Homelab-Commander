@@ -3,6 +3,8 @@
 from typing import Protocol
 from uuid import UUID
 
+from ..policy.application import PolicyGuard
+from ..policy.domain import Permission
 from .entities import (
     MAX_RESOURCES,
     Group,
@@ -25,8 +27,9 @@ class GroupStore(Protocol):
 
 
 class GroupService:
-    def __init__(self, store: GroupStore) -> None:
+    def __init__(self, store: GroupStore, policy: PolicyGuard | None = None) -> None:
         self._store = store
+        self._policy = policy or PolicyGuard()
 
     async def async_list(
         self, query: str, limit: int, offset: int
@@ -37,12 +40,15 @@ class GroupService:
         return await self._store.async_get(group_id)
 
     async def async_save(self, group: Group, *, create: bool) -> None:
+        await self._policy.async_require(Permission.GROUP_WRITE)
         await self._store.async_save(group, create=create)
 
     async def async_delete(self, group_id: UUID) -> bool:
+        await self._policy.async_require(Permission.GROUP_WRITE)
         return await self._store.async_delete(group_id)
 
     async def async_tags(self, resource_id: UUID, tags: frozenset[str]) -> None:
+        await self._policy.async_require(Permission.TAG_WRITE)
         from .entities import validate_tag
 
         if len(tags) > 32:

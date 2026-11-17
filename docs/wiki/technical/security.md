@@ -1,7 +1,7 @@
 ---
 title: Security and privacy
 status: active
-updated: 2026-11-11
+updated: 2026-11-17
 tags: [wiki, technical]
 ---
 
@@ -88,3 +88,22 @@ The UI queues no reboot as part of updates. Positive restart reminders reflect
 stored backend state and remain until a later status clears them. Navigation,
 action and OS symbols are inline SVG and introduce no external logo requests or
 new production dependency.
+
+
+## Central policy and human approval contracts
+
+After authentication, a shared policy guard checks mutating services and job
+execution. Requests start anonymous, so even a missing HTTP auth dependency cannot
+inherit internal authority. Principal metadata is server-generated and contains no
+credential or individual user claim. Unknown operations and restricted agent/
+automation execution deny; group/tag membership never grants permission.
+
+Policy denials and approval transitions have safe persistent audit metadata.
+An Ingress policy denial keeps the authenticated session active and offers safe
+copyable diagnostics; proxy/authentication 403 failures still disconnect.
+Disruptive future operations require immutable, expiring approvals bound to exact
+scope and current state, consumed once under resource locks. Only the human UI
+identity contract can decide them; agent proposals cannot approve themselves or
+upgrade execution authority. Existing direct admin updates/reboots remain deliberate
+and compatible. Agent accounts and an approval GUI are not enabled by this foundation.
+See [ADR-0027](../../02-architecture/adr/0027-central-policy-and-approval-contracts.md).

@@ -10,6 +10,9 @@ from ..contracts.capabilities import RecoveryMode
 from ..contracts.resources import ResourceKind, ResourceRef
 from ..database import Database
 from ..models import Job, JobAction, JobLog, JobState
+from ..policy.application import PolicyGuard
+from ..policy.domain import Permission
+from ..policy.store import policy_for
 from .scope import ExecutionContext, JobExecution, OperationScope
 from .targets import connection_revision, resolve_target
 
@@ -48,8 +51,11 @@ _SELECT = (
 class JobRepository:
     """Persist queue state and bounded output independently of workers."""
 
-    def __init__(self, database: Database) -> None:
+    def __init__(
+        self, database: Database, *, policy: PolicyGuard | None = None
+    ) -> None:
         self._database = database
+        self._policy = policy or policy_for(database)
 
     async def async_create(
         self,
@@ -70,10 +76,10 @@ class JobRepository:
         target = target or (
             ResourceRef(ResourceKind.HOST, host_id) if host_id else None
         )
-        if target is None or context.approval_id is not None:
-            raise ValueError(
-                "Target required; approval references are not yet supported"
-            )
+        if target is None or (
+            context.approval_id is not None and context.principal is None
+        ):
+            raise ValueError("Target required; approvals need an authenticated context")
         if action is not JobAction.RESOURCE_OPERATION:
             if (
                 host_id is None
@@ -250,6 +256,7 @@ class JobRepository:
 
     async def async_review(self, job_id: UUID) -> Job:
         """Acknowledge one failed job without changing its outcome or log."""
+        await self._policy.async_require(Permission.REVIEW_JOB)
         await self._database.async_execute(
             "UPDATE jobs SET reviewed_at = COALESCE(reviewed_at, ?) "
             "WHERE id = ? AND state = 'failed'",

@@ -15,7 +15,8 @@ All six milestones below exist and the feature issues carry their assigned phase
 The existing area/type/priority labels are also configured (verified 2026-11-15).
 The Development Roadmap project tracks status and label-derived priority; #41 and
 #42/#61 and #62/#63 are Done. #43 was owner-approved and merged on 2026-11-17;
-#44 is in implementation. These planning states do not claim that M1 is complete.
+#44 was owner-approved and merged in !41 / PR #71. #46 is in implementation.
+These planning states do not claim that M1 is complete.
 
 | Order | GitHub milestone title | Purpose | Issues |
 | --- | --- | --- | --- |
@@ -124,4 +125,14 @@ The next isolated branch implements additive schema 13, immutable target/context
 snapshots, Host/Service conflicts and safe interrupted-action recovery. Production
 has no generic operation handler or group execution. Policy/approval work remains
 #46; see [ADR-0026](../02-architecture/adr/0026-resource-jobs-and-safe-recovery.md).
+Owner review and full checks remain required; no Dev release is requested.
+
+
+## Central policy foundation review (#46)
+
+The next isolated branch adds identity-aware default-deny policy checks to mutating
+services and worker dispatch, safe audit and expiring single-use approval-domain
+contracts. Existing admin maintenance remains compatible. No agent accounts,
+autonomous execution grants or approval GUI ship in M1. See
+[ADR-0027](../02-architecture/adr/0027-central-policy-and-approval-contracts.md).
 Owner review and full checks remain required; no Dev release is requested.
