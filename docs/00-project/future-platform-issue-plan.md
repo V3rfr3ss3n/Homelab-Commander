@@ -110,3 +110,11 @@ The canonical specification's [§19](../01-product/future-platform-specification
 ## Rollout and release discipline
 
 The planning specification is approved, but source changes must proceed through an ordinary reviewed pull request, and **future implementation is not implicitly authorized by a planning issue**. The milestone sequence is priority, not a promise of calendar dates. Maintain existing HA compatibility and the stable/prerelease separation work.
+
+## PR #68 UI foundation review
+
+#43 and the bounded #69 foundation now share the existing review branch. See the
+[design index](../design/README.md) for implemented Resources integration and the
+[concept index](../design/concepts/README.md) for all six non-binding references.
+Full shell migration, saved views and #70 localization remain later work; ADR-0025
+is still proposed. No milestone description or future feature scope is rewritten.

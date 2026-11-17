@@ -54,7 +54,7 @@ let messageTimer=null;
 let messageGeneration=0;
 let messageErrorGeneration=0;
 let lastDiagnostic=null;
-const SAFE_OPERATIONS=new Set(["auth","login","logout","session","info","hosts","jobs","page","timeline","log","review","custom-tasks","actions","check-updates","update","reboot","test-connection","task-compatibility","packages","preferences","host-checks","check-visible","public-key","dashboard","onboarding"]);
+const SAFE_OPERATIONS=new Set(["auth","login","logout","session","info","hosts","jobs","page","timeline","log","review","custom-tasks","actions","check-updates","update","reboot","test-connection","task-compatibility","packages","preferences","host-checks","check-visible","public-key","dashboard","onboarding","groups","group-resources","resources","tags","preview"]);
 function operationName(path,method){return `${method} ${path.split("?")[0].split("/").filter(part=>SAFE_OPERATIONS.has(part)).join(" / ")||"request"}`}
 class RequestFailure extends Error{
   constructor(code,operation,httpStatus=null,requestId=null,jobReference=null){
@@ -169,7 +169,7 @@ function view(){
   const raw=location.hash.slice(1)||"/dashboard";
   const [path,query]=raw.split("?");
   const parts=path.split("/").filter(Boolean);
-  return {name:parts[0]||"dashboard",id:parts[1]||null,params:new URLSearchParams(query||"")};
+  return {name:parts[0]==="groups"?"resources":parts[0]||"dashboard",id:parts[1]||null,params:new URLSearchParams(query||"")};
 }
 function renderSelection(){
   const route=view(),hostId=route.name==="hosts"&&route.id?route.id:route.params.get("host_id"),host=state.hosts.find(item=>item.id===hostId),labels=[];
@@ -183,12 +183,15 @@ function renderSelection(){
   const defaults={range:defaultRange,display:route.name==="jobs"?"table":"graph",sort:"newest",h_sort:"name",t_sort:"name",offset:"0"};
   const viewOptions=["display","sort","h_sort","t_sort","offset"].filter(key=>route.params.has(key)&&route.params.get(key)!==defaults[key]);
   if(viewOptions.length)labels.push("View options changed");
-  const active=Boolean(count||viewOptions.length);element("host-context").hidden=!state.info;element("filter-count").textContent=count;element("filter-count").classList.toggle("empty",count===0);
+  const resourceContext=route.name==="resources"?window.groupWorkspace?.context():null;
+  if(resourceContext){labels.push(...resourceContext.labels);count+=resourceContext.labels.length}
+  const active=Boolean(count||viewOptions.length||resourceContext?.changed);element("host-context").hidden=!state.info;element("filter-count").textContent=count;element("filter-count").classList.toggle("empty",count===0);
   element("reset-view").disabled=!active;element("selection-info").textContent=labels.join("\n")||"Default view · no active filters";
   element("selection-toggle").title=labels.join(" · ")||"No active filters";element("selection-toggle").setAttribute("aria-label",`Selection and filters: ${count} active`);
 }
 
 function resetView(){
+  if(view().name==="resources"){closeSelection();run(null,()=>window.groupWorkspace.resetContext());return}
   const route=view(),tab=["dashboard","hosts","tasks","jobs"].includes(route.name)?route.name:"dashboard";
   closeSelection();location.hash=`/${tab}`;
 }
@@ -439,7 +442,7 @@ function render(){
   if(focused)focused.focus({preventScroll:true});
   const contextId=route.id&&route.name==="hosts"?route.id:route.params.get("host_id");
   const contextHost=state.hosts.find(host=>host.id===contextId);
-  document.querySelectorAll("nav a").forEach(link=>{const tab=link.dataset.tab;if(tab){link.href=tab==="groups"?"#/groups":tab==="hosts"?(contextId?`#/hosts/${encodeURIComponent(contextId)}`:"#/hosts"):`#/${tab}${contextId?`?host_id=${encodeURIComponent(contextId)}`:""}`}if(link.dataset.tab===route.name)link.setAttribute("aria-current","page");else link.removeAttribute("aria-current")});
+  document.querySelectorAll("nav a").forEach(link=>{const tab=link.dataset.tab;if(tab){link.href=tab==="hosts"?(contextId?`#/hosts/${encodeURIComponent(contextId)}`:"#/hosts"):`#/${tab}${contextId?`?host_id=${encodeURIComponent(contextId)}`:""}`}if(link.dataset.tab===route.name||(tab==="hosts"&&route.name==="resources"))link.setAttribute("aria-current","page");else link.removeAttribute("aria-current")});
   renderSelection();
   const summary=state.dashboard;
   const latest=state.jobs.find(job=>ACTIVE_JOB_STATES.has(job.state))||summary?.last_job||state.jobs[0],failed=summary?.last_failed_job||state.jobs.find(job=>job.state==="failed");
@@ -505,7 +508,7 @@ function renderHostDetail(id){
   element("host-all-jobs").href=`#/jobs?host_id=${id}`;
 }
 async function loadView(){
-  if(view().name==="groups")await window.groupWorkspace.load();
+  if(view().name==="resources"){render();await window.groupWorkspace.load();}
   const generation=++viewRequest,routeHash=location.hash,route=view(),contextId=route.name==="hosts"&&route.id?route.id:route.params.get("host_id");
   const current=()=>generation===viewRequest&&routeHash===location.hash;
   if(contextId){
@@ -547,6 +550,7 @@ function jobTimeLabel(value){
 function buttonIcon(name){
   const paths={
 save:'<path d="M5 3h12l4 4v14H3V3ZM7 3v6h10V3M7 21v-8h10v8"/>',
+search:'<circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/>',
 groups:'<circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="12" cy="18" r="3"/><path d="m7 9 4 6m6-6-4 6M9 6h6"/>',
 trash:'<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/>',
 edit:'<path d="m15 4 5 5M4 20l5-1L21 7a2 2 0 0 0-5-5L4 14Z"/>',
@@ -787,6 +791,17 @@ document.addEventListener("DOMContentLoaded",()=>{
   element("copy-error-diagnostic").addEventListener("click",async event=>{const button=event.currentTarget;try{await copyText(JSON.stringify(lastDiagnostic,null,2));button.textContent="Copied"}catch{button.textContent="Copy unavailable; select the details"}});
   window.addEventListener("error",event=>{if(event.error)showFailure(new RequestFailure("operation_failed","Unhandled UI failure"))});
   window.addEventListener("unhandledrejection",()=>showFailure(new RequestFailure("operation_failed","Unhandled UI failure")));
-  window.addEventListener("hashchange",()=>{if(connected)run(null,async()=>{await loadView();render();await loadJobRoute()})});initialize();
+  window.addEventListener("hashchange",()=>{if(view().name!=="resources")window.groupWorkspace?.reset();if(connected)run(null,async()=>{await loadView();render();await loadJobRoute()})});initialize();
 });
 window.addEventListener("pagehide",()=>{stopJobPolling();stopVisibleChecks()});
+
+// Narrow bridge while the legacy shell/API client are extracted in later slices.
+window.operatorUI = {
+  request, run, confirm: confirmAction, escape: escapeHtml, icons: decorateIcons,
+  addHost: openHostDialog,
+  loaded: recovered => {state.unavailable=false;renderBackendStatus();if(recovered)message("Resource inventory refreshed.","success")},
+  connected: () => Boolean(state.info), active: () => view().name === "resources",
+  selectionChanged: renderSelection, notice: text => message(text, "error"),
+  validId: value => typeof value === "string" && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value),
+  invalidResponse: () => new RequestFailure("invalid_response", "GET resource inventory"),
+};

@@ -1,6 +1,7 @@
 """Authenticated metadata routes; previews do not schedule or authorize actions."""
 
 from collections.abc import Awaitable, Sequence
+from typing import Literal
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, FastAPI, HTTPException, Query, Response
@@ -74,16 +75,40 @@ def install_group_routes(
             query: str = Query(default="", max_length=100),
             kind: ResourceKind | None = None,
             tag: str | None = Query(default=None, max_length=48),
+            group_id: UUID | None = None,
+            sort: Literal["name", "kind"] = "name",
+            direction: Literal["asc", "desc"] = "asc",
             limit: int = Query(default=25, ge=1, le=100),
             offset: int = Query(default=0, ge=0),
         ) -> ResourcePage:
-            snapshot = await _operation(service.async_preview(None))
+            group = await _operation(service.async_get(group_id)) if group_id else None
+            if group_id and group is None:
+                raise HTTPException(404, "Group not found")
+            snapshot = await _operation(
+                service.async_preview(
+                    group.rule if group else None,
+                    group.members if group and group.rule is None else None,
+                )
+            )
             selected = tuple(
                 r
                 for r in snapshot
                 if query.casefold() in r.name.casefold()
                 and (kind is None or kind == r.kind)
                 and (tag is None or tag in r.tags)
+            )
+            selected = tuple(
+                sorted(
+                    selected,
+                    key=lambda resource: (
+                        resource.kind.value
+                        if sort == "kind"
+                        else resource.name.casefold(),
+                        resource.name.casefold(),
+                        str(resource.id),
+                    ),
+                    reverse=direction == "desc",
+                )
             )
             return ResourcePage(
                 total=len(selected),

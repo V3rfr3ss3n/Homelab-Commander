@@ -73,3 +73,14 @@ bounded rules, preview non-mutation, tag replacement, pagination/filtering, auth
 persistence/restart, rollback and zero executor calls. Retain full quality/coverage
 and container gates. Back up DB and SSH identity together before operator upgrades;
 no downgrade guarantee after new group writes. No release accompanies this MR.
+
+## UI integration follow-up (2026-11-16)
+
+The same inventory now lives under Resources → Inventory & groups. Groups are a
+filter and focused editor, not a primary navigation destination. Manual IDs remain
+explicit across pages/filters; hidden selected count is visible and never used for
+execution. A paged group picker applies a group to the one inventory table. Optional
+`group_id`, `sort=name|kind` and `direction=asc|desc` parameters filter/order the bounded
+snapshot before pagination. Missing groups fail 404 rather than widening to all
+resources. Rules, bounds, persistence and security decisions above are unchanged.
+[ADR-0025](0025-operator-ui-and-incremental-modularity.md) remains proposed.

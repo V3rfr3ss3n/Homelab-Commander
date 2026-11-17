@@ -79,3 +79,20 @@ Benefits: coherent growing navigation, familiar quick actions and selection mech
 - [Planning register](../../00-project/future-platform-issue-plan.md)
 - [ADR-0021](0021-safe-failure-diagnostics-and-history.md), [ADR-0022](0022-resource-and-capability-contracts.md), [ADR-0023](0023-resource-registry-and-module-boundaries.md), [ADR-0024](0024-bounded-resource-groups.md)
 - [PR #68](https://github.com/V3rfr3ss3n/Homelab-Commander/pull/68), [#43](https://github.com/V3rfr3ss3n/Homelab-Commander/issues/43), [#44](https://github.com/V3rfr3ss3n/Homelab-Commander/issues/44), [#46](https://github.com/V3rfr3ss3n/Homelab-Commander/issues/46)
+
+## Authorized review slice (2026-11-16; proposal status retained)
+
+The owner subsequently authorized the bounded UI foundation and #43 integration in
+PR #68, without merging or accepting this ADR wholesale. The implementation evolves
+the existing resource inventory under Resources, removes primary Groups navigation,
+uses a paged group-definition picker and contextual editor/tags, adds server-side
+group filtering/sort before pagination, and extracts pure list-state/rendering ES
+modules behind a narrow legacy-shell bridge. Static assets move into a closed
+allowlist in `ui.py`; no migration or dependency is added for this UI change.
+
+The full left sidebar and migration of other lists remain independently reviewed
+follow-ups. Existing Host operations remain in their current working presentation;
+the conceptual future right-side action surface is not claimed as migrated.
+See the [design index](../../design/README.md),
+[architecture inventory](../../design/architecture-inventory.md) and
+[migration plan](../../design/migration-plan.md) for current versus proposed scope.

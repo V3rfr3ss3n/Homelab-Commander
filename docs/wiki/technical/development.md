@@ -124,3 +124,14 @@ pairing, not a claim that frontend/Core release numbers match. Runtime pins adva
 to FastAPI 0.162.4 and ansible-core 2.22.0. FastAPI telemetry/exporters are explicitly
 disabled and the callback suppresses no_log payloads. Reviewed Builder/setup-uv
 actions remain SHA-pinned. See the [review](../../05-reviews/2026-11-15-registry-foundation-review.md).
+
+## Resources UI foundation (#43 / #69)
+
+In the synthetic preview, use Resources → Inventory & groups. Check selection across
+pages, Filters/group picker, name/type sorting, tag details and manual/smart group
+editing. Use the same top-right Reset to return to default inventory. Existing
+Hosts, Tasks and Jobs remain regression checks. The
+[design migration plan](../../design/migration-plan.md) records scope and rollback;
+[component contracts](../../design/component-contracts.md) define selection/lifetimes.
+Frontend behavioral tests run in Chromium; Python coverage percentages are not a
+JavaScript branch-coverage claim. New Wiki sources await owner snapshot approval.

@@ -76,3 +76,13 @@ records the migration and dependency maintenance decisions.
 ## Groups and tags
 
 The groups feature isolates pure bounded rules and immutable facts from SQLite and HTTP. See [ADR-0024](../../02-architecture/adr/0024-bounded-resource-groups.md) for fail-closed evaluation and future target revalidation.
+
+## Operator UI foundation (review branch)
+
+Resources integrates the existing group/tag inventory through filters and contextual
+editing. Pure list-state/rendering ES modules use an injected bridge to the legacy
+shell's transport, CSRF and safe diagnostics. The same Ingress asset boundary applies.
+The [design contracts](../../design/README.md) and
+[cross-layer inventory](../../design/architecture-inventory.md) distinguish this
+implemented slice from the proposed sidebar, legacy-list and policy work. ADR-0025
+remains proposed; no framework, provider privilege or new migration is introduced.

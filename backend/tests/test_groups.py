@@ -403,3 +403,88 @@ def test_rule_boundary_rejects_nested_or_inconsistent_groups() -> None:
             }
         ]
     }).domain()
+
+
+@pytest.mark.parametrize("ui", [False, True])
+def test_resource_group_filter_sort_and_page_share_scope(
+    tmp_path: Path, ui: bool
+) -> None:
+    """Group filtering and ordering happen before paging, never on visible rows only."""
+    executor = FakeExecutor()
+    with _client(tmp_path, executor) as client:
+        csrf = _csrf(client)
+        client.post(
+            "/ui-api/auth/login",
+            headers={"X-CSRF-Token": csrf},
+            json={"api_token": TOKEN},
+        )
+        base = "/ui-api" if ui else "/api/v1"
+        headers = {"X-CSRF-Token": csrf} if ui else {"Authorization": f"Bearer {TOKEN}"}
+        hosts = [
+            client.post(
+                base + "/hosts",
+                headers=headers,
+                json={
+                    "name": name,
+                    "address": f"node-{index}.example.invalid",
+                    "username": "automation",
+                },
+            ).json()
+            for index, name in enumerate(["Zulu", "Alpha", "Beta"])
+        ]
+        group = client.post(
+            base + "/groups",
+            headers=headers,
+            json={
+                "name": "Selected",
+                "kind": "manual",
+                "members": [hosts[0]["id"], hosts[1]["id"]],
+            },
+        ).json()
+        path = base + f"/group-resources?group_id={group['id']}&limit=1"
+        first = client.get(path, headers=headers).json()
+        second = client.get(path + "&offset=1", headers=headers).json()
+        assert first["total"] == second["total"] == 2
+        assert first["items"][0]["id"] == hosts[1]["id"]
+        assert second["items"][0]["id"] == hosts[0]["id"]
+        assert (
+            client.get(path + "&direction=desc", headers=headers).json()["items"]
+            == second["items"]
+        )
+        assert (
+            client.get(path + "&sort=kind&query=zulu", headers=headers).json()["total"]
+            == 1
+        )
+        assert (
+            client.get(path + "&kind=container", headers=headers).json()["total"] == 0
+        )
+        assert client.get(path + "&tag=absent", headers=headers).json()["total"] == 0
+        assert client.get(path + "&sort=arbitrary", headers=headers).status_code == 422
+        assert (
+            client.get(path + "&direction=arbitrary", headers=headers).status_code
+            == 422
+        )
+        client.put(
+            base + f"/resources/{hosts[2]['id']}/tags",
+            headers=headers,
+            json={"tags": ["lab"]},
+        )
+        client.put(
+            base + f"/groups/{group['id']}",
+            headers=headers,
+            json={
+                "name": "Dynamic",
+                "kind": "smart",
+                "rule": {"predicates": [{"field": "tag", "value": "lab"}]},
+            },
+        )
+        assert (
+            client.get(path, headers=headers).json()["items"][0]["id"] == hosts[2]["id"]
+        )
+        client.delete(base + f"/groups/{group['id']}", headers=headers)
+        assert client.get(path, headers=headers).status_code == 404
+        assert (
+            client.get(base + "/group-resources", headers=headers).json()["total"] == 3
+        )
+        assert client.get(base + "/jobs", headers=headers).json() == []
+        assert executor.calls == []

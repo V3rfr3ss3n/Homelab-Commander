@@ -159,3 +159,11 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 - [x] Kompakte Status-/Jobansicht, responsive Hinweise, Liniengraph und lesbare
   Zeitangaben; Website-Shortcuts je Host und abschaltbare, sichtbarkeitsgebundene
   Statusprüfungen ergänzt. Siehe [Review](../05-reviews/2026-11-09-dashboard-readability-review.md).
+
+## UI foundation review (#43 / #69)
+
+- [ ] Owner acceptance of PR #68 / MR !40 Resources facets, contextual groups/tags,
+  shared list mechanics and [design contracts](../design/README.md).
+- [ ] Later isolated shell/client extraction and legacy-list migration per the
+  [migration plan](../design/migration-plan.md); no release or wholesale rewrite.
+- [ ] Publish reviewed group/UI Wiki snapshot only after explicit owner approval.

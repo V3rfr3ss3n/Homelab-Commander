@@ -285,3 +285,11 @@ invalid stored rules and exceeded evaluation budgets return safe 409. Preview do
 not cache or authorize future execution. For exact rule semantics, migration,
 budgets, unknown values and future policy revalidation see
 [ADR-0024](adr/0024-bounded-resource-groups.md).
+
+Resource inventory accepts additive `group_id=<UUID>`, `sort=name|kind` (default
+`name`) and `direction=asc|desc` (default `asc`). Group membership, literal name,
+type and tag constraints intersect before sorting/pagination, so `total` covers the
+same full filtered snapshot as the rows. Sorting uses name and UUID tie-breakers.
+A missing group returns 404, malformed UUID/sort/direction returns 422; invalid
+stored rules retain 409. No fallback widens a missing group to all resources. These
+parameters do not authorize execution or change the existing members endpoint.

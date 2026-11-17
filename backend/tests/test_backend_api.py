@@ -504,6 +504,8 @@ def test_ingress_ui_uses_supervisor_boundary_and_csrf(tmp_path: Path) -> None:
         assert "script-src 'self'" in page.headers["content-security-policy"]
         assert client.get("/ui.js").status_code == 200
         assert client.get("/ui.css").status_code == 200
+        for asset in ("groups.js", "list-state.js", "resource-view.js"):
+            assert client.get(f"/{asset}").status_code == 200
         csrf = page.text.split('name="csrf-token" content="', 1)[1].split('"', 1)[0]
         assert client.get("/ui-api/snapshot").status_code == 200
         assert client.get("/ui-api/info").status_code == 200
@@ -565,6 +567,8 @@ def test_ingress_ui_rejects_requests_outside_supervisor_proxy(tmp_path: Path) ->
         assert client.get("/").status_code == 403
         assert client.get("/ui.js").status_code == 403
         assert client.get("/ui.css").status_code == 403
+        for asset in ("groups.js", "list-state.js", "resource-view.js"):
+            assert client.get(f"/{asset}").status_code == 403
         assert client.get("/ui-api/info").status_code == 403
         assert client.get("/api/v1/info").status_code == 401
         assert client.get("/api/v1/info", headers=AUTH).status_code == 200

@@ -30,7 +30,10 @@ are never guessed. Preview can list the first 100 matches and the complete count
 API pagination inspects the remainder. Over-budget inventories return a safe error,
 not partial targets. Concurrent administrator edits use atomic last-write-wins.
 
-## Owner local acceptance
+## Original owner local acceptance (superseded UI steps)
+
+The subsequent [Resources UI foundation review](2026-11-16-operator-ui-foundation-review.md)
+supersedes the navigation/checklist below. Original validation remains historical.
 
 Restart an older preview, then run `uv run python -m homelab_backend.preview` and
 open `http://127.0.0.1:8100`. All inventory/actions are synthetic/disposable.
