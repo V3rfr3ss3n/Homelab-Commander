@@ -139,3 +139,12 @@ client-selected role. Policy rejection uses 403, compatible `detail` and existin
 safe diagnostics with `policy_denied`. Agent/automation subjects cannot use legacy
 admin/task/key routes. No agent token provisioner or approval API is enabled.
 See [the policy decision](../../02-architecture/adr/0027-central-policy-and-approval-contracts.md).
+
+
+## Linux package provider compatibility
+
+The Linux feature extraction changes internal ownership only. Host action URLs,
+request scopes, job references, package totals/bounded details and Info capability
+strings retain their existing contract. Stored `debian_apt` remains the production
+provider; internal namespaced capability metadata does not enable a new provider
+selection API or grant execution authority. A synthetic second provider is test-only.

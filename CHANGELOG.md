@@ -19,6 +19,10 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ### Added
 
+- Feature-owned Linux package domain, workflows, typed transport/provider ports and
+  versioned capability bindings. Preserve production APT and existing APIs; prove
+  the extension boundary with an independent test-only synthetic provider.
+
 - Central policy checks across mutating services and worker dispatch, safe denial
   audit, immutable expiring single-use approval contracts and additive schema 14.
   Existing admin workflows remain; no agent accounts or approval GUI are enabled.

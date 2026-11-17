@@ -48,6 +48,8 @@ tags: [architecture, adr, index]
 
 | [[0027-central-policy-and-approval-contracts]] | proposed | Central identity-aware policy and single-use human approval-domain contracts |
 
+| [[0028-linux-package-provider-boundary]] | proposed | Feature-owned Linux package workflows, preserved APT and synthetic provider contract proof |
+
 Neue ADRs verwenden [[../../templates/adr-template|die ADR-Vorlage]]. Akzeptierte
 ADRs werden nicht rückwirkend umgeschrieben; eine neue ADR ersetzt die alte und
 verlinkt sie als `superseded`.
