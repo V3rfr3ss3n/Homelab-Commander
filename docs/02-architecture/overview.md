@@ -237,3 +237,15 @@ observed state, with nondelegable UI-human decisions and atomic one-use consumpt
 Production installs no agent resolver, generic execution handler or approval route.
 See [ADR-0027](adr/0027-central-policy-and-approval-contracts.md) for trusted internal
 composition, compatibility exceptions, audit, expiry and future M6 requirements.
+
+
+## Linux package boundary (#45)
+
+`linux/` owns immutable scope/status/facts, package workflows and typed provider/
+transport ports. The APT adapter and Ansible normalization boundary preserve
+existing checks and full/single/selected updates. Core execution owns process
+isolation; policy/jobs keep authorization, locking and recovery. Static production
+composition registers only APT. Versioned capability bindings remain descriptive;
+no readiness or execution grant is inferred from provider registration. A second,
+independent synthetic provider proves the seam in tests, not distribution support.
+See [ADR-0028](adr/0028-linux-package-provider-boundary.md).

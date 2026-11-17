@@ -12,8 +12,12 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## In Arbeit
 
-- [ ] #43: manuelle Gruppen, Tags und begrenzte Smart-Regeln mit Vorschau und UI.
-  Eigener Review-MR; keine Gruppenaktionen oder Berechtigungsvergabe.
+- [ ] #45: Linux-Paketmodul und synthetischer zweiter Provider zur Review; APT
+  bleibt der einzige Produktionsprovider. Reale Distributionsadapter folgen in M2.
+  Entscheidung: [ADR-0028](../02-architecture/adr/0028-linux-package-provider-boundary.md).
+  Abnahme: [Linux-Provider-Review](../05-reviews/2026-11-17-linux-provider-boundary-review.md).
+- [x] #43/#44/#46: Gruppen, Ressourcenjobs und Policy-Grundlage vom Owner
+  abgenommen und gemergt (!40–!42 / PR #68, #71, #72). Kein Dev-Release.
 - [x] #42/#61: Registry und Dependabot-Follow-up vom Owner abgenommen, !39 gemergt.
 
 - [x] GitHub #41: Ressourcen-/Capability-Verträge mit ADR und additiver

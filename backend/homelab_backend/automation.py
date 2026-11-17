@@ -4,51 +4,22 @@ import asyncio
 import json
 import os
 import tempfile
-from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 
 from pydantic import ValidationError
 
 from .ansible_result import RESULT_PREFIX
-from .models import CustomTask, CustomTaskMode, Host, JobAction, PackageInfo, ProbeFacts
-from .package_providers import package_provider
-
-
-@dataclass(frozen=True, slots=True)
-class HostSnapshot:
-    """Normalized status collected by an execution adapter."""
-
-    distribution: str | None
-    distribution_version: str | None
-    kernel: str | None
-    updates: int
-    security_updates: int
-    reboot_required: bool
-    status: str
-    checked_at: datetime
-    packages: tuple[PackageInfo, ...] = ()
-
-    def __post_init__(self) -> None:
-        """Reject contradictory adapter snapshots before they replace stored status."""
-        if not (
-            0 <= self.security_updates <= self.updates
-            and len(self.packages) <= self.updates
-            and sum(package.is_security for package in self.packages)
-            <= self.security_updates
-        ):
-            raise ValueError("Package snapshot counts do not match its rows")
-
-
-@dataclass(frozen=True, slots=True)
-class ExecutionResult:
-    """Bounded executor result consumed by the job service."""
-
-    output: str
-    snapshot: HostSnapshot | None = None
-    reboot_required: bool | None = None
-    exit_code: int = 0
+from .execution.results import AutomationExecutionError as AutomationExecutionError
+from .execution.results import ExecutionResult as ExecutionResult
+from .execution.results import HostSnapshot as HostSnapshot
+from .linux.ansible import AnsiblePackageTransport
+from .linux.ansible import facts_arguments as _facts_arguments
+from .linux.application import LinuxPackages
+from .linux.domain import PackageSelection
+from .linux.probe import PROBE_SCRIPT as _PROBE_SCRIPT
+from .linux.registry import PackageProviders
+from .models import CustomTask, CustomTaskMode, Host, JobAction, ProbeFacts
 
 
 class AutomationExecutor(Protocol):
@@ -73,16 +44,6 @@ class AutomationExecutor(Protocol):
         """Read system and dependency facts without executing task commands."""
 
 
-class AutomationExecutionError(Exception):
-    """Safe execution failure with bounded diagnostic output."""
-
-    def __init__(self, code: str, output: str, *, exit_code: int | None = None) -> None:
-        super().__init__(code)
-        self.code = code
-        self.output = output
-        self.exit_code = exit_code
-
-
 class AnsibleExecutor:
     """Run built-in Ansible modules with generated single-host inventory."""
 
@@ -92,10 +53,14 @@ class AnsibleExecutor:
         known_hosts_path: Path,
         *,
         command_timeout: float = 3600,
+        package_providers: PackageProviders | None = None,
     ) -> None:
         self._private_key_path = private_key_path
         self._known_hosts_path = known_hosts_path
         self._command_timeout = command_timeout
+        providers = package_providers or PackageProviders()
+        self._package_transport = AnsiblePackageTransport(self, providers)
+        self._linux = LinuxPackages(self._package_transport, providers)
 
     async def async_execute(
         self,
@@ -111,30 +76,11 @@ class AnsibleExecutor:
         if action is JobAction.CHECK_UPDATES:
             return await self._async_check(host)
         if action is JobAction.UPDATE:
-            provider = package_provider(host.package_provider)
-            names = package_names or (
-                (package_name,) if package_name is not None else ()
-            )
-            module, arguments = (
-                provider.selected_update_module(names)
-                if names
-                else provider.update_module
-            )
-            _, update_output = await self._async_module(
-                host,
-                module,
-                arguments,
-                become=True,
-                failure_code="update_packages_failed",
-            )
-            check = await self._async_check(host, refresh_cache=False)
-            return ExecutionResult(
-                output=f"{update_output}\n{check.output}".strip(),
-                snapshot=check.snapshot,
-                reboot_required=(
-                    check.snapshot.reboot_required if check.snapshot else None
-                ),
-            )
+            try:
+                selection = PackageSelection.from_legacy(package_name, package_names)
+            except ValueError:
+                raise AutomationExecutionError("invalid_package_scope", "") from None
+            return await self._linux.async_update(host, selection)
         if action is JobAction.REBOOT:
             _, output = await self._async_module(
                 host,
@@ -221,59 +167,22 @@ class AnsibleExecutor:
     async def _async_check(
         self, host: Host, *, refresh_cache: bool = True
     ) -> ExecutionResult:
-        """Collect a locale-stable status snapshot from structured results."""
-        provider = package_provider(host.package_provider)
-        facts, facts_output = await self._async_module(
-            host,
-            "ansible.builtin.setup",
-            _facts_arguments(),
-            failure_code="check_updates_facts_failed",
+        """Compatibility facade for the feature-owned package check."""
+        return await self._linux.async_check(host, refresh_cache=refresh_cache)
+
+    async def async_module(
+        self,
+        host: Host,
+        module: str,
+        arguments: str | None = None,
+        *,
+        become: bool = False,
+        failure_code: str = "ansible_failed",
+    ) -> tuple[dict[str, object], str]:
+        """Transport port; delegate to the existing isolated Ansible runner."""
+        return await self._async_module(
+            host, module, arguments, become=become, failure_code=failure_code
         )
-        phase_outputs = [facts_output]
-        if refresh_cache:
-            module, arguments = provider.cache_refresh_module
-            _, refresh_output = await self._async_module(
-                host,
-                module,
-                arguments,
-                become=True,
-                failure_code="check_updates_apt_cache_refresh_failed",
-            )
-            phase_outputs.append(refresh_output)
-        packages, package_output = await self._async_module(
-            host,
-            "ansible.builtin.command",
-            json.dumps({"argv": provider.list_command}),
-            failure_code="check_updates_package_list_failed",
-        )
-        reboot, reboot_output = await self._async_module(
-            host,
-            "ansible.builtin.stat",
-            "path=/var/run/reboot-required",
-            failure_code="check_updates_reboot_status_failed",
-        )
-        package_status = provider.parse_updates(
-            _string(packages.get("stdout")),
-            reboot_required=_nested_bool(reboot, "stat", "exists"),
-        )
-        ansible_facts = facts.get("ansible_facts")
-        fact_values = ansible_facts if isinstance(ansible_facts, dict) else {}
-        snapshot = HostSnapshot(
-            distribution=_optional_string(fact_values.get("ansible_distribution")),
-            distribution_version=_optional_string(
-                fact_values.get("ansible_distribution_version")
-            ),
-            kernel=_optional_string(fact_values.get("ansible_kernel")),
-            updates=package_status.updates,
-            security_updates=package_status.security_updates,
-            reboot_required=package_status.reboot_required,
-            status="ok",
-            checked_at=datetime.now().astimezone(),
-            packages=package_status.packages,
-        )
-        phase_outputs.extend((package_output, reboot_output))
-        output = "\n".join(phase_outputs)
-        return ExecutionResult(output=output, snapshot=snapshot)
 
     async def _async_module(
         self,
@@ -338,7 +247,7 @@ class AnsibleExecutor:
         output = output_bytes.decode("utf-8", errors="replace")
         if process.returncode != 0:
             raise AutomationExecutionError(
-                _classify_failure(failure_code, output),
+                self._package_transport.classify_failure(host, failure_code, output),
                 output,
                 exit_code=process.returncode,
             )
@@ -364,19 +273,6 @@ def _inventory(host: Host, known_hosts_path: Path) -> dict[str, object]:
             }
         }
     }
-
-
-def _facts_arguments() -> str:
-    """Request only status and interpreter facts needed by built-in operations."""
-    return json.dumps({
-        "filter": [
-            "ansible_distribution*",
-            "ansible_kernel",
-            "ansible_python*",
-            "discovered_interpreter_python",
-        ],
-        "gather_subset": ["!all", "min"],
-    })
 
 
 def _extract_module_payload(
@@ -410,82 +306,5 @@ def _extract_module_payload(
     return payload
 
 
-def _classify_failure(default: str, output: str) -> str:
-    """Map known cross-platform failure signatures to safe stable categories."""
-    lowered = output.lower()
-    if any(
-        marker in lowered
-        for marker in (
-            "failed to find a suitable python interpreter",
-            "no python interpreters found",
-            "python interpreter was not found",
-            (
-                "the module failed to execute correctly, you probably need to set "
-                "the interpreter"
-            ),
-            "python: not found",
-            "python3: not found",
-        )
-    ):
-        return "python_interpreter_unavailable"
-    if any(
-        marker in lowered
-        for marker in (
-            "missing sudo password",
-            "sudo: not found",
-            "a password is required",
-            "incorrect sudo password",
-        )
-    ):
-        return "sudo_unavailable"
-    if any(
-        marker in lowered
-        for marker in (
-            "could not get lock",
-            "unable to acquire the dpkg frontend lock",
-            "failed to lock apt for exclusive operation",
-        )
-    ):
-        return "apt_lock_unavailable"
-    return default
-
-
 def _string(value: object) -> str:
     return value if isinstance(value, str) else ""
-
-
-def _optional_string(value: object) -> str | None:
-    return value if isinstance(value, str) and value else None
-
-
-def _nested_bool(payload: dict[str, object], parent: str, child: str) -> bool:
-    nested = payload.get(parent)
-    return bool(nested.get(child)) if isinstance(nested, dict) else False
-
-
-# This fixed script only reads OS identity and checks programs/package status.
-_PROBE_SCRIPT = r"""
-import json, os, shlex, shutil, subprocess, sys
-requirements = json.loads(sys.argv[1])
-release = {}
-with open('/etc/os-release') as source:
-    for line in source:
-        key, sep, value = line.strip().partition('=')
-        if sep and key in ('ID', 'VERSION_ID'):
-            parsed = shlex.split(value)
-            release[key] = parsed[0] if parsed else ''
-missing_packages = []
-for package in requirements['packages']:
-    if not shutil.which('dpkg-query'):
-        missing_packages.append(package)
-        continue
-    result = subprocess.run(['dpkg-query', '-W', '-f=${Status}', '--', package],
-                            capture_output=True, text=True, timeout=5)
-    if result.returncode or result.stdout.strip() != 'install ok installed':
-        missing_packages.append(package)
-missing_programs = [n for n in requirements['programs'] if not shutil.which(n)]
-print(json.dumps({'distribution': release.get('ID', ''),
-                  'version': release.get('VERSION_ID', ''),
-                  'missing_programs': missing_programs,
-                  'missing_packages': missing_packages}))
-"""

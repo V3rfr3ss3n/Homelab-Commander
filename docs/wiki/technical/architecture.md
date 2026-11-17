@@ -99,3 +99,16 @@ approval and authoritative state validation; production currently installs no
 approval GUI, agent provisioner or generic service executor. Shared legacy entrances
 are not individual human attribution. See
 [ADR-0027](../../02-architecture/adr/0027-central-policy-and-approval-contracts.md).
+
+
+## Linux package feature boundary
+
+`linux/` owns package scope/status/facts and workflows over typed provider-resolution
+and transport ports. Its Ansible adapter normalizes external payloads; the existing
+executor retains SSH/process isolation, and policy/jobs retain permissions, locks
+and recovery. Compatibility imports and stored `debian_apt` remain unchanged.
+Versioned check/update bindings describe contracts without executing or asserting
+unprobed readiness. Production registers APT only; an independent test-only
+provider proves extension through the existing API and worker. Real distribution
+expansion remains later work. See
+[ADR-0028](../../02-architecture/adr/0028-linux-package-provider-boundary.md).

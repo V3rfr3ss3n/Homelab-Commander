@@ -21,11 +21,12 @@ from backend.homelab_backend.automation import (
     AutomationExecutionError,
     ExecutionResult,
     HostSnapshot,
-    _classify_failure,
     _extract_module_payload,
     _facts_arguments,
     _inventory,
 )
+from backend.homelab_backend.linux.ansible import classify_failure as _classify_failure
+from backend.homelab_backend.linux.providers.apt import DebianAptProvider
 from backend.homelab_backend.models import (
     CustomTask,
     CustomTaskMode,
@@ -167,7 +168,7 @@ async def test_update_scopes_to_named_package_or_keeps_full_upgrade(
 ) -> None:
     """Scoped updates target one APT package; absent names retain full upgrades."""
     executor = AnsibleExecutor(tmp_path / "key", tmp_path / "known_hosts")
-    executor._async_check = AsyncMock(  # type: ignore[method-assign]
+    executor._linux.async_check = AsyncMock(  # type: ignore[method-assign]
         return_value=ExecutionResult(output="checked")
     )
     executor._async_module = AsyncMock(return_value=({}, "updated"))  # type: ignore[method-assign]
@@ -228,8 +229,14 @@ async def test_check_tolerates_missing_optional_facts(tmp_path: Path) -> None:
         "list",
         "--upgradable",
     ]
-    assert calls[2].kwargs == {"failure_code": "check_updates_package_list_failed"}
-    assert calls[3].kwargs == {"failure_code": "check_updates_reboot_status_failed"}
+    assert calls[2].kwargs == {
+        "become": False,
+        "failure_code": "check_updates_package_list_failed",
+    }
+    assert calls[3].kwargs == {
+        "become": False,
+        "failure_code": "check_updates_reboot_status_failed",
+    }
 
 
 async def test_check_keeps_one_structured_result_per_sequential_phase(
@@ -438,7 +445,12 @@ async def test_module_runner_ignores_warnings_when_result_and_exit_are_successfu
 def test_ansible_failures_receive_safe_specific_codes(
     output: str, expected: str
 ) -> None:
-    assert _classify_failure("check_updates_package_list_failed", output) == expected
+    assert (
+        _classify_failure(
+            "check_updates_package_list_failed", output, DebianAptProvider()
+        )
+        == expected
+    )
 
 
 async def test_module_runner_rejects_invalid_structured_success(tmp_path: Path) -> None:
@@ -635,8 +647,8 @@ async def test_package_updates_use_latest_and_refresh_remaining_snapshot(
             executor, "_async_module", new=AsyncMock(return_value=({}, "Updated"))
         ) as module,
         patch.object(
-            executor,
-            "_async_check",
+            executor._linux,
+            "async_check",
             new=AsyncMock(
                 return_value=ExecutionResult(output="Checked", snapshot=snapshot)
             ),

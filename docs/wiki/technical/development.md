@@ -155,3 +155,15 @@ are synthetic. Generic test handlers now require an explicit registered operatio
 policy; a readiness callback alone is insufficient. Runtime still has only the
 existing admin authentication paths. Full `make release-check`, independent 95%
 line/branch thresholds and remote CI remain required before review.
+
+
+## Linux provider boundary tests
+
+Run `uv run pytest backend/tests/test_linux_boundary.py backend/tests/test_automation.py
+backend/tests/test_jobs.py backend/tests/test_packages.py --no-cov` as one shell
+command for focused provider, APT, job and status regressions. Then run the complete
+`make release-check`; focused tests do not replace coverage or browser gates.
+The independent synthetic package provider lives only in tests, overrides all
+execution and is never registered in the production app or local UI preview.
+The preview keeps its existing disposable simulation; unchanged GUI behavior is
+expected for this internal extraction. No real SSH or host action is part of tests.

@@ -15,7 +15,8 @@ All six milestones below exist and the feature issues carry their assigned phase
 The existing area/type/priority labels are also configured (verified 2026-11-15).
 The Development Roadmap project tracks status and label-derived priority; #41 and
 #42/#61 and #62/#63 are Done. #43 was owner-approved and merged on 2026-11-17;
-#44 was owner-approved and merged in !41 / PR #71. #46 is in implementation.
+#44 was owner-approved and merged in !41 / PR #71; #46 in !42 / PR #72.
+#45 is the current review block: APT extraction and synthetic provider proof.
 These planning states do not claim that M1 is complete.
 
 | Order | GitHub milestone title | Purpose | Issues |
@@ -136,3 +137,14 @@ contracts. Existing admin maintenance remains compatible. No agent accounts,
 autonomous execution grants or approval GUI ship in M1. See
 [ADR-0027](../02-architecture/adr/0027-central-policy-and-approval-contracts.md).
 Owner review and full checks remain required; no Dev release is requested.
+
+
+## Linux package boundary review (#45)
+
+Extract APT into feature-owned domain/application/provider/transport boundaries;
+preserve existing APIs and deliberate maintenance. Shared capability bindings and
+the unchanged policy/job pipeline are exercised by an independent test-only
+provider. No second production package manager is advertised. M2 still needs real
+provider implementations and platform-specific evidence; M1's eventual second-real-
+manager acceptance remains open. See
+[ADR-0028](../02-architecture/adr/0028-linux-package-provider-boundary.md).
