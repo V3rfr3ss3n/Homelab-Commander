@@ -1,7 +1,7 @@
 ---
 title: TODO
 status: active
-updated: 2026-11-17
+updated: 2026-11-18
 tags: [project, todo]
 ---
 
@@ -12,10 +12,12 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## In Arbeit
 
-- [ ] #45: Linux-Paketmodul und synthetischer zweiter Provider zur Review; APT
-  bleibt der einzige Produktionsprovider. Reale Distributionsadapter folgen in M2.
-  Entscheidung: [ADR-0028](../02-architecture/adr/0028-linux-package-provider-boundary.md).
-  Abnahme: [Linux-Provider-Review](../05-reviews/2026-11-17-linux-provider-boundary-review.md).
+- [ ] #47: Linux-Fähigkeits-/Versionsmatrix, qualifizierte Security-/Reboot-Evidenz
+  und wiederverwendbare synthetische Providerverträge zur Review. Keine neue
+  Provideraktivierung; DNF/Zypper folgen getrennt in #48.
+  [Matrix](../02-architecture/linux-provider-matrix.md).
+- [x] #45: Linux-Paketmodul und synthetischer zweiter Provider vom Owner
+  abgenommen und in !43 / PR #73 gemergt. APT bleibt der einzige Produktionsprovider.
 - [x] #43/#44/#46: Gruppen, Ressourcenjobs und Policy-Grundlage vom Owner
   abgenommen und gemergt (!40–!42 / PR #68, #71, #72). Kein Dev-Release.
 - [x] #42/#61: Registry und Dependabot-Follow-up vom Owner abgenommen, !39 gemergt.

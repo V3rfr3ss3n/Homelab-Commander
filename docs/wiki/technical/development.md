@@ -1,7 +1,7 @@
 ---
 title: Development, tests and CI
 status: active
-updated: 2026-11-17
+updated: 2026-11-18
 tags: [wiki, technical]
 ---
 
@@ -167,3 +167,14 @@ The independent synthetic package provider lives only in tests, overrides all
 execution and is never registered in the production app or local UI preview.
 The preview keeps its existing disposable simulation; unchanged GUI behavior is
 expected for this internal extraction. No real SSH or host action is part of tests.
+
+
+## Cross-manager contract suite
+
+Run `uv run pytest backend/tests/test_linux_matrix.py --no-cov` for the reusable
+APT/synthetic-provider scope harness, strict observation invariants, missing-signal
+cases for all planned manager families and matrix/document consistency. Raw native
+outputs and execution remain untested for absent providers. The
+[compatibility matrix](../../02-architecture/linux-provider-matrix.md) records
+version/architecture/fixture prerequisites before enabling each future provider.
+The full release gate and independent 95% line/branch thresholds still apply.
