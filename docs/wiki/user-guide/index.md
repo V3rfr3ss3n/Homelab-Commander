@@ -21,3 +21,5 @@ For ongoing operation, use [backup and removal](backup-and-removal.md),
 [troubleshooting](troubleshooting.md) and [frequently asked questions](faq.md).
 The [product behavior guide](../product/behavior.md) explains what a successful
 operation means and where explicit confirmation is required.
+
+- [Groups and tags](groups-and-tags.md): manual selection, smart rules and previews.

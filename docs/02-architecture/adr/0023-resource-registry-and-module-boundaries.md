@@ -1,6 +1,6 @@
 ---
 title: Persistent resource registry and incremental module boundaries
-status: proposed
+status: accepted
 updated: 2026-11-15
 tags: [architecture, registry, migration, dependencies]
 ---

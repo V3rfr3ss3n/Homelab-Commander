@@ -112,3 +112,11 @@ The next reviewed registry block adds bounded authenticated resource inventory,
 service/instance metadata, explicit host links and typed relationships alongside
 the existing v1 Host/job API. UI writes retain CSRF. No new provider or remote
 execution is enabled. See the [exact API contract](../../02-architecture/native-api.md#resource-registry-schema-11).
+
+## Groups and tags
+
+Group/tag metadata, bounded preview and resource filters are documented in the [schema-12 API](../../02-architecture/native-api.md#groups-and-tags-schema-12). UI preview/writes retain CSRF; membership is not execution permission.
+
+Resource discovery can additionally filter by group UUID and sort by name or kind,
+ascending or descending, before paging. Missing groups fail rather than silently
+showing all inventory. See the [API contract](../../02-architecture/native-api.md).

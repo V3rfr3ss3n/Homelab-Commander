@@ -39,6 +39,7 @@ for the GitLab Wiki. Detailed normative records and the original vault remain he
 | Implement or reproduce a bug | [Contributing](../CONTRIBUTING.md), [workflow](03-development/workflow.md), [code rules](03-development/code-rules.md) |
 | Run checks | [Quality gates](03-development/quality-gates.md), [technical foundation](03-development/technical-foundation.md) |
 | Update documentation or prepare the Wiki | [Documentation ownership and migration](03-development/documentation.md) |
+| Extend operator UI | [Design foundation](design/README.md), [component contracts](design/component-contracts.md), [architecture inventory](design/architecture-inventory.md) |
 | Update visual assets | [Branding](03-development/branding.md) |
 | Review changes or assess risk | [Code review](05-reviews/code-review.md), [risk register](05-reviews/risk-register.md), [security exceptions](05-reviews/security-exceptions.md) |
 

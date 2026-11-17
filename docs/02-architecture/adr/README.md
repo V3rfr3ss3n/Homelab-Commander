@@ -1,7 +1,7 @@
 ---
 title: Architecture Decision Records
 status: active
-updated: 2026-11-15
+updated: 2026-11-16
 tags: [architecture, adr, index]
 ---
 
@@ -39,7 +39,10 @@ tags: [architecture, adr, index]
 
 | [[0022-resource-and-capability-contracts]] | accepted | Ressourcenidentitäten, versionierte Capabilities und additive Kompatibilität |
 
-| [[0023-resource-registry-and-module-boundaries]] | proposed | Registry, additive Migration, Modulgrenzen und geprüfte Dependency-Updates |
+| [[0023-resource-registry-and-module-boundaries]] | accepted | Registry, additive Migration, Modulgrenzen und geprüfte Dependency-Updates |
+
+| [[0024-bounded-resource-groups]] | proposed | Manuelle Gruppen, Tags und begrenzte deterministische Smart-Regeln |
+| [[0025-operator-ui-and-incremental-modularity]] | proposed | English-only operator UI, reusable lists, selection context and incremental modularity |
 
 Neue ADRs verwenden [[../../templates/adr-template|die ADR-Vorlage]]. Akzeptierte
 ADRs werden nicht rückwirkend umgeschrieben; eine neue ADR ersetzt die alte und

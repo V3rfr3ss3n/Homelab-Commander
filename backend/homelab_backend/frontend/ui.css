@@ -235,3 +235,51 @@ button[data-action=check_updates]:hover{border-color:var(--line);color:var(--tex
 .history-error{border-left:3px solid var(--danger);padding:10px;color:var(--danger);background:var(--bg)}
 .history-recovered{font-size:12px;color:var(--accent);padding:8px 0}
 .message-body{min-width:0}#error-details{font-size:12px;margin-top:8px}#error-details pre{max-height:35vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}#error-details summary{cursor:pointer}#message{align-items:flex-start;max-height:calc(100vh - 90px);overflow:auto}
+/* Group drafts remain separate from live inventory rendering. */
+.group-workspace{grid-column:1/-1}.group-workspace .row{gap:12px;flex-wrap:wrap}.group-workspace small{display:block;color:var(--muted)}#group-editor{margin:0;padding:0}#group-rule-editor{margin:12px 0;border:1px solid var(--line);border-radius:8px}.group-rule label{min-width:120px}#group-preview-result{margin:16px 0;overflow-wrap:anywhere}.group-workspace input[data-resource-tags]{display:block;width:100%}
+
+/* Semantic aliases preserve the existing palette; new slices share these contracts. */
+:root {
+  --surface-page:var(--bg); --surface-panel:var(--card); --border-default:var(--line);
+  --text-primary:var(--text); --text-secondary:var(--muted); --status-success:var(--accent);
+  --status-error:var(--danger); --status-warning:#eed17f; --status-info:#7fbafa;
+  --focus-ring:var(--accent); --space-1:4px; --space-2:8px; --space-3:12px;
+  --space-4:16px; --space-5:24px; --radius-control:8px; --radius-panel:14px;
+  --font-caption:12px; --font-body:15px; --control-height:36px;
+}
+.resource-subnav {display:flex;gap:var(--space-4);margin:0 0 var(--space-4);font-size:13px}
+.resource-toolbar {align-items:end}
+.resource-toolbar>label {flex:1;max-width:420px}
+.resource-toolbar button {min-height:var(--control-height)}
+#resource-filters {flex-basis:100%;align-items:end;padding:var(--space-3);border:1px solid var(--border-default);border-radius:var(--radius-control)}
+.resource-layout {display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-4);align-items:start}
+.resource-layout:has(>aside:not([hidden])) {grid-template-columns:minmax(0,1fr) minmax(270px,340px)}
+.resource-list-pane {min-width:0}
+.table-scroll {overflow-x:auto}
+.resource-table {width:100%;border-collapse:collapse;text-align:left;font-size:13px}
+.resource-table th,.resource-table td {padding:var(--space-3) var(--space-2);border-bottom:1px solid var(--border-default);overflow-wrap:anywhere}
+.resource-table th {color:var(--text-secondary);font-weight:500}
+.resource-table th button {background:transparent;border:0;padding:0;font-size:inherit}
+.resource-table input[type=checkbox] {width:auto;accent-color:var(--accent)}
+.resource-table tr:has(input:checked) {background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.resource-table .text-button {font-size:13px;text-align:left}
+.resource-tag {display:inline-block;padding:1px 6px;margin:2px;border:1px solid var(--border-default);border-radius:var(--radius-control);color:var(--text-secondary)}
+.list-pagination,.resource-selection {display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);flex-wrap:wrap;margin-top:var(--space-3)}
+.list-pagination button,.resource-selection {font-size:var(--font-caption)}
+#resource-context {padding:var(--space-4);background:var(--surface-page);border-radius:var(--radius-control)}
+#resource-context h3 {margin-top:0}
+#resource-context input,#resource-context select {font-size:13px}
+#resource-context .group-rule {display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--space-2);border-top:1px solid var(--border-default);padding-block:var(--space-2)}
+.group-rule label {grid-column:1/-1;min-width:0}
+#resource-load-state {padding:var(--space-3);border-left:3px solid var(--status-warning);margin-bottom:var(--space-3)}
+.is-stale {opacity:.55;pointer-events:none}
+#group-preview-result {overflow-wrap:anywhere;font-size:13px;margin-top:var(--space-3)}
+#group-manager {width:min(850px,95vw)}
+#group-manager .row {align-items:center}
+#groups-workspace :is(button,input,select):focus-visible {outline:2px solid var(--focus-ring);outline-offset:3px}
+@media(max-width:900px) {
+  .resource-layout:has(>aside:not([hidden])) {grid-template-columns:minmax(0,1fr)}
+  #resource-context {grid-row:1}
+  .resource-table {min-width:520px}
+}
+@media(prefers-reduced-motion:reduce) {*,*::before,*::after {scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}

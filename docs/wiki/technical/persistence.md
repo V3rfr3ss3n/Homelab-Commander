@@ -82,3 +82,7 @@ identities. Migration, backfill and version marker share a rollback boundary; fi
 initialization is serialized off the event loop. Back up DB and SSH files together;
 no safe downgrade after new writes is implied. See
 [ADR-0023](../../02-architecture/adr/0023-resource-registry-and-module-boundaries.md).
+
+## Groups and tags
+
+Schema 12 adds group definitions, multiple manual memberships and resource tags. Host/service IDs and SSH state remain unchanged. Tombstones are excluded from effective membership; deletion removes only group metadata.

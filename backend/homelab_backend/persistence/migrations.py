@@ -197,4 +197,24 @@ MIGRATIONS: tuple[str, ...] = (
         DELETE FROM resource_relationships WHERE source_id=OLD.id OR target_id=OLD.id;
     END;
     """,
+    """
+    CREATE TABLE resource_groups (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT NOT NULL,
+        rule_json TEXT
+    );
+    CREATE TABLE group_members (
+        group_id TEXT NOT NULL REFERENCES resource_groups(id) ON DELETE CASCADE,
+        resource_id TEXT NOT NULL REFERENCES resources(id),
+        PRIMARY KEY(group_id,resource_id)
+    );
+    CREATE INDEX group_members_resource ON group_members(resource_id);
+    CREATE TABLE resource_tags (
+        resource_id TEXT NOT NULL REFERENCES resources(id),
+        tag TEXT NOT NULL,
+        PRIMARY KEY(resource_id,tag)
+    );
+    CREATE INDEX resource_tags_tag ON resource_tags(tag,resource_id);
+    """,
 )
