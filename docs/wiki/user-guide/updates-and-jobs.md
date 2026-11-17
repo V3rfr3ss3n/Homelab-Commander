@@ -1,7 +1,7 @@
 ---
 title: Updates and jobs
 status: active
-updated: 2026-11-15
+updated: 2026-11-17
 tags: [wiki, user-guide]
 ---
 
@@ -142,7 +142,6 @@ unknown. Dashboard totals include only checked hosts and label any unchecked
 hosts; unknown status is never presented as a successful zero-update check.
 A failed first check leaves status unknown. Open its job for the failure reason.
 
-
 ## Inspect one job
 
 Open a job from its history point, table row or action notification. The detail
@@ -196,3 +195,17 @@ stale only while their filters still match. **Last failed job** has a red title
 and an explicit failed label even after review; timeline attention colors retain
 their separate review meaning. See
 [troubleshooting](troubleshooting.md#copy-useful-failure-diagnostics).
+
+## Interrupted actions after a backend restart
+
+An update, reboot or custom task that was running when the backend stopped is marked
+failed with **Execution was interrupted; remote effects are uncertain**. It is never
+automatically repeated. Inspect the Host and previous output first: the remote action
+may have completed partially or fully. Then explicitly start new work if appropriate
+and mark the interrupted job reviewed. A later successful job does not acknowledge
+that uncertainty. Queued actions that had not started remain queued; connection and
+status checks may resume with their interruption evidence retained.
+
+While a job runs, connection changes and Host removal return a conflict message.
+Wait for completion before changing those values. A connection or task changed while
+a job is queued causes that job to fail safely; review and create a new job.

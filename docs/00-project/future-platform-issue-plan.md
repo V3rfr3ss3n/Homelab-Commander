@@ -1,7 +1,7 @@
 ---
 title: Future platform GitHub planning register
 status: active
-updated: 2026-11-16
+updated: 2026-11-17
 tags: [planning, github, milestones, issues, labels]
 ---
 
@@ -14,8 +14,8 @@ This register tracks implementation issues derived from the owner-approved [Prod
 All six milestones below exist and the feature issues carry their assigned phase.
 The existing area/type/priority labels are also configured (verified 2026-11-15).
 The Development Roadmap project tracks status and label-derived priority; #41 and
-#42/#61 and #62/#63 are Done, while #43 is In Progress. These planning states do not claim that M1
-features have shipped.
+#42/#61 and #62/#63 are Done. #43 was owner-approved and merged on 2026-11-17;
+#44 is in implementation. These planning states do not claim that M1 is complete.
 
 | Order | GitHub milestone title | Purpose | Issues |
 | --- | --- | --- | --- |
@@ -25,7 +25,6 @@ features have shipped.
 | 4 | M4 — Proxmox & Infrastructure | Nodes, VM/LXC identity/discovery and safe lifecycle planning | [#55](https://github.com/V3rfr3ss3n/Homelab-Commander/issues/55) |
 | 5 | M5 — Automation & External Services | Semaphore, n8n, events/workflows | [#56](https://github.com/V3rfr3ss3n/Homelab-Commander/issues/56)–[#57](https://github.com/V3rfr3ss3n/Homelab-Commander/issues/57) |
 | 6 | M6 — Secure AI Operations | Agent identity, read API, restricted updates and human approval | [#58](https://github.com/V3rfr3ss3n/Homelab-Commander/issues/58)–[#59](https://github.com/V3rfr3ss3n/Homelab-Commander/issues/59) |
-
 
 ## Cross-milestone operator UI and code-quality direction (proposed ADR-0025)
 
@@ -118,3 +117,11 @@ The planning specification is approved, but source changes must proceed through 
 [concept index](../design/concepts/README.md) for all six non-binding references.
 Full shell migration, saved views and #70 localization remain later work; ADR-0025
 is still proposed. No milestone description or future feature scope is rewritten.
+
+## Resource job foundation review (#44)
+
+The next isolated branch implements additive schema 13, immutable target/context
+snapshots, Host/Service conflicts and safe interrupted-action recovery. Production
+has no generic operation handler or group execution. Policy/approval work remains
+#46; see [ADR-0026](../02-architecture/adr/0026-resource-jobs-and-safe-recovery.md).
+Owner review and full checks remain required; no Dev release is requested.

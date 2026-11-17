@@ -1,7 +1,7 @@
 ---
 title: Persistence and job recovery
 status: active
-updated: 2026-11-09
+updated: 2026-11-17
 tags: [wiki, technical]
 ---
 
@@ -15,13 +15,16 @@ Private-key file permissions are `0600`; the API only exports the public key.
 ## Queue semantics
 
 HTTP requests enqueue work and return jobs. A bounded worker executes queued jobs;
-mutating operations are serialized per canonical host ID. Updates and reboots require
+all Host operations and linked Service jobs share canonical resource locks. Updates
+and reboots require
 one existing explicit target. Missing/deleted targets fail safely before execution.
 
-After a process restart, interrupted running jobs are requeued. This is recovery,
-not an exactly-once guarantee. Operators should review in-flight operations before
-restarting the backend. Do not introduce schema changes or new retry promises without
-an explicit migration and acceptance plan.
+After a process restart, unstarted queued jobs resume after revalidation. Only
+interrupted connection/status checks may be retried. Interrupted updates, reboots,
+custom tasks and generic operations become failed with `execution_interrupted`.
+Remote effects are uncertain: inspect the resource before explicitly starting new
+work. Existing logs and the prior start are preserved. This is not an exactly-once
+remote execution guarantee.
 
 ## Stored output and HA metadata
 
@@ -62,7 +65,6 @@ Website links contain validated HTTP(S) URLs without credentials. Existing host 
 task assignments and job history remain intact. See
 [ADR-0013](../../02-architecture/adr/0013-visible-dashboard-checks-and-websites.md).
 
-
 ## Failure review
 
 Additive migration 7 adds nullable `jobs.reviewed_at`. Existing jobs remain
@@ -86,3 +88,14 @@ no safe downgrade after new writes is implied. See
 ## Groups and tags
 
 Schema 12 adds group definitions, multiple manual memberships and resource tags. Host/service IDs and SSH state remain unchanged. Tombstones are excluded from effective membership; deletion removes only group metadata.
+
+## Immutable resource job snapshots
+
+Schema 13 adds credential-free target/operation/context snapshots and interruption
+metadata without changing job IDs or states during migration. A queued job fails
+closed if its target association, connection or task revision changes. Running work
+blocks connection changes/removal and service relinking. Historical deleted Hosts
+retain unavailable targets; no replacement identity is invented. Interrupted mutation
+failures require explicit review even after a later success. Back up DB and SSH state
+together; an older worker can replay uncertain effects, so a downgrade is unsafe.
+See [ADR-0026](../../02-architecture/adr/0026-resource-jobs-and-safe-recovery.md).

@@ -315,7 +315,11 @@ async def test_job_manager_handles_stale_identities_and_claims(tmp_path: Path) -
     orphan = await repository.async_create(JobAction.UPDATE, removed_host.id)
     await hosts.async_delete(removed_host.id)
     await manager._async_run(orphan.id)
-    assert (await repository.async_get(orphan.id)).state is JobState.QUEUED  # type: ignore[union-attr]
+    orphaned = await repository.async_get(orphan.id)
+    assert orphaned is not None
+    assert orphaned.state is JobState.FAILED
+    assert orphaned.error_code == "host_not_found"
+    assert orphaned.execution.scope.target.id == removed_host.id
 
     missing_lookup_host = await hosts.async_create(
         HostCreate(

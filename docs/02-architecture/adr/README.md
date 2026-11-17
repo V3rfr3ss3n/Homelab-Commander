@@ -1,7 +1,7 @@
 ---
 title: Architecture Decision Records
 status: active
-updated: 2026-11-16
+updated: 2026-11-17
 tags: [architecture, adr, index]
 ---
 
@@ -43,6 +43,8 @@ tags: [architecture, adr, index]
 
 | [[0024-bounded-resource-groups]] | proposed | Manuelle Gruppen, Tags und begrenzte deterministische Smart-Regeln |
 | [[0025-operator-ui-and-incremental-modularity]] | proposed | English-only operator UI, reusable lists, selection context and incremental modularity |
+
+| [[0026-resource-jobs-and-safe-recovery]] | proposed | Immutable resource job scopes, canonical conflicts and no blind mutation replay |
 
 Neue ADRs verwenden [[../../templates/adr-template|die ADR-Vorlage]]. Akzeptierte
 ADRs werden nicht rückwirkend umgeschrieben; eine neue ADR ersetzt die alte und

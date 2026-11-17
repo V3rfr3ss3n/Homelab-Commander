@@ -217,4 +217,42 @@ MIGRATIONS: tuple[str, ...] = (
     );
     CREATE INDEX resource_tags_tag ON resource_tags(tag,resource_id);
     """,
+    """
+    ALTER TABLE jobs ADD COLUMN execution_json TEXT;
+    ALTER TABLE jobs ADD COLUMN interrupted_at TEXT;
+    ALTER TABLE jobs ADD COLUMN interrupted_started_at TEXT;
+    ALTER TABLE jobs ADD COLUMN recovery_count INTEGER NOT NULL DEFAULT 0;
+    UPDATE jobs SET execution_json=json_object(
+        'scope',json_object(
+            'target',json_object('kind','host','id',host_id),
+            'operation','linux.' || action,
+            'execution_host_id',host_id,
+            'conflicts',json_array(json_object('kind','host','id',host_id)),
+            'recovery',CASE WHEN action IN ('test_connection','check_updates')
+                THEN 'retry_read' ELSE 'never_replay' END,
+            'package_name',package_name,
+            'package_names',json(package_names_json),
+            'custom_task_id',custom_task_id,
+            'task_revision',(SELECT updated_at FROM custom_tasks
+                WHERE id=custom_task_id)),
+        'context',json_object('caller','legacy_admin','approval_id',NULL)
+    ) WHERE host_id IS NOT NULL;
+    CREATE TRIGGER job_scope_immutable BEFORE UPDATE OF execution_json ON jobs
+    WHEN OLD.execution_json IS NOT NEW.execution_json BEGIN
+        SELECT RAISE(ABORT,'Execution scope is immutable');
+    END;
+    CREATE TRIGGER executing_host_connection BEFORE UPDATE OF
+        address,port,username,package_provider ON hosts
+    WHEN (OLD.address!=NEW.address OR OLD.port!=NEW.port OR
+          OLD.username!=NEW.username OR OLD.package_provider!=NEW.package_provider)
+        AND EXISTS(SELECT 1 FROM jobs WHERE state='running' AND host_id=OLD.id)
+    BEGIN
+        SELECT RAISE(ABORT,'host_execution_busy');
+    END;
+    CREATE TRIGGER executing_host_removal BEFORE DELETE ON hosts
+    WHEN EXISTS(SELECT 1 FROM jobs WHERE state='running' AND host_id=OLD.id)
+    BEGIN
+        SELECT RAISE(ABORT,'host_execution_busy');
+    END;
+    """,
 )

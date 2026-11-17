@@ -7,6 +7,9 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ### Fixed
 
+- Stop blindly replaying interrupted updates, reboots and custom tasks; preserve
+  uncertainty evidence and require explicit failure review.
+
 - Keep a keyboard-focused timeline orbit usable during pointer movement and
   overlapping history refreshes.
 - Preserve graph/table job history on older SQLite runtimes without the subsecond
@@ -15,6 +18,9 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
   distinguish unavailable history from empty results and mark cached results stale.
 
 ### Added
+
+- Immutable resource job scopes and authenticated entrance metadata, additive schema
+  13, Host/Service conflict locks and a default-deny internal operation boundary.
 
 - Manual and smart resource groups, persisted tags, bounded membership previews,
   filtering and contextual editing under Resources. Membership never grants access.

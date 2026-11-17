@@ -29,10 +29,11 @@ from .custom_tasks import CustomTaskRepository, ShellTasksDisabledError
 from .dashboard import DashboardService, DashboardSummary, JobPage
 from .database import Database
 from .errors import install_error_handlers
+from .execution.scope import ExecutionContext, JobCaller
 from .groups.application import GroupService
 from .groups.repository import SqliteGroupStore
 from .groups.routes import install_group_routes
-from .hosts import DuplicateHostError, HostRepository
+from .hosts import DuplicateHostError, HostBusyError, HostRepository
 from .jobs import JobManager, JobRepository, JobSort
 from .models import (
     AssignmentUpdate,
@@ -400,7 +401,11 @@ def create_app(
         dependencies=authenticated,
     )
     async def delete_host(host_id: UUID) -> Response:
-        if not await hosts.async_delete(host_id):
+        try:
+            removed = await hosts.async_delete(host_id)
+        except HostBusyError as err:
+            raise HTTPException(status.HTTP_409_CONFLICT, str(err)) from None
+        if not removed:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Host not found")
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -409,10 +414,16 @@ def create_app(
         host_id: UUID,
         package_name: str | None = None,
         package_names: tuple[str, ...] = (),
+        *,
+        context: ExecutionContext | None = None,
     ) -> Job:
         try:
             return await jobs.async_enqueue(
-                action, host_id, package_name, package_names
+                action,
+                host_id,
+                package_name,
+                package_names,
+                context=context or ExecutionContext(caller=JobCaller.EXTERNAL_ADMIN),
             )
         except KeyError as err:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Host not found") from err
@@ -469,7 +480,11 @@ def create_app(
     )
     async def check_all_hosts() -> tuple[Job, ...]:
         return tuple([
-            await jobs.async_enqueue(JobAction.CHECK_UPDATES, host.id)
+            await jobs.async_enqueue(
+                JobAction.CHECK_UPDATES,
+                host.id,
+                context=ExecutionContext(caller=JobCaller.EXTERNAL_ADMIN),
+            )
             for host in await hosts.async_list()
         ])
 
@@ -759,7 +774,11 @@ def create_app(
     )
     async def run_custom_task(host_id: UUID, task_id: UUID) -> Job:
         try:
-            return await jobs.async_enqueue_custom(task_id, host_id)
+            return await jobs.async_enqueue_custom(
+                task_id,
+                host_id,
+                context=ExecutionContext(caller=JobCaller.EXTERNAL_ADMIN),
+            )
         except KeyError as err:
             raise HTTPException(status.HTTP_404_NOT_FOUND, str(err)) from err
         except ValueError as err:
@@ -888,7 +907,11 @@ def create_app(
         dependencies=ui_mutation,
     )
     async def ui_delete_host(host_id: UUID) -> Response:
-        if not await hosts.async_delete(host_id):
+        try:
+            removed = await hosts.async_delete(host_id)
+        except HostBusyError as err:
+            raise HTTPException(status.HTTP_409_CONFLICT, str(err)) from None
+        if not removed:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Host not found")
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -953,15 +976,21 @@ def create_app(
     ) -> Job:
         if data is not None and action is not JobAction.UPDATE:
             raise HTTPException(422, "Package scope is only valid for updates")
-        if action is JobAction.CUSTOM_TASK:
+        if action in {JobAction.CUSTOM_TASK, JobAction.RESOURCE_OPERATION}:
             raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT, "Task ID required"
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
+                "Dedicated operation entrance required",
             )
         return await enqueue(
             action,
             host_id,
             data.package_name if data else None,
             data.package_names or () if data else (),
+            context=ExecutionContext(
+                caller=JobCaller.INGRESS_ADMIN
+                if resolved.ingress_mode
+                else JobCaller.UI_ADMIN
+            ),
         )
 
     @app.post(
@@ -972,7 +1001,15 @@ def create_app(
     )
     async def ui_run_task(host_id: UUID, task_id: UUID) -> Job:
         try:
-            return await jobs.async_enqueue_custom(task_id, host_id)
+            return await jobs.async_enqueue_custom(
+                task_id,
+                host_id,
+                context=ExecutionContext(
+                    caller=JobCaller.INGRESS_ADMIN
+                    if resolved.ingress_mode
+                    else JobCaller.UI_ADMIN
+                ),
+            )
         except KeyError as err:
             raise HTTPException(status.HTTP_404_NOT_FOUND, str(err)) from err
         except ValueError as err:

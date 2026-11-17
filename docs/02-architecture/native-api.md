@@ -1,7 +1,7 @@
 ---
 title: Native API v1
 status: accepted
-updated: 2026-11-15
+updated: 2026-11-17
 tags: [architecture, api, backend]
 ---
 
@@ -57,10 +57,12 @@ und verlangt weiterhin den Bearer Token.
 ## Jobsemantik
 
 `POST`-Aktionen antworten sofort mit `202` und einem persistenten Job. Zustände
-sind `queued`, `running`, `success`, `failed` oder `cancelled`. Nach Prozessabbruch werden
-`running`-Jobs beim Start erneut als `queued` aufgenommen. Update, Reboot und
-Custom Tasks verwenden ein Lock je Host. Ein unbekannter Host oder Task scheitert
-vor dem Anlegen beziehungsweise vor der Ausführung.
+sind `queued`, `running`, `success`, `failed` oder `cancelled`. Nach Prozessabbruch
+werden nur laufende Verbindungs-/Statusprüfungen erneut eingereiht. Unterbrochene
+Updates, Reboots, Custom Tasks und generische Jobs werden `failed` mit
+`execution_interrupted`; ihre möglichen Remote-Effekte müssen geprüft werden.
+Alle Hostaktionen teilen das Host-Ressourcenlock; verknüpfte Servicejobs verwenden
+dasselbe Lock. Ein unbekanntes oder verändertes Ziel scheitert vor Ausführung.
 
 Jede Jobantwort behält die kompatiblen Felder `id` und `action` und ergänzt
 `job_id`, `type`, `host_name`, `started_at`, `finished_at`, `exit_code`,
@@ -150,7 +152,6 @@ reboots or custom tasks, and no backend timer exists. Clients request only while
 Dashboard/Hosts is visible and connected. See
 [ADR-0013](adr/0013-visible-dashboard-checks-and-websites.md).
 
-
 ### Job review and setup choices
 
 `POST /api/v1/jobs/{job_id}/review` (Bearer auth) and
@@ -164,7 +165,6 @@ Authenticated `GET /ui-api/onboarding` retains system/username/port and adds fix
 `restricted_key=true|false` and optional `source` IP/CIDR. Defaults are create, sh,
 none, true and empty. Unsupported/invalid values return 422. Rendering never applies
 configuration. Output is still the marked version-1 host connection JSON envelope.
-
 
 ### Website icon override
 
@@ -293,3 +293,21 @@ same full filtered snapshot as the rows. Sorting uses name and UUID tie-breakers
 A missing group returns 404, malformed UUID/sort/direction returns 422; invalid
 stored rules retain 409. No fallback widens a missing group to all resources. These
 parameters do not authorize execution or change the existing members endpoint.
+
+## Resource job scopes (#44)
+
+Job responses add `execution` (nullable for orphaned historical jobs), containing
+`scope` and `context`, plus `interrupted_at`, `interrupted_started_at` and
+`recovery_count`. Scope records the internal resource kind/UUID, namespaced operation,
+optional execution Host, canonical conflict references, exact package selection or
+task identity/revision and a connection fingerprint. Context records only the
+server-authenticated entrance, not an individual identity. Clients cannot supply
+these values through legacy action bodies. `approval_id` remains null and confers
+no permission. Old job fields, states, IDs, logs and routes remain compatible.
+
+Running Host connection edits/removal return 409; display-name edits remain possible.
+Changed queued targets or task revisions fail with `execution_scope_changed`.
+Interrupted mutation failures require explicit review even after a later success.
+Generic `resource_operation` jobs have only an internal, default-deny feature port;
+no generic resource/group execution endpoint or production service handler exists.
+See [ADR-0026](adr/0026-resource-jobs-and-safe-recovery.md) for migration and recovery.

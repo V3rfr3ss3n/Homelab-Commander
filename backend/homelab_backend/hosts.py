@@ -20,6 +20,10 @@ class DuplicateHostError(Exception):
     """Raised when a connection identity already exists."""
 
 
+class HostBusyError(DuplicateHostError):
+    """A running job holds the persisted connection identity."""
+
+
 class HostRepository:
     """Manage stable host identities without exposing SQLite to the API."""
 
@@ -92,6 +96,10 @@ class HostRepository:
                 ),
             )
         except sqlite3.IntegrityError as err:
+            if str(err) == "host_execution_busy":
+                raise HostBusyError(
+                    "Host has running work; wait before changing its connection"
+                ) from None
             raise DuplicateHostError(
                 "A host with this connection already exists"
             ) from err
@@ -113,11 +121,18 @@ class HostRepository:
 
     async def async_delete(self, host_id: UUID) -> bool:
         """Delete one host and report whether it existed."""
-        return bool(
-            await self._database.async_execute(
-                "DELETE FROM hosts WHERE id = ?", (str(host_id),)
+        try:
+            return bool(
+                await self._database.async_execute(
+                    "DELETE FROM hosts WHERE id = ?", (str(host_id),)
+                )
             )
-        )
+        except sqlite3.IntegrityError as err:
+            if str(err) == "host_execution_busy":
+                raise HostBusyError(
+                    "Host has running work; wait before removing it"
+                ) from None
+            raise
 
     async def async_update_status(
         self,

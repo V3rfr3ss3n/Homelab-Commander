@@ -80,6 +80,19 @@ def _insert(
     )
 
 
+def _require_idle(connection: sqlite3.Connection, resource_id: UUID) -> None:
+    active = connection.execute(
+        "SELECT 1 FROM jobs,"
+        "json_each(jobs.execution_json,'$.scope.conflicts') conflict "
+        "WHERE jobs.state='running' AND json_extract(conflict.value,'$.id')=? LIMIT 1",
+        (str(resource_id),),
+    ).fetchone()
+    if active:
+        raise RegistryConflict(
+            "Resource has running work; wait before changing its association"
+        )
+
+
 def _edge(connection: sqlite3.Connection, relation: ResourceRelationship) -> None:
     _require(connection, relation.source)
     target = _require(connection, relation.target)
@@ -93,6 +106,7 @@ def _edge(connection: sqlite3.Connection, relation: ResourceRelationship) -> Non
     if cyclic:
         raise RegistryConflict("Resource relationship would create a cycle")
     if relation.kind is RelationshipKind.RUNS_SERVICE:
+        _require_idle(connection, relation.target.id)
         assert isinstance(target, ManagedServiceResource)
         if target.host is not None and target.host != relation.source:
             raise RegistryConflict(
@@ -208,6 +222,7 @@ class SqliteResourceRepository:
         self, service_id: UUID, host_id: UUID | None
     ) -> RegistryResource:
         def write(connection: sqlite3.Connection) -> RegistryResource:
+            _require_idle(connection, service_id)
             resource = _require(
                 connection, ResourceRef(ResourceKind.MANAGED_SERVICE, service_id)
             )
@@ -261,6 +276,8 @@ class SqliteResourceRepository:
 
     async def async_remove_relation(self, relation: ResourceRelationship) -> bool:
         def write(connection: sqlite3.Connection) -> bool:
+            _require_idle(connection, relation.source.id)
+            _require_idle(connection, relation.target.id)
             _require(connection, relation.source)
             _require(connection, relation.target)
             changed = connection.execute(
@@ -282,6 +299,7 @@ class SqliteResourceRepository:
             resource = _get(connection, resource_id)
             if resource is None:
                 return False
+            _require_idle(connection, resource_id)
             if isinstance(resource, HostResource):
                 raise RegistryConflict(
                     "Remove hosts through the existing host inventory"

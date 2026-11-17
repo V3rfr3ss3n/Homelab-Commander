@@ -1,7 +1,7 @@
 ---
 title: Security und Privacy
 status: accepted
-updated: 2026-11-09
+updated: 2026-11-17
 tags: [operations, security, privacy]
 ---
 
@@ -186,7 +186,6 @@ or failure. They must not fall back to an inherited root home after privilege
 drop. SSH identity and known-host state keep their existing persistent paths.
 This fix grants no extra backend/host privileges and changes no remote policies.
 
-
 ## Guided user configuration (ADR-0014)
 
 The user-requested setup assistant supersedes the previous no-sudo-template policy:
@@ -199,7 +198,6 @@ active, so choosing no managed rule is not complete privilege revocation. Option
 source IP/CIDR and forwarding restrictions affect only this backend public key.
 Packages, firewall and SSH daemon settings remain unchanged. Tests redirect all
 filesystem paths and mock every system command; no real account is configured.
-
 
 ## Stable website icons (ADR-0015)
 
@@ -227,3 +225,15 @@ Validation errors remove submitted input/context and replace unknown extra-field
 names before serialization. The UI diagnostic copy action exports an allowlist,
 not exception/response strings. It neither sends telemetry nor changes protected
 job-log access. Existing HTTP status, CSRF and authentication boundaries remain.
+
+## Resource jobs and uncertainty (#44)
+
+Execution snapshots contain internal IDs, bounded typed parameters/revisions and a
+connection fingerprint, not command bodies, addresses or credentials. Caller context
+is authored from the authenticated server entrance; the shared admin credential does
+not identify an individual person. Generic operations have no production binding and
+must authorize at enqueue and dispatch before future activation under #46. Unknown
+operations and reserved approval references are denied. Group membership remains
+metadata only. Interrupted mutations are never blindly replayed; their uncertainty
+requires operator inspection and explicit review. See
+[ADR-0026](../02-architecture/adr/0026-resource-jobs-and-safe-recovery.md).

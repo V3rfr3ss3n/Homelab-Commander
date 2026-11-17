@@ -259,9 +259,18 @@ async def test_dev5_backfill_is_additive_restart_safe_and_rollback_atomic(
 ) -> None:
     database = legacy_database(tmp_path)
     tables = ["hosts", "jobs", "custom_tasks", "job_logs"]
+    original_columns = {
+        table: [
+            row["name"]
+            for row in await database.async_fetch_all(
+                "PRAGMA table_info(" + table + ")"
+            )
+        ]
+        for table in tables
+    }
     before = {
         table: [
-            tuple(row)
+            tuple(row[column] for column in original_columns[table])
             for row in await database.async_fetch_all("SELECT * FROM " + table)
         ]
         for table in tables
@@ -291,7 +300,7 @@ async def test_dev5_backfill_is_additive_restart_safe_and_rollback_atomic(
     await database.async_migrate()
     assert before == {
         table: [
-            tuple(row)
+            tuple(row[column] for column in original_columns[table])
             for row in await database.async_fetch_all("SELECT * FROM " + table)
         ]
         for table in tables
