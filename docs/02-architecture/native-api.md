@@ -311,3 +311,23 @@ Interrupted mutation failures require explicit review even after a later success
 Generic `resource_operation` jobs have only an internal, default-deny feature port;
 no generic resource/group execution endpoint or production service handler exists.
 See [ADR-0026](adr/0026-resource-jobs-and-safe-recovery.md) for migration and recovery.
+
+
+## Central policy metadata and denials (#46)
+
+Authenticated entrances bind a server-owned principal. New job
+`execution.context.principal` contains only internal UUID/kind/source; migrated
+snapshots may omit it and retain their legacy entrance. It is not a token, session
+or individual human identity. Existing action bodies cannot supply principal, role,
+policy or approval overrides. Non-admin identities cannot enter the legacy admin
+API, key export, task or shell paths. Production continues recognizing its existing
+admin credential only; no agent provisioning endpoint is added.
+
+Policy rejection returns 403 with compatible `detail`, `error_code: policy_denied`
+and existing safe diagnostics. Authenticated policy denials are audited without
+request/credential/command data. Worker denial becomes a failed `policy_denied` job.
+Existing direct admin actions, CSRF and authentication remain mandatory. Approval
+requests are domain contracts, not new HTTP/UI endpoints; only statically composed
+future protected operations can use the single-use service. Pending approvals do
+not contribute to queued-job counts. See
+[ADR-0027](adr/0027-central-policy-and-approval-contracts.md).

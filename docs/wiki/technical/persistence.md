@@ -99,3 +99,15 @@ retain unavailable targets; no replacement identity is invented. Interrupted mut
 failures require explicit review even after a later success. Back up DB and SSH state
 together; an older worker can replay uncertain effects, so a downgrade is unsafe.
 See [ADR-0026](../../02-architecture/adr/0026-resource-jobs-and-safe-recovery.md).
+
+
+## Authorization and approval migration
+
+Schema 14 adds safe authorization events and immutable approval requests, without
+rewriting existing job snapshots, IDs, settings or SSH state. New jobs retain a
+credential-free principal; old snapshots derive the same legacy authenticated
+entrance at dispatch. Decisions, denial, expiry and one-use behavior are enforced
+by application policy; approval decisions/consumption are atomic with audit. An
+approval's immutable expiry always applies even before any stored expired-state
+sweep. This adds no background worker or approval execution route. See
+[ADR-0027](../../02-architecture/adr/0027-central-policy-and-approval-contracts.md).

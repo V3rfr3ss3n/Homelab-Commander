@@ -255,4 +255,23 @@ MIGRATIONS: tuple[str, ...] = (
         SELECT RAISE(ABORT,'host_execution_busy');
     END;
     """,
+    """
+    CREATE TABLE authorization_events (
+        id TEXT PRIMARY KEY, at TEXT NOT NULL, principal_id TEXT,
+        principal_kind TEXT NOT NULL, permission TEXT NOT NULL,
+        target_id TEXT, code TEXT NOT NULL
+    );
+    CREATE INDEX authorization_events_time ON authorization_events(at,id);
+    CREATE TABLE approval_requests (
+        id TEXT PRIMARY KEY, request_json TEXT NOT NULL,
+        state TEXT NOT NULL CHECK(state IN
+            ('pending','approved','rejected','expired','consumed')),
+        decided_by TEXT, consumed_by_job TEXT UNIQUE
+    );
+    CREATE TRIGGER approval_request_immutable
+    BEFORE UPDATE OF request_json ON approval_requests
+    WHEN OLD.request_json IS NOT NEW.request_json BEGIN
+        SELECT RAISE(ABORT,'Approval request is immutable');
+    END;
+    """,
 )

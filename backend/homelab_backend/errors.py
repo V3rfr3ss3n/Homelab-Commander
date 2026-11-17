@@ -10,6 +10,7 @@ from starlette.exceptions import HTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from .failure_logging import log_internal_failure
+from .policy.application import AuthorizationDenied
 from .version import __version__
 
 
@@ -77,6 +78,16 @@ class DiagnosticMiddleware:
 def install_error_handlers(app: FastAPI) -> None:
     """Add compatible diagnostics to expected HTTP and validation failures."""
     app.add_middleware(DiagnosticMiddleware)
+
+    @app.exception_handler(AuthorizationDenied)
+    def authorization_error(
+        request: Request, error: AuthorizationDenied
+    ) -> JSONResponse:
+        return JSONResponse(
+            {"detail": str(error), **_diagnostics(request.scope, "policy_denied")},
+            status_code=403,
+            headers={"Cache-Control": "no-store"},
+        )
 
     @app.exception_handler(HTTPException)
     def http_error(request: Request, error: HTTPException) -> JSONResponse:

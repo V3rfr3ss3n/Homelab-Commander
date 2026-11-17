@@ -237,3 +237,21 @@ operations and reserved approval references are denied. Group membership remains
 metadata only. Interrupted mutations are never blindly replayed; their uncertainty
 requires operator inspection and explicit review. See
 [ADR-0026](../02-architecture/adr/0026-resource-jobs-and-safe-recovery.md).
+
+
+## Central policy and approval contracts (#46)
+
+All HTTP requests begin anonymous; authenticated dependencies bind immutable
+server-owned principals and restore prior context on completion. Mutating service
+boundaries and worker dispatch apply the shared policy. Client role/approval claims
+never select authority. Restricted agent/automation subjects cannot enter existing
+admin, SSH/setup or task paths; no production agent credential provisioner is enabled.
+
+Authenticated denials persist only event ID, UTC time, principal UUID/kind, permission,
+optional target UUID and a static code. Approval creation/decision/one-use transitions
+are atomic with their safe audit records. No raw bodies, token/session identifiers,
+connection values, task text or provider output is recorded. Approval references are
+never bearer grants. Existing admin workflows retain their explicit-action contracts;
+there is no approval GUI or live generic provider. Read
+[ADR-0027](../02-architecture/adr/0027-central-policy-and-approval-contracts.md) for
+trusted internal authority, shared-channel identity limits and M6 activation gates.

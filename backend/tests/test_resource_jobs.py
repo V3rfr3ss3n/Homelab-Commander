@@ -11,6 +11,7 @@ import pytest
 from pydantic import ValidationError
 
 from backend.homelab_backend.automation import AutomationExecutionError, ExecutionResult
+from backend.homelab_backend.contracts.capabilities import RiskClass
 from backend.homelab_backend.contracts.resources import (
     ProviderBinding,
     ResourceKind,
@@ -34,6 +35,8 @@ from backend.homelab_backend.models import (
     JobAction,
     JobState,
 )
+from backend.homelab_backend.policy.application import AuthorizationDenied, PolicyGuard
+from backend.homelab_backend.policy.domain import OperationPolicy, PolicyEngine
 from backend.homelab_backend.resources.application import ResourceRegistry
 from backend.homelab_backend.resources.repository import SqliteResourceRepository
 from backend.tests.test_jobs import BlockingExecutor
@@ -65,6 +68,18 @@ async def test_interrupted_mutations_are_never_requeued(
     assert recovered.needs_review
     assert recovered.started_at is not None
     assert recovered.finished_at is not None
+
+
+def synthetic_policy() -> PolicyGuard:
+    return PolicyGuard(
+        engine=PolicyEngine((
+            OperationPolicy(
+                "synthetic.service_update",
+                frozenset({ResourceKind.MANAGED_SERVICE}),
+                RiskClass.MUTATING,
+            ),
+        ))
+    )
 
 
 class SyntheticServiceOperation:
@@ -129,7 +144,13 @@ async def test_host_and_service_share_conflicts_while_unrelated_work_can_run(
     executor = BlockingExecutor()
     operation = SyntheticServiceOperation()
     manager = JobManager(
-        jobs, hosts, tasks, executor, worker_count=3, operations=(operation,)
+        jobs,
+        hosts,
+        tasks,
+        executor,
+        worker_count=3,
+        operations=(operation,),
+        policy=synthetic_policy(),
     )
     await manager.async_start()
     try:
@@ -162,7 +183,12 @@ async def test_generic_operation_is_default_denied_and_reauthorized(
     _, hosts, host, tasks, jobs, _, service = await workspace(tmp_path)
     operation = SyntheticServiceOperation()
     manager = JobManager(
-        jobs, hosts, tasks, BlockingExecutor(), operations=(operation,)
+        jobs,
+        hosts,
+        tasks,
+        BlockingExecutor(),
+        operations=(operation,),
+        policy=synthetic_policy(),
     )
     for target, name, context in (
         (service.ref, "synthetic.unknown", ExecutionContext()),
@@ -178,7 +204,7 @@ async def test_generic_operation_is_default_denied_and_reauthorized(
             ExecutionContext(caller=JobCaller.EXTERNAL_ADMIN),
         ),
     ):
-        with pytest.raises(ValueError, match="not permitted"):
+        with pytest.raises((ValueError, AuthorizationDenied), match="not permitted"):
             await manager.async_enqueue_resource(target, name, context=context)
     assert await jobs.async_count() == 0
     job = await manager.async_enqueue_resource(
@@ -201,7 +227,12 @@ async def test_dispatch_rejects_changed_snapshot(tmp_path: Path, change: str) ->
     _, hosts, host, tasks, jobs, registry, service = await workspace(tmp_path)
     operation = SyntheticServiceOperation()
     manager = JobManager(
-        jobs, hosts, tasks, BlockingExecutor(), operations=(operation,)
+        jobs,
+        hosts,
+        tasks,
+        BlockingExecutor(),
+        operations=(operation,),
+        policy=synthetic_policy(),
     )
     if change in {"relink", "delete"}:
         job = await manager.async_enqueue_resource(
@@ -238,7 +269,12 @@ async def test_generic_failures_never_export_unvalidated_output(
     else:
         operation.exit_code = 2
     manager = JobManager(
-        jobs, hosts, tasks, BlockingExecutor(), operations=(operation,)
+        jobs,
+        hosts,
+        tasks,
+        BlockingExecutor(),
+        operations=(operation,),
+        policy=synthetic_policy(),
     )
     job = await manager.async_enqueue_resource(
         service.ref, operation.operation, context=ExecutionContext()
@@ -407,7 +443,12 @@ async def test_running_work_freezes_target_association_and_connection(
     operation = SyntheticServiceOperation()
     operation.release.clear()
     manager = JobManager(
-        jobs, hosts, tasks, BlockingExecutor(), operations=(operation,)
+        jobs,
+        hosts,
+        tasks,
+        BlockingExecutor(),
+        operations=(operation,),
+        policy=synthetic_policy(),
     )
     await manager.async_start()
     try:
@@ -503,7 +544,7 @@ async def test_scope_migration_failure_rolls_back_without_recovery(
         await database.async_fetch_one(
             "SELECT MAX(version) AS version FROM schema_migrations"
         )
-    )["version"] == 13
+    )["version"] == len(MIGRATIONS)
 
 
 @pytest.mark.parametrize("ingress", [False, True])
@@ -625,7 +666,12 @@ async def test_service_failure_review_is_not_resolved_by_a_sibling_success(
     )
     operation = SyntheticServiceOperation()
     manager = JobManager(
-        jobs, hosts, tasks, BlockingExecutor(), operations=(operation,)
+        jobs,
+        hosts,
+        tasks,
+        BlockingExecutor(),
+        operations=(operation,),
+        policy=synthetic_policy(),
     )
     failed = await manager.async_enqueue_resource(
         service.ref, operation.operation, context=ExecutionContext()
@@ -714,7 +760,12 @@ async def test_association_change_during_enqueue_authorization_cannot_expand_tar
 
     operation.async_authorize = change_during_authorization
     manager = JobManager(
-        jobs, hosts, tasks, BlockingExecutor(), operations=(operation,)
+        jobs,
+        hosts,
+        tasks,
+        BlockingExecutor(),
+        operations=(operation,),
+        policy=synthetic_policy(),
     )
     with pytest.raises(ValueError, match="changed while queueing"):
         await manager.async_enqueue_resource(

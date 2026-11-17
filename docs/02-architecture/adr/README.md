@@ -46,6 +46,8 @@ tags: [architecture, adr, index]
 
 | [[0026-resource-jobs-and-safe-recovery]] | proposed | Immutable resource job scopes, canonical conflicts and no blind mutation replay |
 
+| [[0027-central-policy-and-approval-contracts]] | proposed | Central identity-aware policy and single-use human approval-domain contracts |
+
 Neue ADRs verwenden [[../../templates/adr-template|die ADR-Vorlage]]. Akzeptierte
 ADRs werden nicht rückwirkend umgeschrieben; eine neue ADR ersetzt die alte und
 verlinkt sie als `superseded`.

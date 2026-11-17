@@ -144,3 +144,14 @@ API/auth/provenance and browser recovery. Only synthetic operation handlers are
 injected; production has no generic execution binding. `execution/` owns scope values,
 resource locks, target resolution and the SQLite job adapter; `jobs.py` remains the
 legacy-compatible worker. Full `make release-check` remains required for review.
+
+
+## Central policy acceptance (#46)
+
+Use `uv run pytest backend/tests/test_policy.py backend/tests/test_approvals.py --no-cov`
+for restricted-subject, API/task/automation bypass, expiry, immutable-scope,
+concurrent one-use and schema-13 upgrade/rollback checks. All providers and credentials
+are synthetic. Generic test handlers now require an explicit registered operation
+policy; a readiness callback alone is insufficient. Runtime still has only the
+existing admin authentication paths. Full `make release-check`, independent 95%
+line/branch thresholds and remote CI remain required before review.

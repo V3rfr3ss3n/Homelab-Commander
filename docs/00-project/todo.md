@@ -170,7 +170,17 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## Resource job foundation (#44)
 
-- [ ] Review schema-13 target/context migration, deterministic Host/Service conflicts
-  and uncertain-effect recovery; implementation on `feat/resource-job-execution`.
-- [ ] Owner synthetic preview acceptance, then explicit merge; no Dev release requested.
+- [x] Review schema-13 target/context migration, deterministic Host/Service conflicts
+  and uncertain-effect recovery; owner-approved and merged in !41 / PR #71.
+- [x] Owner synthetic preview acceptance and explicit merge on 2026-11-17; no Dev release.
 - [ ] #46 policy/approval boundaries precede any live generic/group execution.
+
+
+## Central policy foundation (#46)
+
+- [ ] Owner review of `feat/central-authorization`: service/worker policy enforcement,
+  safe audit and immutable approval lifecycle; see
+  [ADR-0027](../02-architecture/adr/0027-central-policy-and-approval-contracts.md).
+- [ ] Agent provisioning, configurable autonomous grants and approval GUI remain M6;
+  no real generic provider binding or group execution is enabled.
+- [ ] Publish reviewed Wiki sources only with owner snapshot authorization.

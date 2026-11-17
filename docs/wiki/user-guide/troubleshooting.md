@@ -1,7 +1,7 @@
 ---
 title: Troubleshooting
 status: active
-updated: 2026-11-15
+updated: 2026-11-17
 tags: [wiki, user-guide]
 ---
 
@@ -121,3 +121,13 @@ visible status checks. Before repeating an update/reboot, inspect its job state.
 Never attach full job logs, infrastructure screenshots or HA exports to a public
 report. A red failed-job card records execution failure even after review; review
 changes attention, not the recorded outcome.
+
+
+## Backend policy denial
+
+A 403 policy response or failed `policy_denied` job means backend policy did not
+permit that action. It is not a successful empty result. Inspect the job and safe
+failure diagnostics; do not repeatedly retry a write or bypass the restriction
+through another route. Existing administrator credentials remain necessary for
+maintenance. This foundation enables no agent accounts or separate approval UI;
+permission and approval references supplied by clients do not grant access.

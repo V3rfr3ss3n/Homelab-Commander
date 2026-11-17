@@ -58,6 +58,10 @@ from .models import (
     UiSessionResponse,
 )
 from .onboarding import OnboardingCommand, SetupOptions, setup_command
+from .policy.application import bind_principal, reset_principal
+from .policy.domain import AuthSource, Permission, PrincipalKind, entrance
+from .policy.identity import PolicyIdentityMiddleware, PrincipalResolver
+from .policy.store import policy_for
 from .resources.application import ResourceRegistry
 from .resources.repository import SqliteResourceRepository
 from .resources.routes import install_resource_routes
@@ -96,20 +100,24 @@ def create_app(
     executor: AutomationExecutor | None = None,
     session_store: UiSessionStore | None = None,
     ingress_proxy_addresses: frozenset[str] | None = None,
+    principal_resolver: PrincipalResolver | None = None,
 ) -> FastAPI:
     """Build an isolated application instance for production or tests."""
     resolved = settings or Settings.from_env()
     database = Database(resolved.database_path)
-    hosts = HostRepository(database)
+    policy = policy_for(database)
+    hosts = HostRepository(database, policy=policy)
     custom_tasks = CustomTaskRepository(
-        database, allow_shell=resolved.allow_shell_tasks
+        database, allow_shell=resolved.allow_shell_tasks, policy=policy
     )
     keys = SshKeyStore(resolved.private_key_path)
-    jobs_repository = JobRepository(database)
+    jobs_repository = JobRepository(database, policy=policy)
     automation = executor or AnsibleExecutor(
         resolved.private_key_path, resolved.known_hosts_path
     )
-    compatibility = TaskCompatibilityService(database, custom_tasks, hosts, automation)
+    compatibility = TaskCompatibilityService(
+        database, custom_tasks, hosts, automation, policy=policy
+    )
     dashboard = DashboardService(database, jobs_repository)
     jobs = JobManager(
         jobs_repository,
@@ -117,9 +125,10 @@ def create_app(
         custom_tasks,
         automation,
         compatibility=compatibility,
+        policy=policy,
         worker_count=resolved.worker_count,
     )
-    visible_checks = VisibleChecks(database, hosts, jobs)
+    visible_checks = VisibleChecks(database, hosts, jobs, policy=policy)
     csrf_token = secrets.token_urlsafe(32)
     ui_sessions = session_store or UiSessionStore()
     trusted_ingress_addresses = ingress_proxy_addresses or frozenset()
@@ -152,14 +161,28 @@ def create_app(
         },
     )
     install_error_handlers(app)
+    app.add_middleware(PolicyIdentityMiddleware)
 
     async def authorize(
         credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
-    ) -> None:
+    ) -> AsyncGenerator[None]:
         if credentials is None or credentials.scheme.lower() != "bearer":
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Authentication required")
-        if not secrets.compare_digest(credentials.credentials, resolved.api_token):
+        principal = None
+        if secrets.compare_digest(credentials.credentials, resolved.api_token):
+            principal = entrance(PrincipalKind.ADMIN, AuthSource.API)
+        elif principal_resolver is not None:
+            principal = await principal_resolver.async_authenticate(
+                credentials.credentials
+            )
+        if principal is None:
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Authentication failed")
+        token = bind_principal(principal)
+        try:
+            await policy.async_require(Permission.LEGACY_API)
+            yield
+        finally:
+            reset_principal(token)
 
     async def authorize_ingress_source(request: Request) -> None:
         if not resolved.ingress_mode:
@@ -176,12 +199,19 @@ def create_app(
     async def authorize_ui(
         request: Request,
         session_id: Annotated[str | None, Cookie(alias=UI_SESSION_COOKIE)] = None,
-    ) -> None:
+    ) -> AsyncGenerator[None]:
         if resolved.ingress_mode:
             await authorize_ingress_source(request)
-            return
-        if not ui_sessions.authenticate(session_id):
-            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "UI session expired")
+            principal = entrance(PrincipalKind.HUMAN, AuthSource.INGRESS)
+        else:
+            if not ui_sessions.authenticate(session_id):
+                raise HTTPException(status.HTTP_401_UNAUTHORIZED, "UI session expired")
+            principal = entrance(PrincipalKind.HUMAN, AuthSource.UI)
+        token = bind_principal(principal)
+        try:
+            yield
+        finally:
+            reset_principal(token)
 
     async def verify_csrf(
         supplied: Annotated[str | None, Header(alias="X-CSRF-Token")] = None,
@@ -194,14 +224,14 @@ def create_app(
     ui_mutation = [Depends(authorize_ui), Depends(verify_csrf)]
     install_group_routes(
         app,
-        GroupService(SqliteGroupStore(database)),
+        GroupService(SqliteGroupStore(database), policy),
         authenticated,
         ui_authenticated,
         ui_mutation,
     )
     install_resource_routes(
         app,
-        ResourceRegistry(SqliteResourceRepository(database)),
+        ResourceRegistry(SqliteResourceRepository(database), policy),
         authenticated,
         ui_authenticated,
         ui_mutation,
@@ -323,6 +353,7 @@ def create_app(
         dependencies=authenticated,
     )
     async def public_key() -> PublicKeyResponse:
+        await policy.async_require(Permission.SSH_IDENTITY)
         return PublicKeyResponse(
             algorithm="ssh-ed25519", public_key=await keys.async_public_key()
         )
@@ -529,6 +560,7 @@ def create_app(
         source: str = Query(default="", max_length=64),
         port: int = Query(default=22, ge=1, le=65535),
     ) -> OnboardingCommand:
+        await policy.async_require(Permission.HOST_SETUP)
         try:
             return setup_command(
                 system,
@@ -836,6 +868,7 @@ def create_app(
         dependencies=ui_authenticated,
     )
     async def ui_public_key() -> PublicKeyResponse:
+        await policy.async_require(Permission.SSH_IDENTITY)
         return PublicKeyResponse(
             algorithm="ssh-ed25519", public_key=await keys.async_public_key()
         )

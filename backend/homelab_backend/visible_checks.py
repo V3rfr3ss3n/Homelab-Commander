@@ -11,6 +11,9 @@ from .execution.scope import ExecutionContext, JobCaller
 from .hosts import HostRepository
 from .jobs import JobManager
 from .models import Job, JobAction
+from .policy.application import PolicyGuard
+from .policy.domain import Permission
+from .policy.store import policy_for
 
 CHECK_INTERVAL_SECONDS = 300
 
@@ -24,9 +27,15 @@ class VisibleChecks:
     """Persist preference/cooldown; clients explicitly request eligible host checks."""
 
     def __init__(
-        self, database: Database, hosts: HostRepository, jobs: JobManager
+        self,
+        database: Database,
+        hosts: HostRepository,
+        jobs: JobManager,
+        *,
+        policy: PolicyGuard | None = None,
     ) -> None:
         self._database = database
+        self._policy = policy or policy_for(database)
         self._hosts = hosts
         self._jobs = jobs
 
@@ -39,6 +48,7 @@ class VisibleChecks:
     async def async_update(
         self, preferences: HostCheckPreferences
     ) -> HostCheckPreferences:
+        await self._policy.async_require(Permission.PREFERENCE_WRITE)
         await self._database.async_execute(
             "UPDATE ui_preferences SET auto_check_enabled=? WHERE id=1",
             (int(preferences.enabled),),
@@ -46,6 +56,7 @@ class VisibleChecks:
         return preferences
 
     async def async_check(self) -> tuple[Job, ...]:
+        await self._policy.async_require(Permission.TASK_PROBE)
         if not (await self.async_preferences()).enabled:
             return ()
         now = datetime.now(UTC)

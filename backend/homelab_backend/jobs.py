@@ -8,6 +8,7 @@ from uuid import UUID
 from .automation import AutomationExecutionError, AutomationExecutor, ExecutionResult
 from .contracts.resources import ResourceKind, ResourceRef
 from .custom_tasks import CustomTaskRepository
+from .execution.authorization import JobAuthorization, legacy_principal
 from .execution.locks import ResourceLocks
 from .execution.repository import (
     DEFAULT_CONTEXT,
@@ -27,10 +28,14 @@ from .execution.repository import (
 from .execution.repository import (
     job_filter as job_filter,
 )
-from .execution.scope import ExecutionContext, OperationScope
+from .execution.scope import ExecutionContext, JobExecution, OperationScope
 from .failure_logging import log_internal_failure
 from .hosts import HostRepository
 from .models import Host, Job, JobAction, JobState
+from .policy.application import AuthorizationDenied, PolicyGuard, principal_scope
+from .policy.approvals import ApprovalService
+from .policy.domain import Permission
+from .policy.store import policy_for
 from .task_compatibility import TaskCompatibilityService
 
 MAX_JOB_LOG_BYTES = 64 * 1024
@@ -68,11 +73,16 @@ class JobManager:
         worker_count: int = 2,
         compatibility: TaskCompatibilityService | None = None,
         operations: tuple[ResourceOperation, ...] = (),
+        policy: PolicyGuard | None = None,
+        approvals: ApprovalService | None = None,
     ) -> None:
         if worker_count < 1 or worker_count > 16:
             raise ValueError("worker_count must be between 1 and 16")
         self._compatibility = compatibility or TaskCompatibilityService(
             repository._database, custom_tasks, hosts, executor
+        )
+        self._authorization = JobAuthorization(
+            policy or policy_for(repository._database), approvals
         )
         self._repository = repository
         self._hosts = hosts
@@ -119,6 +129,20 @@ class JobManager:
         """Validate the exact target before creating persistent work."""
         if action in {JobAction.CUSTOM_TASK, JobAction.RESOURCE_OPERATION}:
             raise ValueError("Use the dedicated operation entrance")
+        context = self._authorization.capture(context)
+        await self._authorization.guard.async_require(
+            Permission.EXECUTE,
+            ResourceRef(ResourceKind.HOST, host_id),
+            principal=context.principal,
+            operation=f"linux.{action}",
+        )
+        if context.approval_id is not None:
+            await self._authorization.guard.async_deny(
+                Permission.EXECUTE,
+                ResourceRef(ResourceKind.HOST, host_id),
+                context.principal or legacy_principal(context.caller),
+                "approval_unexpected",
+            )
         host = await self._hosts.async_get(host_id)
         if host is None:
             raise KeyError("Host not found")
@@ -145,6 +169,20 @@ class JobManager:
         context: ExecutionContext = DEFAULT_CONTEXT,
     ) -> Job:
         """Queue one enabled custom task with two validated identities."""
+        context = self._authorization.capture(context)
+        await self._authorization.guard.async_require(
+            Permission.EXECUTE,
+            ResourceRef(ResourceKind.HOST, host_id),
+            principal=context.principal,
+            operation="linux.custom_task",
+        )
+        if context.approval_id is not None:
+            await self._authorization.guard.async_deny(
+                Permission.EXECUTE,
+                ResourceRef(ResourceKind.HOST, host_id),
+                context.principal or legacy_principal(context.caller),
+                "approval_unexpected",
+            )
         host = await self._hosts.async_get(host_id)
         if host is None:
             raise KeyError("Host not found")
@@ -176,10 +214,14 @@ class JobManager:
     ) -> Job:
         """Internal feature entrance, default-denied and not exposed over HTTP."""
         handler = self._operations.get((target.kind, operation))
-        if handler is None or context.approval_id is not None:
+        if handler is None:
             raise ValueError("Resource operation is not permitted")
 
+        context = self._authorization.capture(context)
         scope = await self._repository.async_prepare_resource(target, operation)
+        await self._authorization.async_authorize(
+            JobExecution(scope=scope, context=context)
+        )
         if not await handler.async_authorize(scope, context):
             raise ValueError("Resource operation is not permitted")
         job = await self._repository.async_create(
@@ -220,12 +262,22 @@ class JobManager:
         if job.execution is None:
             await self._finish_failure(job, None, "host_not_found", "")
             return
+        actor = job.execution.context.principal or legacy_principal(
+            job.execution.context.caller
+        )
+        with principal_scope(actor):
+            await self._async_run_authorized(job)
+
+    async def _async_run_authorized(self, job: Job) -> None:
+        job_id = job.id
+        assert job.execution is not None
         # Waiting jobs remain queued. Claim only after all conflicts are held.
         async with self._locks.hold(job.execution.scope.conflicts):
             if not await self._repository.async_claim(job_id):
                 return
             host = await self._hosts.async_get(job.host_id) if job.host_id else None
             try:
+                await self._authorization.async_authorize(job.execution)
                 if job.action is not JobAction.RESOURCE_OPERATION and host is None:
                     await self._finish_failure(job, None, "host_not_found", "")
                     return
@@ -269,12 +321,25 @@ class JobManager:
                             job, host, "execution_scope_changed", ""
                         )
                         return
+                    await self._authorization.async_authorize(
+                        job.execution, job_id=job.id
+                    )
                     result = await self._executor.async_execute_custom(
                         custom_task, host
                     )
                 else:
+                    await self._authorization.async_authorize(
+                        job.execution, job_id=job.id
+                    )
                     result = await self._execute_builtin(job, host)
                 await self._finish_success(job, host, result)
+            except AuthorizationDenied:
+                await self._finish_failure(
+                    job,
+                    host,
+                    "policy_denied",
+                    "This action is not permitted by backend policy.",
+                )
             except AutomationExecutionError as err:
                 await self._finish_failure(
                     job,
@@ -300,16 +365,15 @@ class JobManager:
         assert job.execution is not None
         scope = job.execution.scope
         handler = self._operations.get((scope.target.kind, scope.operation))
-        if (
-            handler is None
-            or job.execution.context.approval_id is not None
-            or not await handler.async_authorize(scope, job.execution.context)
+        if handler is None or not await handler.async_authorize(
+            scope, job.execution.context
         ):
             await self._finish_failure(job, host, "operation_not_permitted", "")
             return
         if not await self._repository.async_scope_current(job.execution):
             await self._finish_failure(job, host, "execution_scope_changed", "")
             return
+        await self._authorization.async_authorize(job.execution, job_id=job.id)
         result = await handler.async_execute(scope)
         if result.exit_code != 0:
             await self._finish_failure(

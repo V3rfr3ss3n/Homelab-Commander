@@ -11,6 +11,9 @@ from .custom_tasks import CustomTaskRepository
 from .database import Database
 from .hosts import HostRepository
 from .models import CompatibilityState, CustomTask, Host, TaskCompatibility
+from .policy.application import PolicyGuard
+from .policy.domain import Permission
+from .policy.store import policy_for
 
 CHECK_LIFETIME = timedelta(hours=24)
 
@@ -38,8 +41,11 @@ class TaskCompatibilityService:
         tasks: CustomTaskRepository,
         hosts: HostRepository,
         executor: AutomationExecutor,
+        *,
+        policy: PolicyGuard | None = None,
     ) -> None:
         self._database = database
+        self._policy = policy or policy_for(database)
         self._tasks = tasks
         self._hosts = hosts
         self._executor = executor
@@ -80,6 +86,7 @@ class TaskCompatibilityService:
         )
 
     async def async_check(self, task_id: UUID, host_id: UUID) -> TaskCompatibility:
+        await self._policy.async_require(Permission.TASK_PROBE)
         task, host = await self.async_pair(task_id, host_id)
         fingerprint = _fingerprint(task, host)
         reasons: list[str] = []
@@ -125,6 +132,7 @@ class TaskCompatibilityService:
     async def async_assign(
         self, task_id: UUID, host_id: UUID, *, enabled: bool
     ) -> TaskCompatibility:
+        await self._policy.async_require(Permission.TASK_ASSIGN)
         result = await self.async_get(task_id, host_id)
         if (
             enabled or not result.assigned
@@ -140,6 +148,7 @@ class TaskCompatibilityService:
         return await self.async_get(task_id, host_id)
 
     async def async_unassign(self, task_id: UUID, host_id: UUID) -> None:
+        await self._policy.async_require(Permission.TASK_ASSIGN)
         await self.async_pair(task_id, host_id)
         await self._database.async_execute(
             "DELETE FROM task_assignments WHERE task_id = ? AND host_id = ?",
