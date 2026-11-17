@@ -19,6 +19,10 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ### Added
 
+- Linux distro/operation compatibility matrix, reusable synthetic provider contracts
+  and internal evidence models distinguishing known, unknown, unavailable and
+  unsupported security/reboot data without changing legacy API behavior.
+
 - Feature-owned Linux package domain, workflows, typed transport/provider ports and
   versioned capability bindings. Preserve production APT and existing APIs; prove
   the extension boundary with an independent test-only synthetic provider.
