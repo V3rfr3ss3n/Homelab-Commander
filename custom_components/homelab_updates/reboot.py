@@ -31,6 +31,10 @@ def async_sync_reboot_issues(
 
     for status in runtime.coordinator.data.values():
         issue_id = reboot_issue_id(entry.entry_id, status.host_id)
+        if status.reboot_required is None:
+            if issue_id in runtime.reboot_issue_ids:
+                current_issue_ids.add(issue_id)
+            continue
         if not status.reboot_required:
             ir.async_delete_issue(hass, DOMAIN, issue_id)
             continue

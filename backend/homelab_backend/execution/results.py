@@ -14,19 +14,27 @@ class HostSnapshot:
     distribution_version: str | None
     kernel: str | None
     updates: int
-    security_updates: int
-    reboot_required: bool
+    security_updates: int | None
+    reboot_required: bool | None
     status: str
     checked_at: datetime
     packages: tuple[PackageInfo, ...] = ()
 
+    package_scopes: tuple[str, ...] | None = None
+
     def __post_init__(self) -> None:
         """Reject contradictory adapter snapshots before they replace stored status."""
         if not (
-            0 <= self.security_updates <= self.updates
+            self.updates >= 0
             and len(self.packages) <= self.updates
-            and sum(package.is_security for package in self.packages)
-            <= self.security_updates
+            and (
+                self.security_updates is None
+                or (
+                    0 <= self.security_updates <= self.updates
+                    and sum(package.is_security is True for package in self.packages)
+                    <= self.security_updates
+                )
+            )
         ):
             raise ValueError("Package snapshot counts do not match its rows")
 

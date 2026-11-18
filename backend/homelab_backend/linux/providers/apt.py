@@ -31,6 +31,11 @@ class DebianAptProvider:
         """Update selected installed packages, letting APT resolve dependencies."""
         if not package_names:
             raise ValueError("Package selection must not be empty")
+        if any(
+            not re.fullmatch(r"[a-z0-9][a-z0-9+.-]*(?::[a-z0-9]+)?", name)
+            for name in package_names
+        ):
+            raise ValueError("Invalid APT package selection")
         return self.single_update_module(",".join(package_names))
 
     @property

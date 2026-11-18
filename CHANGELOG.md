@@ -19,6 +19,12 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ### Added
 
+- Native DNF and Zypper package maintenance with strict target admission,
+  architecture-qualified selections, Tumbleweed read-only scopes, unknown signal
+  handling through schema 15/API/HA/UI, and synthetic provider/preview coverage.
+  Update the integration before enabling these providers; no advisory-completeness
+  or real-platform certification claim, automatic retry, rollback or reboot.
+
 - Linux distro/operation compatibility matrix, reusable synthetic provider contracts
   and internal evidence models distinguishing known, unknown, unavailable and
   unsupported security/reboot data without changing legacy API behavior.

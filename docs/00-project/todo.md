@@ -12,6 +12,9 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## In Arbeit
 
+- [ ] #48: DNF-/Zypper-Adapter, nullfähige Beobachtungen, additive Schema-15-
+  Migration, UI-/HA-Darstellung und synthetische native Tests zur Review. Baut auf
+  dem noch offenen #47-MR auf; kein Merge oder Release.
 - [ ] #47: Linux-Fähigkeits-/Versionsmatrix, qualifizierte Security-/Reboot-Evidenz
   und wiederverwendbare synthetische Providerverträge zur Review. Keine neue
   Provideraktivierung; DNF/Zypper folgen getrennt in #48.

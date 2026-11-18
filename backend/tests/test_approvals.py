@@ -437,7 +437,6 @@ async def test_schema_14_is_additive_atomic_and_old_queued_authority_survives(
     from backend.homelab_backend.database import Database
     from backend.homelab_backend.hosts import HostRepository
     from backend.homelab_backend.jobs import JobRepository
-    from backend.homelab_backend.models import HostCreate
     from backend.homelab_backend.persistence import sqlite as storage
     from backend.homelab_backend.persistence.migrations import MIGRATIONS
 
@@ -445,11 +444,9 @@ async def test_schema_14_is_additive_atomic_and_old_queued_authority_survives(
     monkeypatch.setattr(storage, "MIGRATIONS", MIGRATIONS[:13])
     await database.async_migrate()
     hosts = HostRepository(database)
-    host = await hosts.async_create(
-        HostCreate(
-            name="Node 01", address="node-01.example.invalid", username="automation"
-        )
-    )
+    from backend.tests.legacy_fixtures import legacy_host
+
+    host = await legacy_host(database)
     jobs = JobRepository(database)
     scope = await jobs.async_prepare_resource(
         ResourceRef(ResourceKind.HOST, host.id), "linux.update"

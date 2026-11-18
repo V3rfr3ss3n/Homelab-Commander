@@ -15,7 +15,8 @@ _SELECT = (
     "SELECT id, name, address, port, username, package_provider, "
     "distribution, distribution_version, kernel, updates, security_updates, "
     "reboot_required, status, checked_at, created_at, updated_at, "
-    "websites_json, packages_json FROM hosts"
+    "websites_json, packages_json, security_known, reboot_known, "
+    "package_scopes_json FROM hosts"
 )
 
 
@@ -45,13 +46,16 @@ class HostRepository:
             created_at=now,
             updated_at=now,
             **data.model_dump(),
+            security_updates=0 if data.package_provider == "debian_apt" else None,
+            reboot_required=False if data.package_provider == "debian_apt" else None,
         )
         try:
             await self._database.async_execute(
                 "INSERT INTO hosts "
                 "(id, name, address, port, username, package_provider, "
-                "created_at, updated_at, websites_json, packages_json) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "created_at, updated_at, websites_json, packages_json, "
+                "security_known, reboot_known) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 _values(host),
             )
         except sqlite3.IntegrityError as err:
@@ -81,12 +85,29 @@ class HostRepository:
         values = current.model_dump()
         values.update(patch.model_dump(exclude_none=True))
         values["updated_at"] = datetime.now(UTC)
+        provider_changed = values["package_provider"] != current.package_provider
+        if provider_changed:
+            values.update(
+                checked_at=None,
+                security_updates=None,
+                reboot_required=None,
+                status="stale",
+                packages=(),
+                package_scopes=(),
+            )
         updated = Host.model_validate(values)
         try:
             await self._database.async_execute(
                 "UPDATE hosts SET name = ?, address = ?, port = ?, username = ?, "
                 "package_provider = ?, updated_at = ?, websites_json = ?, "
-                "packages_json = ? WHERE id = ?",
+                "packages_json = CASE WHEN ? THEN '[]' ELSE packages_json END, "
+                "checked_at = CASE WHEN ? THEN NULL ELSE checked_at END, "
+                "status = CASE WHEN ? THEN 'stale' ELSE status END, "
+                "security_known = CASE WHEN ? THEN 0 ELSE security_known END, "
+                "reboot_known = CASE WHEN ? THEN 0 ELSE reboot_known END, "
+                "package_scopes_json = CASE WHEN ? THEN '[]' "
+                "ELSE package_scopes_json END "
+                "WHERE id = ?",
                 (
                     updated.name,
                     updated.address,
@@ -97,9 +118,7 @@ class HostRepository:
                     json.dumps([
                         site.model_dump(mode="json") for site in updated.websites
                     ]),
-                    json.dumps([
-                        package.model_dump(mode="json") for package in updated.packages
-                    ]),
+                    *([provider_changed] * 6),
                     str(updated.id),
                 ),
             )
@@ -143,6 +162,13 @@ class HostRepository:
                 ) from None
             raise
 
+    async def async_mark_stale(self, host_id: UUID) -> None:
+        """Preserve measured values while marking an uncertain package snapshot."""
+        await self._policy.async_require(Permission.HOST_STATUS)
+        await self._database.async_execute(
+            "UPDATE hosts SET status='stale' WHERE id=?", (str(host_id),)
+        )
+
     async def async_update_status(
         self,
         host_id: UUID,
@@ -151,30 +177,35 @@ class HostRepository:
         distribution_version: str | None,
         kernel: str | None,
         updates: int,
-        security_updates: int,
-        reboot_required: bool,
+        security_updates: int | None,
+        reboot_required: bool | None,
         status: str,
         checked_at: datetime,
         packages: tuple[PackageInfo, ...],
+        package_scopes: tuple[str, ...] | None = None,
     ) -> None:
         """Persist one normalized status snapshot."""
         await self._policy.async_require(Permission.HOST_STATUS)
         await self._database.async_execute(
             "UPDATE hosts SET distribution = ?, distribution_version = ?, "
             "kernel = ?, updates = ?, security_updates = ?, reboot_required = ?, "
-            "status = ?, checked_at = ?, updated_at = ?, packages_json = ? "
+            "status = ?, checked_at = ?, updated_at = ?, packages_json = ?, "
+            "security_known = ?, reboot_known = ?, package_scopes_json = ? "
             "WHERE id = ?",
             (
                 distribution,
                 distribution_version,
                 kernel,
                 updates,
-                security_updates,
-                int(reboot_required),
+                security_updates if security_updates is not None else 0,
+                int(reboot_required) if reboot_required is not None else 0,
                 status,
                 checked_at.isoformat(),
                 datetime.now(UTC).isoformat(),
                 json.dumps([package.model_dump(mode="json") for package in packages]),
+                int(security_updates is not None),
+                int(reboot_required is not None),
+                json.dumps(package_scopes) if package_scopes is not None else None,
                 str(host_id),
             ),
         )
@@ -192,6 +223,8 @@ def _values(host: Host) -> tuple[object, ...]:
         host.updated_at.isoformat(),
         json.dumps([site.model_dump(mode="json") for site in host.websites]),
         json.dumps([package.model_dump(mode="json") for package in host.packages]),
+        int(host.security_updates is not None),
+        int(host.reboot_required is not None),
     )
 
 
@@ -215,8 +248,11 @@ def _host_from_row(row: sqlite3.Row) -> Host:
         distribution_version=row["distribution_version"],
         kernel=row["kernel"],
         updates=row["updates"],
-        security_updates=row["security_updates"],
-        reboot_required=bool(row["reboot_required"]),
+        security_updates=row["security_updates"] if row["security_known"] else None,
+        reboot_required=bool(row["reboot_required"]) if row["reboot_known"] else None,
+        package_scopes=tuple(json.loads(row["package_scopes_json"]))
+        if row["package_scopes_json"]
+        else None,
         status=row["status"],
         checked_at=(
             datetime.fromisoformat(row["checked_at"])

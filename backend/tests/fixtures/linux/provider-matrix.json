@@ -2,12 +2,109 @@
   "schema": 1,
   "provenance": "synthetic-contract-cases-not-host-captures",
   "profiles": [
-    {"id":"apt", "targets":["Debian 12", "Ubuntu 24.04"], "registered":true, "scopes":{"full":"supported","single":"supported","selected":"supported"}, "security":"known", "reboot":"known"},
-    {"id":"dnf4", "targets":["RHEL 9", "Rocky Linux 9", "AlmaLinux 9"], "registered":false, "scopes":{"full":"unavailable","single":"unknown","selected":"unknown"}, "security":"unavailable", "reboot":"unknown"},
-    {"id":"dnf5", "targets":["Fedora 45"], "registered":false, "scopes":{"full":"unavailable","single":"unknown","selected":"unknown"}, "security":"unknown", "reboot":"unknown"},
-    {"id":"zypper", "targets":["openSUSE Leap 16.0", "openSUSE Tumbleweed (snapshot required)"], "registered":false, "scopes":{"full":"unavailable","single":"unknown","selected":"unknown"}, "security":"unavailable", "reboot":"unknown"},
-    {"id":"pacman", "targets":["Arch Linux (snapshot required)"], "registered":false, "scopes":{"full":"unavailable","single":"unsupported","selected":"unsupported"}, "security":"unknown", "reboot":"unknown"},
-    {"id":"apk", "targets":["Alpine 3.23"], "registered":false, "scopes":{"full":"unavailable","single":"unknown","selected":"unknown"}, "security":"unknown", "reboot":"unknown"},
-    {"id":"portage", "targets":["Gentoo (profile and repository commit required)"], "registered":false, "scopes":{"full":"unknown","single":"unknown","selected":"unknown"}, "security":"unknown", "reboot":"unsupported"}
+    {
+      "id": "apt",
+      "targets": [
+        "Debian 12",
+        "Ubuntu 24.04"
+      ],
+      "registered": true,
+      "scopes": {
+        "full": "supported",
+        "single": "supported",
+        "selected": "supported"
+      },
+      "security": "known",
+      "reboot": "known"
+    },
+    {
+      "id": "dnf4",
+      "targets": [
+        "RHEL 9",
+        "Rocky Linux 9",
+        "AlmaLinux 9"
+      ],
+      "registered": true,
+      "scopes": {
+        "full": "supported",
+        "single": "supported",
+        "selected": "supported"
+      },
+      "security": "unknown",
+      "reboot": "unknown",
+      "provider_key": "dnf"
+    },
+    {
+      "id": "dnf5",
+      "targets": [
+        "Fedora 45"
+      ],
+      "registered": true,
+      "scopes": {
+        "full": "supported",
+        "single": "supported",
+        "selected": "supported"
+      },
+      "security": "unknown",
+      "reboot": "unknown",
+      "provider_key": "dnf"
+    },
+    {
+      "id": "zypper",
+      "targets": [
+        "openSUSE Leap 16.0"
+      ],
+      "registered": true,
+      "scopes": {
+        "full": "supported",
+        "single": "supported",
+        "selected": "supported"
+      },
+      "security": "unknown",
+      "reboot": "known",
+      "provider_key": "zypper"
+    },
+    {
+      "id": "pacman",
+      "targets": [
+        "Arch Linux (snapshot required)"
+      ],
+      "registered": false,
+      "scopes": {
+        "full": "unavailable",
+        "single": "unsupported",
+        "selected": "unsupported"
+      },
+      "security": "unknown",
+      "reboot": "unknown"
+    },
+    {
+      "id": "apk",
+      "targets": [
+        "Alpine 3.23"
+      ],
+      "registered": false,
+      "scopes": {
+        "full": "unavailable",
+        "single": "unknown",
+        "selected": "unknown"
+      },
+      "security": "unknown",
+      "reboot": "unknown"
+    },
+    {
+      "id": "portage",
+      "targets": [
+        "Gentoo (profile and repository commit required)"
+      ],
+      "registered": false,
+      "scopes": {
+        "full": "unknown",
+        "single": "unknown",
+        "selected": "unknown"
+      },
+      "security": "unknown",
+      "reboot": "unsupported"
+    }
   ]
 }

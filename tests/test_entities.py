@@ -333,3 +333,26 @@ async def test_update_service_publishes_progress_until_terminal_status_refresh(
             refresh_gate.set()
             remove_listener()
             await manager.async_cancel()
+
+
+async def test_unknown_native_signals_do_not_become_zero_or_off(
+    hass: HomeAssistant, aioclient_mock: object, mock_entry: MockConfigEntry
+) -> None:
+    await _setup_entry(hass, aioclient_mock, mock_entry)
+    runtime = mock_entry.runtime_data
+    host = runtime.coordinator.data["node-01"]
+    runtime.coordinator.async_set_updated_data({
+        "node-01": replace(host, security_updates=None, reboot_required=None)
+    })
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.example_node_security_updates").state == "unknown"
+    assert (
+        hass.states.get("binary_sensor.example_node_reboot_required").state == "unknown"
+    )
+    assert hass.states.get("button.example_node_reboot").state == "unavailable"
+    assert (
+        "security status unknown"
+        in hass.states.get("update.example_node_system_updates").attributes[
+            "release_summary"
+        ]
+    )

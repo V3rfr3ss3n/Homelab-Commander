@@ -865,3 +865,17 @@ async def test_native_client_maps_connection_errors(
     )
     with pytest.raises(CannotConnectError):
         await _native_client(aiohttp_client_session).async_validate()
+
+
+async def test_native_host_preserves_explicit_unknown_security_and_reboot(
+    aioclient_mock: object, aiohttp_client_session: ClientSession
+) -> None:
+    _native_health_response(aioclient_mock)
+    aioclient_mock.get(
+        f"{NATIVE_URL}/api/v1/hosts",
+        json=[_native_host_payload(security_updates=None, reboot_required=None)],
+    )
+    hosts = await _native_client(aiohttp_client_session).async_get_hosts()
+    assert hosts[HOST_ID].security_updates is None
+    assert hosts[HOST_ID].reboot_required is None
+    assert hosts[HOST_ID].updates == 3

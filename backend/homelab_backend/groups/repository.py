@@ -122,7 +122,8 @@ class SqliteGroupStore:
         def read(connection: sqlite3.Connection) -> tuple[ResourceFacts, ...]:
             rows = connection.execute(
                 "SELECT r.id,r.kind,r.name,h.distribution,h.status,h.checked_at,"
-                "h.updates,h.security_updates,h.reboot_required FROM resources r "
+                "h.updates,h.security_updates,h.reboot_required,"
+                "h.security_known,h.reboot_known FROM resources r "
                 "LEFT JOIN hosts h ON h.id=r.id WHERE r.deleted_at IS NULL "
                 "ORDER BY lower(r.name),r.id LIMIT ?",
                 (MAX_RESOURCES + 1,),
@@ -155,9 +156,9 @@ class SqliteGroupStore:
                         statuses.add(row["status"])
                     if row["updates"]:
                         statuses.add("updates_pending")
-                    if row["security_updates"]:
+                    if row["security_known"] and row["security_updates"]:
                         statuses.add("security_updates")
-                    if row["reboot_required"]:
+                    if row["reboot_known"] and row["reboot_required"]:
                         statuses.add("restart_required")
                 resource_id = UUID(row["id"])
                 result.append(

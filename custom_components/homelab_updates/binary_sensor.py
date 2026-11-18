@@ -43,7 +43,7 @@ class HomelabRebootRequiredBinarySensor(HomelabUpdatesEntity, BinarySensorEntity
         super().__init__(coordinator, host_id, "reboot_required")
 
     @property
-    def is_on(self) -> bool:
+    def is_on(self) -> bool | None:
         """Return the normalized reboot flag."""
         return self.host_status.reboot_required
 
@@ -70,7 +70,7 @@ class HomelabBackendHealthBinarySensor(
         )
 
     @property
-    def is_on(self) -> bool:
+    def is_on(self) -> bool | None:
         return self._coordinator.last_update_success
 
     @property

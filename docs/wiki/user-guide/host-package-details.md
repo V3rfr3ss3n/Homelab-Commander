@@ -1,7 +1,7 @@
 ---
 title: Host package details
 status: active
-updated: 2026-11-15
+updated: 2026-11-18
 tags: [wiki, user-guide, hosts, packages]
 ---
 
@@ -51,3 +51,25 @@ Before the first check the dialog asks you to run one. A verified empty list sho
 package details after the next successful check following the backend upgrade.
 See the [API contract](../../02-architecture/native-api.md) and
 [dev.5 acceptance](../../05-reviews/2026-11-14-dev5-acceptance.md).
+
+
+## RPM providers (next development version, #48 review)
+
+Choose the package provider in the Host connection dialog after preparing SSH,
+Python 3 and non-interactive sudo manually. Onboarding scripts currently cover
+Debian/Ubuntu only. DNF admits Fedora 45 and the RHEL-9 family; Zypper permits
+regular package maintenance on Leap 16.0 and read-only inventory on Tumbleweed.
+A fresh check populates eligible scopes; disabled buttons are not permissions.
+
+RPM rows use architecture-qualified names such as `curl.x86_64`. Single/selected
+updates apply only to freshly eligible installed packages; dependencies are still
+resolved by the native manager. Full updates use the regular native package
+workflow, not an OS migration or vendor switch. Security classification is currently
+unknown and shown explicitly; DNF restart status is also unknown. Review services
+and downtime manually, and confirm any reboot separately.
+
+A failed operation can have partial effects. Old counts are marked stale until a
+fresh check succeeds; no retry, package rollback or reboot occurs automatically.
+Zypper may require another manually reviewed invocation after updating itself.
+Update the HA integration before enabling these providers. These profiles have
+synthetic contract tests, not a blanket real-platform certification.

@@ -152,6 +152,7 @@
     "reboot_required": {
       "fix_flow": {
         "abort": {
+          "status_unknown": "Der Neustartstatus ist unbekannt. Aktualisiere den Hoststatus und prüfe ihn vor der Neustartbestätigung.",
           "entry_unavailable": "Die Integration ist momentan nicht verfügbar.",
           "no_longer_required": "Der Host meldet keinen erforderlichen Neustart mehr."
         },
