@@ -1,7 +1,7 @@
 ---
 title: SSH and Ansible execution
 status: active
-updated: 2026-11-09
+updated: 2026-11-18
 tags: [wiki, technical]
 ---
 
@@ -72,3 +72,20 @@ collector evidence. The legacy bridge rejects missing data instead of silently
 reporting a clean host. Existing APT signal heuristics and `/api/v1` remain unchanged;
 future providers must add compatible API/UI/HA handling before activation. See
 [ADR-0029](../../02-architecture/adr/0029-linux-evidence-and-compatibility-matrix.md).
+
+
+## Native RPM maintenance (#48 review)
+
+The dependent #48 branch statically registers DNF and Zypper adapters. Fedora 45
+requires detected dnf5; RHEL/Rocky/AlmaLinux 9 require dnf/dnf4. Leap 16.0 supports
+regular package full/single/selected updates; Tumbleweed is inventory-only. Version/
+manager mismatch and unsupported scopes fail before privileged mutation.
+
+Fixed argv calls use the existing SSH runner, non-interactive root verification,
+bounded output and deadlines. Nothing installs prerequisites, imports repository
+keys, disables signature checking, executes a rolling distribution upgrade, retries
+a mutation or reboots. Security classification is explicitly unknown; DNF reboot
+is unknown, Zypper uses its own 0/102 signal. A 103 result requires human review of
+another invocation. A post-update read measures remaining counts; failure preserves
+old counts as stale without remote rollback. See
+[ADR-0030](../../02-architecture/adr/0030-dnf-zypper-and-nullable-observations.md).

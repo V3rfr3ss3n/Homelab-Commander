@@ -75,6 +75,7 @@ class PreviewExecutor:
     def __init__(self) -> None:
         self._packages: dict[UUID, tuple[PackageInfo, ...]] = {}
         self._restart_required: dict[UUID, bool] = {}
+        self._providers: dict[UUID, str] = {}
 
     async def async_execute(
         self,
@@ -85,23 +86,49 @@ class PreviewExecutor:
         package_names: tuple[str, ...] = (),
     ) -> ExecutionResult:
         scope = package_names or ((package_name,) if package_name else ())
-        remaining = self._packages.setdefault(host.id, host.packages)
+        rpm = host.package_provider in {"dnf", "zypper"}
+        if self._providers.get(host.id, host.package_provider) != host.package_provider:
+            self._packages.pop(host.id, None)
+        self._providers[host.id] = host.package_provider
+        initial = host.packages
+        if rpm and not initial:
+            initial = tuple(
+                PackageInfo(
+                    name=name + ".x86_64",
+                    old_version="0:1-1",
+                    new_version="0:2-1",
+                    is_security=None,
+                )
+                for name in ("curl", "git")
+            )
+        remaining = self._packages.setdefault(host.id, initial)
         if action is JobAction.UPDATE:
             remaining = (
                 tuple(p for p in remaining if p.name not in scope) if scope else ()
             )
         self._packages[host.id] = remaining
-        restart = self._restart_required.setdefault(host.id, host.reboot_required)
+        restart = self._restart_required.setdefault(
+            host.id, host.reboot_required is True
+        )
         if action is JobAction.REBOOT:
             restart = False
         self._restart_required[host.id] = restart
         snapshot = HostSnapshot(
-            distribution=host.distribution or "Debian",
-            distribution_version=host.distribution_version or "12",
+            distribution=(
+                "Fedora" if host.package_provider == "dnf" else "openSUSE Leap"
+            )
+            if rpm
+            else host.distribution or "Debian",
+            distribution_version=("45" if host.package_provider == "dnf" else "16.0")
+            if rpm
+            else host.distribution_version or "12",
             kernel="6.8.0-demo",
             updates=len(remaining),
-            security_updates=sum(p.is_security for p in remaining),
-            reboot_required=restart,
+            security_updates=None
+            if rpm
+            else sum(p.is_security is True for p in remaining),
+            reboot_required=None if host.package_provider == "dnf" else restart,
+            package_scopes=("full", "selected", "single") if rpm else None,
             status="ok",
             checked_at=datetime.now(UTC),
             packages=remaining,

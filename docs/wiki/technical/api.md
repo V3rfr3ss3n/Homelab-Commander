@@ -1,7 +1,7 @@
 ---
 title: Native API
 status: active
-updated: 2026-11-17
+updated: 2026-11-18
 tags: [wiki, technical]
 ---
 
@@ -148,3 +148,16 @@ request scopes, job references, package totals/bounded details and Info capabili
 strings retain their existing contract. Stored `debian_apt` remains the production
 provider; internal namespaced capability metadata does not enable a new provider
 selection API or grant execution authority. A synthetic second provider is test-only.
+
+
+## DNF/Zypper observations (#48 review)
+
+Host configuration adds explicit `dnf` and `zypper` choices. Existing `/api/v1`
+actions and valid APT values remain. For the new providers, host/package security
+counts, row classification and reboot signals can be JSON null. Null is unknown,
+never zero/false. Additive `package_scopes` lists observed update scopes; empty is
+read-only, null is unobserved/legacy. New RPM configurations require the updated
+integration or compatible clients before activation. The
+[API contract](../../02-architecture/native-api.md#rpm-package-observations-schema-15-48-review)
+and [ADR-0030](../../02-architecture/adr/0030-dnf-zypper-and-nullable-observations.md)
+record admission, compatibility and synthetic-only certification limits.

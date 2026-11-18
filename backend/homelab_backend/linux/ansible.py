@@ -1,29 +1,35 @@
 """Normalize Ansible payloads once at the Linux infrastructure boundary."""
 
 import json
-from typing import Protocol
 
+from ..execution.results import ExecutionResult
 from ..models import Host
-from .domain import Collected, LinuxFacts
-from .ports import PackageProvider, ProviderResolver
-
-
-class ModuleRunner(Protocol):
-    async def async_module(
-        self,
-        host: Host,
-        module: str,
-        arguments: str | None = None,
-        *,
-        become: bool = False,
-        failure_code: str = "ansible_failed",
-    ) -> tuple[dict[str, object], str]: ...
+from .domain import Collected, LinuxFacts, PackageSelection
+from .ports import (
+    InventoryProvider,
+    ModuleRunner,
+    PackageProvider,
+    ProviderDescriptor,
+    ProviderResolver,
+)
 
 
 class AnsiblePackageTransport:
     def __init__(self, runner: ModuleRunner, providers: ProviderResolver) -> None:
         self._runner = runner
         self._providers = providers
+
+    async def async_collect(
+        self, host: Host, provider: InventoryProvider, *, refresh_cache: bool
+    ) -> ExecutionResult:
+        return await provider.async_collect(
+            host, self._runner, refresh_cache=refresh_cache
+        )
+
+    async def async_apply(
+        self, host: Host, provider: InventoryProvider, selection: PackageSelection
+    ) -> ExecutionResult:
+        return await provider.async_apply(host, selection, self._runner)
 
     async def async_facts(self, host: Host) -> Collected[LinuxFacts]:
         payload, output = await self._runner.async_module(
@@ -107,7 +113,7 @@ def facts_arguments() -> str:
 
 
 def classify_failure(
-    default: str, output: str, provider: PackageProvider | None
+    default: str, output: str, provider: ProviderDescriptor | None
 ) -> str:
     """Map known cross-platform failure signatures to safe stable categories."""
     lowered = output.lower()

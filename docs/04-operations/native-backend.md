@@ -219,3 +219,26 @@ Ein Restore benötigt den vollständigen `/data`-Inhalt, besonders Datenbank,
 Private Key und `known_hosts`. Wird nur die Datenbank wiederhergestellt, erkennen
 Hosts den neuen Key nicht. Das Löschen des Volumes ist irreversibel und nicht Teil
 eines normalen Integration-Uninstalls.
+
+
+## Native RPM provider rollout (#48 review)
+
+Prepare SSH/Python 3 and non-interactive sudo on the target independently; current
+setup templates cover Debian/Ubuntu only. Configure `dnf` or `zypper` explicitly in
+the existing Host dialog/API, then run a status check before using observed update
+scopes. Do not run development/tests against production hosts. The synthetic local
+preview supports both choices without real execution.
+
+DNF requires RPM and working native repoquery. Supported admission is Fedora 45
+with dnf5 or RHEL/Rocky/AlmaLinux 9 with dnf/dnf4; other versions fail closed. Zypper
+admits Leap 16.0 package updates and Tumbleweed read-only inventory. No prerequisite
+installation, vendor forcing, rolling dist-upgrade or key import is automatic.
+Security data remains unknown; unknown restart status requires manual review.
+
+Back up `/data` and update the integration before enabling RPM providers. Schema
+15 preserves legacy APT/IDs/SSH data but older code cannot interpret unknown flags;
+restoring a pre-upgrade backup is required for a downgrade. Confirm target
+manager/version/repository/architecture behavior in an appropriate controlled
+operator environment before relying on it. Synthetic tests and Commander container
+checks do not certify a real OS or remote rollback. See
+[ADR-0030](../02-architecture/adr/0030-dnf-zypper-and-nullable-observations.md).

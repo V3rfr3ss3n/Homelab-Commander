@@ -26,7 +26,7 @@ PackageName = Annotated[
     Field(
         min_length=1,
         max_length=255,
-        pattern=r"^[a-z0-9][a-z0-9+.-]*(?::[a-z0-9]+)?$",
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9+_.:-]*$",
     ),
 ]
 
@@ -40,7 +40,7 @@ class PackageInfo(BaseModel):
     name: str
     old_version: str
     new_version: str
-    is_security: bool = False
+    is_security: bool | None = False
 
 
 class PackagesResponse(BaseModel):
@@ -49,7 +49,7 @@ class PackagesResponse(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     packages: tuple[PackageInfo, ...]
     total: int
-    security_updates: int = 0
+    security_updates: int | None = 0
     checked_at: datetime | None
     provider: str | None
 
@@ -133,12 +133,13 @@ class Host(BaseModel):
     package_provider: str
     websites: tuple[HostWebsite, ...] = ()
     packages: tuple[PackageInfo, ...] = ()
+    package_scopes: tuple[str, ...] | None = None
     distribution: str | None = None
     distribution_version: str | None = None
     kernel: str | None = None
     updates: int = 0
-    security_updates: int = 0
-    reboot_required: bool = False
+    security_updates: int | None = 0
+    reboot_required: bool | None = False
     status: str | None = None
     checked_at: datetime | None = None
     created_at: datetime
@@ -157,12 +158,13 @@ class HostListItem(BaseModel):
     username: str
     package_provider: str
     websites: tuple[HostWebsite, ...] = ()
+    package_scopes: tuple[str, ...] | None = None
     distribution: str | None = None
     distribution_version: str | None = None
     kernel: str | None = None
     updates: int = 0
-    security_updates: int = 0
-    reboot_required: bool = False
+    security_updates: int | None = 0
+    reboot_required: bool | None = False
     status: str | None = None
     checked_at: datetime | None = None
     created_at: datetime
@@ -205,6 +207,23 @@ _SHORT_JOB_ERRORS = {
     "invalid_ansible_output": "Ansible returned an invalid structured result",
     "python_interpreter_unavailable": "Python 3 is not available on the host",
     "sudo_unavailable": "Non-interactive sudo is not available",
+    "package_detection_failed": "Could not detect the target package environment",
+    "package_provider_mismatch": (
+        "The configured provider does not support this distribution, version or manager"
+    ),
+    "package_metadata_failed": (
+        "Could not refresh package metadata; no update was started"
+    ),
+    "package_inventory_failed": "Could not collect package inventory",
+    "package_selection_stale": (
+        "The selected packages are no longer eligible; run a fresh check"
+    ),
+    "package_scope_unsupported": "This update scope is not supported on this host",
+    "invalid_package_output": "The package manager returned an invalid inventory",
+    "invalid_package_scope": "The package selection is invalid for this provider",
+    "package_manager_restart_required": (
+        "The package manager needs another reviewed invocation; no retry was performed"
+    ),
 }
 
 

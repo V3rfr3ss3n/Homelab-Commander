@@ -176,7 +176,7 @@ class HomelabRebootButton(HomelabUpdatesEntity, ButtonEntity):
         """Only offer reboot when current status explicitly requires one."""
         return (
             super().available
-            and self.host_status.reboot_required
+            and self.host_status.reboot_required is True
             and not self._task_manager.is_running(Command.UPDATE_HOST, self._host_id)
             and not self._task_manager.is_running(Command.REBOOT_HOST, self._host_id)
         )

@@ -172,3 +172,31 @@ async def test_invalid_reboot_repair_data_is_rejected(
     """Malformed issue data never reaches an automation backend."""
     with pytest.raises(HomeAssistantError):
         await async_create_fix_flow(hass, "invalid", data)
+
+
+async def test_unknown_reboot_does_not_clear_existing_warning(
+    hass: HomeAssistant,
+    aioclient_mock: object,
+    mock_entry: MockConfigEntry,
+    issue_registry: ir.IssueRegistry,
+) -> None:
+    await _setup_entry(hass, aioclient_mock, mock_entry)
+    issue_id = await _require_reboot(hass, mock_entry)
+    runtime = mock_entry.runtime_data
+    host = runtime.coordinator.data["node-01"]
+    runtime.coordinator.async_set_updated_data({
+        "node-01": replace(host, reboot_required=None)
+    })
+    await hass.async_block_till_done()
+    assert issue_registry.async_get_issue(DOMAIN, issue_id) is not None
+    issue = issue_registry.async_get_issue(DOMAIN, issue_id)
+    flow = await async_create_fix_flow(hass, issue_id, issue.data)
+    flow.hass = hass
+    result = await flow.async_step_confirm({})
+    assert result["type"] is data_entry_flow.FlowResultType.ABORT
+    assert result["reason"] == "status_unknown"
+    runtime.coordinator.async_set_updated_data({
+        "node-01": replace(host, reboot_required=False)
+    })
+    await hass.async_block_till_done()
+    assert issue_registry.async_get_issue(DOMAIN, issue_id) is None

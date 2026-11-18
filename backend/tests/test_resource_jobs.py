@@ -376,11 +376,9 @@ async def test_schema_12_upgrade_preserves_identity_state_and_references(
     database = Database(tmp_path / "upgrade.db")
     monkeypatch.setattr(storage, "MIGRATIONS", MIGRATIONS[:12])
     await database.async_migrate()
-    host = await HostRepository(database).async_create(
-        HostCreate(
-            name="Node 01", address="node-01.example.invalid", username="automation"
-        )
-    )
+    from backend.tests.legacy_fixtures import legacy_host
+
+    host = await legacy_host(database)
     now = datetime.now(UTC).isoformat()
     identities = []
     for action, state in [

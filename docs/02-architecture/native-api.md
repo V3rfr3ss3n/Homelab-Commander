@@ -331,3 +331,26 @@ requests are domain contracts, not new HTTP/UI endpoints; only statically compos
 future protected operations can use the single-use service. Pending approvals do
 not contribute to queued-job counts. See
 [ADR-0027](adr/0027-central-policy-and-approval-contracts.md).
+
+
+## RPM package observations (schema 15, #48 review)
+
+Host `package_provider` accepts explicit `dnf` and `zypper` alongside `debian_apt`.
+DNF admits Fedora 45/dnf5 and RHEL-family 9/dnf4; Zypper admits Leap 16.0 package
+updates and Tumbleweed read-only inventory. Unsupported detection fails before
+privileged operations. Existing check/update paths and scoped request fields stay.
+RPM selectors include architecture, for example `curl.x86_64`. Only exact fresh
+eligible names are admitted; no glob, implicit install, retry or reboot.
+
+For new providers, `security_updates`, `reboot_required` and per-package
+`is_security` may be JSON null, meaning unknown, never zero/false. DNF security
+and restart are currently unknown; Zypper security is unknown and its native
+restart probe can return true/false/unknown. Optional `package_scopes` advertises
+observed full/single/selected strings; empty means read-only, null means unobserved
+or legacy. Permissions and fresh dispatch validation remain mandatory.
+
+APT valid values and Info strings stay unchanged. Update the integration and strict
+third-party consumers before enabling RPM providers. Older clients may reject new
+RPM nulls safely rather than report a healthy host. See
+[ADR-0030](adr/0030-dnf-zypper-and-nullable-observations.md) for schema/rollback
+limits, command semantics, synthetic evidence and missing real-platform acceptance.

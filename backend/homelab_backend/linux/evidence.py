@@ -138,7 +138,7 @@ class InventoryEvidence:
                     p.name,
                     p.old_version,
                     p.new_version,
-                    ObservedValue(EvidenceState.KNOWN, p.is_security),
+                    ObservedValue(EvidenceState.KNOWN, p.is_security is True),
                 )
                 for p in status.packages
             ),

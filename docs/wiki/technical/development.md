@@ -178,3 +178,19 @@ outputs and execution remain untested for absent providers. The
 [compatibility matrix](../../02-architecture/linux-provider-matrix.md) records
 version/architecture/fixture prerequisites before enabling each future provider.
 The full release gate and independent 95% line/branch thresholds still apply.
+
+
+## Native RPM synthetic validation (#48 review)
+
+`uv run pytest backend/tests/test_rpm_providers.py backend/tests/test_rpm_persistence.py
+backend/tests/test_rpm_browser.py --no-cov` (one command) checks manufactured DNF4/5
+and Zypper data, scope/privilege/result-code failures, bounded argv execution,
+unknown observations, migration and Standalone/nested Ingress UI. HA nullable
+states and repair regressions are part of the complete release gate. No managed
+host, real package operation or remote rollback executes in tests.
+
+The disposable preview also simulates RPM profiles. Add/edit a synthetic Host,
+choose DNF or Zypper under its connection settings and run a check. It seeds two
+mock RPM rows and retains measured remaining counts across simulated updates.
+An old preview must be restarted after switching branches; simulation never falls
+back to Ansible/SSH for these or arbitrary entered addresses.

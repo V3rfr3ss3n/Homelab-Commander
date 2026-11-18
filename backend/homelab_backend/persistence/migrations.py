@@ -274,4 +274,11 @@ MIGRATIONS: tuple[str, ...] = (
         SELECT RAISE(ABORT,'Approval request is immutable');
     END;
     """,
+    """
+    ALTER TABLE hosts ADD COLUMN security_known INTEGER NOT NULL
+        DEFAULT 1 CHECK(security_known IN (0,1));
+    ALTER TABLE hosts ADD COLUMN reboot_known INTEGER NOT NULL
+        DEFAULT 1 CHECK(reboot_known IN (0,1));
+    ALTER TABLE hosts ADD COLUMN package_scopes_json TEXT;
+    """,
 )

@@ -152,6 +152,7 @@
     "reboot_required": {
       "fix_flow": {
         "abort": {
+          "status_unknown": "Restart status is unknown. Refresh host status and review it before confirming a reboot.",
           "entry_unavailable": "The integration is currently unavailable.",
           "no_longer_required": "The host no longer reports that a reboot is required."
         },
