@@ -29,15 +29,15 @@ packages = ["backend/homelab_backend"]
 
 [dependency-groups]
 dev = [
-  "home-assistant-frontend==20261028.5",
+  "home-assistant-frontend==20261028.6",
   "homeassistant==2026.10.4",
-  "httpx2==2.16.0",
+  "httpx2==2.16.2",
   "mypy==2.4.1",
   "pip-audit==2.10.1",
-  "playwright==1.65.0",
+  "playwright==1.65.2",
   "pytest-cov==7.1.0",
   "pytest-homeassistant-custom-component==0.13.375",
-  "ruff==0.17.4",
+  "ruff==0.17.5",
 ]
 
 [tool.pytest.ini_options]
