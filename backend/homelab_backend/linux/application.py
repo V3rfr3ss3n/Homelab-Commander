@@ -57,9 +57,10 @@ class LinuxPackages:
         outputs.extend((packages.output, reboot.output))
         return ExecutionResult(output="\n".join(outputs), snapshot=snapshot)
 
-    async def async_update(
+    async def async_apply(
         self, host: Host, selection: PackageSelection
     ) -> ExecutionResult:
+        """Apply exactly once; the caller collects the resulting observation."""
         provider = self._providers.resolve(host.package_provider)
         if selection.scope not in provider.scopes:
             raise AutomationExecutionError("package_scope_unsupported", "")
@@ -80,13 +81,19 @@ class LinuxPackages:
             output = await self._transport.async_update(host, module)
         else:
             raise AutomationExecutionError("package_provider_unsupported", "")
+        return ExecutionResult(output=output, reboot_required=reboot_required)
+
+    async def async_update(
+        self, host: Host, selection: PackageSelection
+    ) -> ExecutionResult:
+        applied = await self.async_apply(host, selection)
         check = await self.async_check(host, refresh_cache=False)
-        if reboot_required is True and check.snapshot is not None:
+        if applied.reboot_required is True and check.snapshot is not None:
             check = replace(
                 check, snapshot=replace(check.snapshot, reboot_required=True)
             )
         return ExecutionResult(
-            output=f"{output}\n{check.output}".strip(),
+            output=f"{applied.output}\n{check.output}".strip(),
             snapshot=check.snapshot,
             reboot_required=check.snapshot.reboot_required if check.snapshot else None,
         )

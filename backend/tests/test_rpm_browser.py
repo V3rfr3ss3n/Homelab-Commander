@@ -20,8 +20,9 @@ from backend.tests.test_ui_browser import (
 
 
 @pytest.mark.parametrize("ingress", [False, True])
+@pytest.mark.parametrize("native_provider", ["dnf", "auto"])
 async def test_rpm_unknown_signals_scopes_and_single_update(
-    tmp_path, socket_enabled, ingress
+    tmp_path, socket_enabled, ingress, native_provider
 ):
     settings = Settings(data_dir=tmp_path, api_token=TOKEN, ingress_mode=ingress)
     runner = RpmRunner()
@@ -38,7 +39,7 @@ async def test_rpm_unknown_signals_scopes_and_single_update(
             name="Synthetic RPM node",
             address="rpm-node.example.invalid",
             username="automation",
-            package_provider="dnf",
+            package_provider=native_provider,
         )
     )
     readonly = await hosts.async_create(
@@ -99,7 +100,7 @@ async def test_rpm_unknown_signals_scopes_and_single_update(
                 "Restart status unknown"
             )
             await page.locator("[data-edit-host]").click()
-            await expect(page.locator("#host-provider")).to_have_value("dnf")
+            await expect(page.locator("#host-provider")).to_have_value(native_provider)
             await expect(
                 page.locator("#host-provider option[value=zypper]")
             ).to_have_count(1)
@@ -130,5 +131,10 @@ async def test_rpm_unknown_signals_scopes_and_single_update(
             await expect(page.locator("#package-update-selected")).to_be_disabled()
             for button in await page.locator(".package-update-btn").all():
                 await expect(button).to_be_disabled()
+            await page.locator("#package-dialog [data-close-dialog]").click()
+            await page.goto(base + prefix + "/#/hosts")
+            await page.locator("[data-add-host]").first.click()
+            await page.locator("#host-skip-setup").click()
+            await expect(page.locator("#host-provider")).to_have_value("auto")
         finally:
             await browser.close()

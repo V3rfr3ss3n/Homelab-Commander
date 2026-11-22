@@ -4,6 +4,7 @@ import re
 
 from .ports import ProviderDescriptor
 from .providers.apt import DebianAptProvider
+from .providers.auto import AutoProvider
 from .providers.rpm import DnfProvider, ZypperProvider
 
 
@@ -28,6 +29,8 @@ class PackageProviders:
                 raise ValueError("Invalid or duplicate package provider registration")
             self._providers[provider.legacy_key] = provider
             ids.add(provider.provider_id)
+        if providers is None:
+            self._providers["auto"] = AutoProvider(self)
 
     def resolve(self, name: str) -> ProviderDescriptor:
         provider = self._providers.get(name)

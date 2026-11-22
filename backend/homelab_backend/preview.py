@@ -128,7 +128,9 @@ class PreviewExecutor:
             if rpm
             else sum(p.is_security is True for p in remaining),
             reboot_required=None if host.package_provider == "dnf" else restart,
-            package_scopes=("full", "selected", "single") if rpm else None,
+            package_scopes=("full", "selected", "single")
+            if rpm or host.package_provider == "auto"
+            else None,
             status="ok",
             checked_at=datetime.now(UTC),
             packages=remaining,

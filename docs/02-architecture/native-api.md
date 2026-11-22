@@ -354,3 +354,14 @@ third-party consumers before enabling RPM providers. Older clients may reject ne
 RPM nulls safely rather than report a healthy host. See
 [ADR-0030](adr/0030-dnf-zypper-and-nullable-observations.md) for schema/rollback
 limits, command semantics, synthetic evidence and missing real-platform acceptance.
+
+### Automatic system manager selection
+
+The new-host UI defaults `package_provider` to `auto` and sends it explicitly.
+API clients omitting the field retain the legacy `debian_apt` default. Existing stored explicit
+values and explicitly supplied values are unchanged. Detection reads validated
+distribution/manager facts only during explicit jobs, delegates to one supported
+provider and preserves its scope/profile restrictions. The persisted `auto`
+policy is not replaced with the last detected manager. Observed package scopes
+are still required by UI controls. Unsupported or contradictory facts fail; no
+mutation-based probing, fallback update or implicit package installation occurs.

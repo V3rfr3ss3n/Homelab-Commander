@@ -57,3 +57,5 @@ tags: [architecture, adr, index]
 Neue ADRs verwenden [[../../templates/adr-template|die ADR-Vorlage]]. Akzeptierte
 ADRs werden nicht rückwirkend umgeschrieben; eine neue ADR ersetzt die alte und
 verlinkt sie als `superseded`.
+
+- [ADR-0031: Automatic system manager selection](0031-automatic-system-manager-selection.md)

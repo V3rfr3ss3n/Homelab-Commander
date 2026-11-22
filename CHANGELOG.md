@@ -19,6 +19,10 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ### Added
 
+- Default the new-host UI to automatic system package-manager detection.
+  Explicit existing providers stay unchanged; unsupported or contradictory facts
+  fail safely, and detected providers retain their own update restrictions.
+
 - Native DNF and Zypper package maintenance with strict target admission,
   architecture-qualified selections, Tumbleweed read-only scopes, unknown signal
   handling through schema 15/API/HA/UI, and synthetic provider/preview coverage.

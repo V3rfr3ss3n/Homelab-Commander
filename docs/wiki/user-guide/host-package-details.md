@@ -73,3 +73,16 @@ fresh check succeeds; no retry, package rollback or reboot occurs automatically.
 Zypper may require another manually reviewed invocation after updating itself.
 Update the HA integration before enabling these providers. These profiles have
 synthetic contract tests, not a blanket real-platform certification.
+
+## Automatic detection
+
+New hosts default to **Auto-detect system package manager**. The setting is stored
+as `auto`; an explicit check or update reads distribution and package-manager
+facts and delegates to APT, DNF or Zypper. It does not try another manager after a
+failure. Existing explicit provider choices remain unchanged. Unsupported facts
+fail safely, and all provider restrictions still apply, including Tumbleweed's
+read-only inventory. Update controls become available after a successful check.
+
+This selects one system package manager. Independent package sources on the same
+host need separate package identities, observations and job targets; simultaneous
+source management is not claimed by this implementation.

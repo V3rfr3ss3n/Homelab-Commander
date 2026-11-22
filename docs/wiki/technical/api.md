@@ -161,3 +161,9 @@ integration or compatible clients before activation. The
 [API contract](../../02-architecture/native-api.md#rpm-package-observations-schema-15-48-review)
 and [ADR-0030](../../02-architecture/adr/0030-dnf-zypper-and-nullable-observations.md)
 record admission, compatibility and synthetic-only certification limits.
+
+The new-host UI explicitly sends `package_provider: auto` by default.
+For compatibility, `POST /hosts` requests omitting the field retain `debian_apt`.
+Explicit values and all stored rows are preserved. The `auto` value denotes a
+selection policy, not an observed manager identifier. Checks expose observed
+`package_scopes`; unknown or unsupported detection does not grant update access.

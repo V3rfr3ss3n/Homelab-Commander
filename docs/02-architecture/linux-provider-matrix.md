@@ -12,9 +12,10 @@ certification. **APT, DNF and Zypper are registered package providers in the #48
 DNF supports the declared Fedora/RHEL-family baseline; Zypper mutations target
 Leap 16.0. Tumbleweed inventory is read-only with empty observed update scopes.
 Native cases use manufactured outputs; no real OS certification is claimed. The
-pacman/apk/Portage rows specify future compatibility targets and missing evidence. No automatic
-discovery, updates, reboot or plugin installation is introduced. Configured RPM
-providers validate detected target facts before dispatch.
+pacman/apk/Portage rows specify future compatibility targets and missing evidence. The `auto` configuration detects the supported system manager from validated
+Ansible facts when an explicit check or update runs. It never tries updates to
+discover a manager. No automatic updates, reboot or plugin installation is
+introduced. Configured RPM providers validate detected target facts before dispatch.
 
 ## Version targets and evidence levels
 
