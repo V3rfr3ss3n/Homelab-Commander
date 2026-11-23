@@ -38,9 +38,14 @@ def connection_revision(
     if host_id is None:
         return None
     row = connection.execute(
-        "SELECT address,port,username,package_provider FROM hosts WHERE id=?",
+        "SELECT address,port,username,package_provider,package_sources_json "
+        "FROM hosts WHERE id=?",
         (str(host_id),),
     ).fetchone()
     if row is None:
         raise ValueError("Execution host is unavailable")
-    return hashlib.sha256(json.dumps(tuple(row)).encode()).hexdigest()
+    values = tuple(row)
+    # Preserve the revision of pre-migration jobs with legacy source configuration.
+    if row["package_sources_json"] is None:
+        values = values[:-1]
+    return hashlib.sha256(json.dumps(values).encode()).hexdigest()

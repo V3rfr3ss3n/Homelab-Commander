@@ -444,13 +444,11 @@ async def test_schema_14_is_additive_atomic_and_old_queued_authority_survives(
     monkeypatch.setattr(storage, "MIGRATIONS", MIGRATIONS[:13])
     await database.async_migrate()
     hosts = HostRepository(database)
-    from backend.tests.legacy_fixtures import legacy_host
+    from backend.tests.legacy_fixtures import legacy_host, legacy_update_scope
 
     host = await legacy_host(database)
     jobs = JobRepository(database)
-    scope = await jobs.async_prepare_resource(
-        ResourceRef(ResourceKind.HOST, host.id), "linux.update"
-    )
+    scope = legacy_update_scope(host)
     job_id = uuid4()
     now = datetime.now(UTC).isoformat()
     old_json = json.dumps({

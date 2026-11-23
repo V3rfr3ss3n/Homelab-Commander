@@ -1,7 +1,7 @@
 ---
 title: SSH and Ansible execution
 status: active
-updated: 2026-11-18
+updated: 2026-11-23
 tags: [wiki, technical]
 ---
 
@@ -89,3 +89,14 @@ is unknown, Zypper uses its own 0/102 signal. A 103 result requires human review
 another invocation. A post-update read measures remaining counts; failure preserves
 old counts as stale without remote rollback. See
 [ADR-0030](../../02-architecture/adr/0030-dnf-zypper-and-nullable-observations.md).
+
+## Multi-source native maintenance (review)
+
+The Linux adapter composes one system manager with optional system/SSH-user Flatpak
+sources. Exact native refs are freshly validated for selected operations. Sources
+run serially under the existing host lock; no Pamac duplicate, own package database,
+lock removal, signature bypass, implicit reboot or action replay is introduced.
+A later failure uses `package_sources_partial_failure` and retains stale measured
+state until native recheck. Aggregate refresh failure cannot imply whole-host
+success. Pacman permits full upgrades only; Flatpak retains installation scope.
+See [ADR-0032](../../02-architecture/adr/0032-native-package-sources-without-catalog.md).

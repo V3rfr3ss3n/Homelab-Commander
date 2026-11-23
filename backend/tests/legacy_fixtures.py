@@ -29,3 +29,29 @@ async def legacy_host(database: Database) -> Host:
         ),
     )
     return host
+
+
+def legacy_update_scope(host: Host):
+    """Freeze the genuine pre-schema-16 execution identity without new columns."""
+    import hashlib
+    import json
+
+    from backend.homelab_backend.contracts.resources import ResourceKind, ResourceRef
+    from backend.homelab_backend.execution.scope import OperationScope
+
+    target = ResourceRef(ResourceKind.HOST, host.id)
+    revision = hashlib.sha256(
+        json.dumps((
+            host.address,
+            host.port,
+            host.username,
+            host.package_provider,
+        )).encode()
+    ).hexdigest()
+    return OperationScope(
+        target=target,
+        operation="linux.update",
+        execution_host_id=host.id,
+        conflicts=(target,),
+        connection_revision=revision,
+    )

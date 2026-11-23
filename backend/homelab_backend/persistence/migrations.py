@@ -281,4 +281,14 @@ MIGRATIONS: tuple[str, ...] = (
         DEFAULT 1 CHECK(reboot_known IN (0,1));
     ALTER TABLE hosts ADD COLUMN package_scopes_json TEXT;
     """,
+    """
+    ALTER TABLE hosts ADD COLUMN package_sources_json TEXT;
+    ALTER TABLE hosts ADD COLUMN package_observations_json TEXT;
+    CREATE TRIGGER executing_host_sources BEFORE UPDATE OF package_sources_json ON hosts
+    WHEN OLD.package_sources_json IS NOT NEW.package_sources_json
+        AND EXISTS(SELECT 1 FROM jobs WHERE state='running' AND host_id=OLD.id)
+    BEGIN
+        SELECT RAISE(ABORT,'host_execution_busy');
+    END;
+    """,
 )

@@ -55,3 +55,11 @@ passed. Additional focused Chromium execution: 4 passed in 5.96 seconds, includi
 the new-host default assertion. No managed host execution was performed.
 Exact-commit remote results are recorded in the MR/PR. Wiki source
 changes are prepared for review, not published under unrelated prior approvals.
+
+## Owner clarification on 2026-11-23
+
+The owner confirmed independent native sources and requested no Commander-owned
+package catalog. The same MR now contains the follow-up in
+[ADR-0032](../02-architecture/adr/0032-native-package-sources-without-catalog.md).
+The earlier open clarification is resolved; scope and final evidence are recorded
+in the 2026-11-23 review. No merge or release is implied.

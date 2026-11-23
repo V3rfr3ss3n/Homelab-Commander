@@ -29,9 +29,13 @@ async def test_auto_discovers_checks_and_updates_one_package(
     checked = await run.async_execute(JobAction.CHECK_UPDATES, host)
     assert checked.snapshot.updates == 2
     assert checked.snapshot.security_updates is None
-    updated = await run.async_execute(JobAction.UPDATE, host, "curl.x86_64")
+    updated = await run.async_execute(
+        JobAction.UPDATE,
+        host,
+        ("zypper" if manager == "zypper" else "dnf") + "::curl.x86_64",
+    )
     assert updated.snapshot.updates == 1
-    assert updated.snapshot.packages[0].name == "git.x86_64"
+    assert updated.snapshot.packages[0].display_name == "git.x86_64"
     assert runner.writes == 1
     assert host.package_provider == "auto"
 
@@ -102,7 +106,14 @@ async def test_auto_apt_returns_observed_scopes_and_no_extra_mutation(tmp_path, 
     assert not checked.snapshot.reboot_required
     calls.clear()
     await run.async_execute(JobAction.UPDATE, host)
-    assert sum(name == "ansible.builtin.apt" for name, _, _ in calls) == 1
+    assert (
+        sum(
+            name == "ansible.builtin.apt"
+            and arguments == "update_cache=true upgrade=dist"
+            for name, arguments, _ in calls
+        )
+        == 1
+    )
 
 
 async def test_detection_failure_is_safe(tmp_path):

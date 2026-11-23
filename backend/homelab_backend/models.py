@@ -2,10 +2,11 @@
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import (
+    AfterValidator,
     AnyHttpUrl,
     BaseModel,
     ConfigDict,
@@ -31,6 +32,35 @@ PackageName = Annotated[
 ]
 
 MAX_PACKAGE_DETAILS = 50
+PackageSourceChoice = Literal["system", "flatpak_system", "flatpak_user"]
+PackageSourceId = Literal[
+    "apt", "dnf", "zypper", "pacman", "flatpak_system", "flatpak_user"
+]
+
+
+def _source_choices(
+    values: tuple[PackageSourceChoice, ...],
+) -> tuple[PackageSourceChoice, ...]:
+    if len(set(values)) != len(values):
+        raise ValueError("Package sources must be unique")
+    return tuple(sorted(values))
+
+
+PackageSources = Annotated[
+    tuple[PackageSourceChoice, ...],
+    Field(min_length=1, max_length=3),
+    AfterValidator(_source_choices),
+]
+
+
+class PackageSourceStatus(BaseModel):
+    """Cached native observation, never an installation catalog or routing table."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    source: PackageSourceId
+    updates: int = Field(ge=0)
+    security_updates: int | None = Field(default=None, ge=0)
+    scopes: tuple[Literal["full", "single", "selected"], ...]
 
 
 class PackageInfo(BaseModel):
@@ -41,6 +71,15 @@ class PackageInfo(BaseModel):
     old_version: str
     new_version: str
     is_security: bool | None = False
+    source: PackageSourceId | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+    display_name: str | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+    scopes: tuple[Literal["full", "single", "selected"], ...] | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
 
 
 class PackagesResponse(BaseModel):
@@ -49,6 +88,9 @@ class PackagesResponse(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
     packages: tuple[PackageInfo, ...]
     total: int
+    sources: tuple[PackageSourceStatus, ...] = Field(
+        default=(), exclude_if=lambda value: not value
+    )
     security_updates: int | None = 0
     checked_at: datetime | None
     provider: str | None
@@ -104,6 +146,7 @@ class HostCreate(BaseModel):
     port: int = Field(default=22, ge=1, le=65535)
     username: SshUser
     package_provider: str = Field(default="debian_apt", pattern=r"^[a-z][a-z0-9_]+$")
+    package_sources: PackageSources | None = None
     websites: tuple[HostWebsite, ...] = Field(default=(), max_length=12)
 
 
@@ -117,6 +160,7 @@ class HostPatch(BaseModel):
     port: int | None = Field(default=None, ge=1, le=65535)
     username: SshUser | None = None
     package_provider: str | None = Field(default=None, pattern=r"^[a-z][a-z0-9_]+$")
+    package_sources: PackageSources | None = None
     websites: tuple[HostWebsite, ...] | None = Field(default=None, max_length=12)
 
 
@@ -131,6 +175,8 @@ class Host(BaseModel):
     port: int
     username: str
     package_provider: str
+    package_sources: PackageSources | None = None
+    package_observations: tuple[PackageSourceStatus, ...] = ()
     websites: tuple[HostWebsite, ...] = ()
     packages: tuple[PackageInfo, ...] = ()
     package_scopes: tuple[str, ...] | None = None
@@ -157,6 +203,8 @@ class HostListItem(BaseModel):
     port: int
     username: str
     package_provider: str
+    package_sources: PackageSources | None = None
+    package_observations: tuple[PackageSourceStatus, ...] = ()
     websites: tuple[HostWebsite, ...] = ()
     package_scopes: tuple[str, ...] | None = None
     distribution: str | None = None
@@ -208,6 +256,15 @@ _SHORT_JOB_ERRORS = {
     "python_interpreter_unavailable": "Python 3 is not available on the host",
     "sudo_unavailable": "Non-interactive sudo is not available",
     "package_detection_failed": "Could not detect the target package environment",
+    "package_source_unavailable": (
+        "A selected native package source is unavailable. "
+        "Check the host configuration and installed tools."
+    ),
+    "package_sources_partial_failure": (
+        "A package source failed after an earlier source completed. "
+        "Refresh native status and review the job before another update; "
+        "no rollback or automatic retry was attempted."
+    ),
     "package_provider_mismatch": (
         "The configured provider does not support this distribution, version or manager"
     ),

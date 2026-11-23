@@ -1,5 +1,6 @@
 """Explicit loopback-only UI preview with disposable data and synthetic execution."""
 
+import json
 from argparse import ArgumentParser
 from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
@@ -20,6 +21,7 @@ from .custom_tasks import CustomTaskRepository
 from .database import Database
 from .hosts import HostRepository
 from .jobs import JobRepository
+from .linux.domain import PackageSelection
 from .models import (
     CustomTask,
     CustomTaskCreate,
@@ -31,6 +33,7 @@ from .models import (
     ProbeFacts,
     TaskRequirements,
 )
+from .preview_sources import simulate_sources
 from .task_compatibility import TaskCompatibilityService
 
 
@@ -74,6 +77,7 @@ class PreviewExecutor:
 
     def __init__(self) -> None:
         self._packages: dict[UUID, tuple[PackageInfo, ...]] = {}
+        self._source_packages: dict[UUID, tuple[PackageInfo, ...]] = {}
         self._restart_required: dict[UUID, bool] = {}
         self._providers: dict[UUID, str] = {}
 
@@ -87,10 +91,23 @@ class PreviewExecutor:
     ) -> ExecutionResult:
         scope = package_names or ((package_name,) if package_name else ())
         rpm = host.package_provider in {"dnf", "zypper"}
-        if self._providers.get(host.id, host.package_provider) != host.package_provider:
+        configuration = json.dumps([host.package_provider, host.package_sources])
+        if self._providers.get(host.id, configuration) != configuration:
             self._packages.pop(host.id, None)
-        self._providers[host.id] = host.package_provider
+        self._providers[host.id] = configuration
+        if host.package_provider == "auto" or host.package_sources is not None:
+            result, remaining_sources = simulate_sources(
+                host,
+                action,
+                self._source_packages.get(host.id),
+                PackageSelection.from_legacy(package_name, package_names),
+            )
+            assert result.snapshot is not None
+            self._source_packages[host.id] = remaining_sources
+            return result
         initial = host.packages
+        if not initial and not rpm:
+            initial = demo_packages(host.updates, host.security_updates or 0)
         if rpm and not initial:
             initial = tuple(
                 PackageInfo(

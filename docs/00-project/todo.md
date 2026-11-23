@@ -1,7 +1,7 @@
 ---
 title: TODO
 status: active
-updated: 2026-11-18
+updated: 2026-11-23
 tags: [project, todo]
 ---
 
@@ -14,7 +14,9 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 - [ ] #48: DNF-/Zypper-Adapter, nullfähige Beobachtungen, additive Schema-15-
   Migration, UI-/HA-Darstellung und synthetische native Tests zur Review. Baut auf
-  dem noch offenen #47-MR auf; kein Merge oder Release.
+  dem noch offenen #47-MR auf; kein Merge oder Release. Owner-Nachlieferung:
+  native Mehrquellen-Unterstützung, Pacman-Vollupdates, Flatpak system/SSH-Benutzer,
+  flüchtige Paketdetails und additive Schema-16-Konfiguration im selben MR zur Review.
 - [ ] #47: Linux-Fähigkeits-/Versionsmatrix, qualifizierte Security-/Reboot-Evidenz
   und wiederverwendbare synthetische Providerverträge zur Review. Keine neue
   Provideraktivierung; DNF/Zypper folgen getrennt in #48.

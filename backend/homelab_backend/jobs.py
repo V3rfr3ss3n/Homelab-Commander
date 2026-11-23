@@ -427,6 +427,7 @@ class JobManager:
                 checked_at=snapshot.checked_at,
                 packages=snapshot.packages,
                 package_scopes=snapshot.package_scopes,
+                package_observations=snapshot.package_observations,
             )
         output, truncated = _safe_output(result.output, host)
         await self._repository.async_finish(

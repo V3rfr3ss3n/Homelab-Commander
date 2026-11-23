@@ -69,7 +69,9 @@ def test_every_manager_has_explicit_scope_and_observation_contract(
         assert PackageProviders().resolve(key).provider_id == (
             "linux.apt" if key == "debian_apt" else "linux." + key
         )
-        assert set(profile["scopes"].values()) == {"supported"}
+        assert {scope.value for scope in PackageProviders().resolve(key).scopes} == {
+            name for name, state in profile["scopes"].items() if state == "supported"
+        }
     else:
         assert "supported" not in profile["scopes"].values()
         with pytest.raises(ValueError, match="unsupported"):

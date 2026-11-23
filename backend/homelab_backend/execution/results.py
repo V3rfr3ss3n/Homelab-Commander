@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from ..models import PackageInfo
+from ..models import PackageInfo, PackageSourceStatus
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,6 +21,7 @@ class HostSnapshot:
     packages: tuple[PackageInfo, ...] = ()
 
     package_scopes: tuple[str, ...] | None = None
+    package_observations: tuple[PackageSourceStatus, ...] = ()
 
     def __post_init__(self) -> None:
         """Reject contradictory adapter snapshots before they replace stored status."""

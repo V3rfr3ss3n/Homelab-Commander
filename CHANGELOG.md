@@ -19,6 +19,12 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ### Added
 
+- Native multi-source host updates: detected system manager plus system/SSH-user
+  Flatpaks, source selection and source-scoped jobs, without a new persistent
+  package catalog. Arch/CachyOS ALPM maintenance uses full Pacman upgrades only;
+  checks use preinstalled checkupdates. Native source failures stay visible,
+  transactions run serially, and partial completion is never automatically replayed.
+
 - Default the new-host UI to automatic system package-manager detection.
   Explicit existing providers stay unchanged; unsupported or contradictory facts
   fail safely, and detected providers retain their own update restrictions.

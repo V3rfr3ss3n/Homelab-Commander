@@ -1,18 +1,17 @@
 ---
 title: Linux provider capability and compatibility matrix
 status: proposed
-updated: 2026-11-18
+updated: 2026-11-23
 tags: [linux, providers, capabilities, testing, compatibility]
 ---
 
 # Linux provider matrix (#47)
 
 This is the contract and synthetic-adapter baseline for M2, not real-platform
-certification. **APT, DNF and Zypper are registered package providers in the #48 review branch.**
+certification. **APT, DNF, Zypper, Pacman and Flatpak adapters are registered in the #48 review branch.**
 DNF supports the declared Fedora/RHEL-family baseline; Zypper mutations target
 Leap 16.0. Tumbleweed inventory is read-only with empty observed update scopes.
-Native cases use manufactured outputs; no real OS certification is claimed. The
-pacman/apk/Portage rows specify future compatibility targets and missing evidence. The `auto` configuration detects the supported system manager from validated
+Native cases use manufactured outputs; no real OS certification is claimed. The apk/Portage rows specify future compatibility targets and missing evidence. The `auto` configuration detects the supported system manager from validated
 Ansible facts when an explicit check or update runs. It never tries updates to
 discover a manager. No automatic updates, reboot or plugin installation is
 introduced. Configured RPM providers validate detected target facts before dispatch.
@@ -54,7 +53,7 @@ claims about whether their package managers provide security/reboot facilities.
 | dnf4 | RHEL 9; Rocky Linux 9; AlmaLinux 9 | supported | supported | supported | unknown | unknown |
 | dnf5 | Fedora 45 | supported | supported | supported | unknown | unknown |
 | zypper | openSUSE Leap 16.0 | supported | supported | supported | unknown | known |
-| pacman | Arch Linux (snapshot required) | unavailable | unsupported | unsupported | unknown | unknown |
+| pacman | Arch Linux (snapshot required) | supported | unsupported | unsupported | unknown | unknown |
 | apk | Alpine 3.23 | unavailable | unknown | unknown | unknown | unknown |
 | portage | Gentoo (profile and repository commit required) | unknown | unknown | unknown | unknown | unsupported |
 
@@ -185,3 +184,14 @@ manager admission, immutable native argv execution, unknown security data, Zyppe
 reboot signals, schema 15, API/HA compatibility and synthetic validation limits.
 All other checklist requirements still apply. Full support is not inferred for
 versions or architectures without separate evidence.
+
+## Native sources follow-up
+
+Auto now composes the detected system manager with available `flatpak_system`
+and `flatpak_user` adapters. Explicit legacy providers retain system-only defaults;
+manual source choices can add Flatpak independently. Full/single/selected Flatpak
+updates preserve full native refs and installation scope. Named installations,
+other desktop users, AUR, software installation/removal and unsupported distro/
+manager combinations are excluded. Pacman admits manufactured Archlinux/CachyOS
+profiles, requires preinstalled checkupdates, and supports full upgrades only.
+No real OS/repository certification or new runtime dependency is claimed.

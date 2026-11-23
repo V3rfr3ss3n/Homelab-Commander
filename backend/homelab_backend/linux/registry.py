@@ -5,6 +5,8 @@ import re
 from .ports import ProviderDescriptor
 from .providers.apt import DebianAptProvider
 from .providers.auto import AutoProvider
+from .providers.flatpak import FlatpakProvider
+from .providers.pacman import PacmanProvider
 from .providers.rpm import DnfProvider, ZypperProvider
 
 
@@ -13,7 +15,14 @@ class PackageProviders:
         registered = (
             providers
             if providers is not None
-            else (DebianAptProvider(), DnfProvider(), ZypperProvider())
+            else (
+                DebianAptProvider(),
+                DnfProvider(),
+                ZypperProvider(),
+                PacmanProvider(),
+                FlatpakProvider("system"),
+                FlatpakProvider("user"),
+            )
         )
         self._providers: dict[str, ProviderDescriptor] = {}
         ids: set[str] = set()

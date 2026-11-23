@@ -67,7 +67,14 @@ async def test_rpm_unknown_signals_scopes_and_single_update(
             package_scopes=scopes,
             packages=tuple(
                 PackageInfo(
-                    name=n + ".x86_64",
+                    name=(
+                        "dnf::"
+                        if native_provider == "auto" and host.id == native.id
+                        else ""
+                    )
+                    + n
+                    + ".x86_64",
+                    display_name=n + ".x86_64",
                     old_version="0:1-1",
                     new_version="0:2-1",
                     is_security=None,
@@ -107,6 +114,7 @@ async def test_rpm_unknown_signals_scopes_and_single_update(
             await page.locator("#host-dialog [data-close-dialog]").click()
             await page.locator(".package-details-toggle").click()
             rows = page.locator("#package-dialog .package-row")
+            await page.locator("#package-check").click()
             await expect(rows).to_have_count(2)
             await expect(rows.first).to_contain_text("Security unknown")
             await (
@@ -122,11 +130,18 @@ async def test_rpm_unknown_signals_scopes_and_single_update(
             await expect(rows.first).to_contain_text("git.x86_64")
             assert runner.writes == 1
             await page.locator("#package-dialog [data-close-dialog]").click()
+            runner.facts.update(
+                ansible_distribution="openSUSE Tumbleweed",
+                ansible_distribution_version="20261118",
+                ansible_pkg_mgr="zypper",
+            )
             await page.goto(base + prefix + f"/#/hosts/{readonly.id}")
             await expect(
                 page.locator('#host-info button[data-action="update"]')
             ).to_be_disabled()
             await page.locator(".package-details-toggle").click()
+            await page.locator("#package-check").click()
+            await expect(rows).to_have_count(1)
             await expect(page.locator("#package-update-all")).to_be_disabled()
             await expect(page.locator("#package-update-selected")).to_be_disabled()
             for button in await page.locator(".package-update-btn").all():

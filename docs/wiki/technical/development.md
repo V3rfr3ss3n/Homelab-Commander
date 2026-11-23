@@ -1,7 +1,7 @@
 ---
 title: Development, tests and CI
 status: active
-updated: 2026-11-18
+updated: 2026-11-23
 tags: [wiki, technical]
 ---
 
@@ -194,3 +194,11 @@ choose DNF or Zypper under its connection settings and run a check. It seeds two
 mock RPM rows and retains measured remaining counts across simulated updates.
 An old preview must be restarted after switching branches; simulation never falls
 back to Ansible/SSH for these or arbitrary entered addresses.
+
+Native-source regression suites use `SourcesRunner` and disposable preview data:
+`backend/tests/test_package_sources.py`, `test_sources_persistence.py` and
+`test_sources_browser.py`. They cover exact source selection, native changes,
+Flatpak SSH-user privileges, ALPM full-only scope, cache loss/repopulation and
+partial failures in standalone/nested Ingress. Never substitute real managed hosts.
+The complete `make release-check` and independent 95% line/branch gates remain
+required before merge.

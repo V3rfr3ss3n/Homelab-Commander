@@ -405,6 +405,7 @@ def create_app(
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Host not found")
         return PackagesResponse(
             packages=host.packages,
+            sources=host.package_observations,
             total=host.updates,
             security_updates=host.security_updates,
             checked_at=host.checked_at,
@@ -856,6 +857,7 @@ def create_app(
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Host not found")
         return PackagesResponse(
             packages=host.packages,
+            sources=host.package_observations,
             total=host.updates,
             security_updates=host.security_updates,
             checked_at=host.checked_at,

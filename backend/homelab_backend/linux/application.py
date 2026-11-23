@@ -24,7 +24,9 @@ class LinuxPackages:
     async def async_check(
         self, host: Host, *, refresh_cache: bool = True
     ) -> ExecutionResult:
-        provider = self._providers.resolve(host.package_provider)
+        provider = self._providers.resolve(
+            "auto" if host.package_sources is not None else host.package_provider
+        )
         if isinstance(provider, InventoryProvider):
             return await self._transport.async_collect(
                 host, provider, refresh_cache=refresh_cache
@@ -61,7 +63,9 @@ class LinuxPackages:
         self, host: Host, selection: PackageSelection
     ) -> ExecutionResult:
         """Apply exactly once; the caller collects the resulting observation."""
-        provider = self._providers.resolve(host.package_provider)
+        provider = self._providers.resolve(
+            "auto" if host.package_sources is not None else host.package_provider
+        )
         if selection.scope not in provider.scopes:
             raise AutomationExecutionError("package_scope_unsupported", "")
         reboot_required: bool | None = None

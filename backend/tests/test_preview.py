@@ -166,6 +166,9 @@ async def test_preview_vim_update_and_package_toolbar_on_desktop_and_mobile(
         await _wait_for_connection(page)
         await page.locator("#hosts .host-name").first.click()
         await page.locator(".package-details-toggle").click()
+        await page.locator("#package-check").click()
+        await page.clock.run_for(1000)
+        await expect(page.locator("#package-dialog .package-row")).to_have_count(12)
         await expect(page.locator("#package-pending-count")).to_contain_text(
             "12 pending"
         )

@@ -1,7 +1,7 @@
 ---
 title: Native Backend Betrieb
 status: active
-updated: 2026-08-23
+updated: 2026-11-23
 tags: [operations, backend, docker, ssh, ansible]
 ---
 
@@ -242,3 +242,20 @@ manager/version/repository/architecture behavior in an appropriate controlled
 operator environment before relying on it. Synthetic tests and Commander container
 checks do not certify a real OS or remote rollback. See
 [ADR-0030](../02-architecture/adr/0030-dnf-zypper-and-nullable-observations.md).
+
+## Native package sources (review follow-up)
+
+Before enabling Arch/CachyOS maintenance, independently prepare SSH, Python 3,
+non-interactive sudo and pacman-contrib/checkupdates on the synthetic test target.
+Only full Pacman system upgrades are offered; no AUR/helper execution or isolated
+`pacman -Sy` is introduced. Flatpak requires the native binary and existing
+installations/remotes. Per-user operations target the SSH account without sudo;
+default-system updates require the existing administrative privilege path. The
+Debian/Ubuntu onboarding scripts do not install or provision these tools.
+
+Source settings and measured counts persist; newly read package rows do not.
+After backend restart, run a native check to repopulate details. Legacy cached bytes
+are preserved by migration but never used for native update routing. Back up
+`/data` before schema-16 adoption and restore a pre-upgrade backup for downgrade;
+older backends must not interpret new multi-source configuration. Do not test
+these commands against managed hosts from development automation.

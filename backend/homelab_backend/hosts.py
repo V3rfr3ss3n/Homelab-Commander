@@ -6,7 +6,14 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from .database import Database
-from .models import Host, HostCreate, HostPatch, HostWebsite, PackageInfo
+from .models import (
+    Host,
+    HostCreate,
+    HostPatch,
+    HostWebsite,
+    PackageInfo,
+    PackageSourceStatus,
+)
 from .policy.application import PolicyGuard
 from .policy.domain import Permission
 from .policy.store import policy_for
@@ -16,7 +23,7 @@ _SELECT = (
     "distribution, distribution_version, kernel, updates, security_updates, "
     "reboot_required, status, checked_at, created_at, updated_at, "
     "websites_json, packages_json, security_known, reboot_known, "
-    "package_scopes_json FROM hosts"
+    "package_scopes_json, package_sources_json, package_observations_json FROM hosts"
 )
 
 
@@ -36,6 +43,8 @@ class HostRepository:
     ) -> None:
         self._database = database
         self._policy = policy or policy_for(database)
+        # New package rows are disposable observations, not a persisted catalog.
+        self._package_cache: dict[UUID, tuple[datetime, tuple[PackageInfo, ...]]] = {}
 
     async def async_create(self, data: HostCreate) -> Host:
         """Create one host with a generated UUID."""
@@ -54,8 +63,8 @@ class HostRepository:
                 "INSERT INTO hosts "
                 "(id, name, address, port, username, package_provider, "
                 "created_at, updated_at, websites_json, packages_json, "
-                "security_known, reboot_known) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "security_known, reboot_known, package_sources_json) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 _values(host),
             )
         except sqlite3.IntegrityError as err:
@@ -67,14 +76,20 @@ class HostRepository:
     async def async_list(self) -> tuple[Host, ...]:
         """List hosts in deterministic display order."""
         rows = await self._database.async_fetch_all(f"{_SELECT} ORDER BY name, id")
-        return tuple(_host_from_row(row) for row in rows)
+        return tuple(self._cached(_host_from_row(row)) for row in rows)
 
     async def async_get(self, host_id: UUID) -> Host | None:
         """Return one host by stable identity."""
         row = await self._database.async_fetch_one(
             f"{_SELECT} WHERE id = ?", (str(host_id),)
         )
-        return _host_from_row(row) if row is not None else None
+        return self._cached(_host_from_row(row)) if row is not None else None
+
+    def _cached(self, host: Host) -> Host:
+        cached = self._package_cache.get(host.id)
+        if cached is not None and cached[0] == host.checked_at:
+            return host.model_copy(update={"packages": cached[1]})
+        return host
 
     async def async_patch(self, host_id: UUID, patch: HostPatch) -> Host | None:
         """Update mutable fields while preserving the UUID."""
@@ -84,8 +99,13 @@ class HostRepository:
             return None
         values = current.model_dump()
         values.update(patch.model_dump(exclude_none=True))
+        if "package_sources" in patch.model_fields_set:
+            values["package_sources"] = patch.package_sources
         values["updated_at"] = datetime.now(UTC)
-        provider_changed = values["package_provider"] != current.package_provider
+        provider_changed = (
+            values["package_provider"] != current.package_provider
+            or values["package_sources"] != current.package_sources
+        )
         if provider_changed:
             values.update(
                 checked_at=None,
@@ -94,6 +114,7 @@ class HostRepository:
                 status="stale",
                 packages=(),
                 package_scopes=(),
+                package_observations=(),
             )
         updated = Host.model_validate(values)
         try:
@@ -106,7 +127,10 @@ class HostRepository:
                 "security_known = CASE WHEN ? THEN 0 ELSE security_known END, "
                 "reboot_known = CASE WHEN ? THEN 0 ELSE reboot_known END, "
                 "package_scopes_json = CASE WHEN ? THEN '[]' "
-                "ELSE package_scopes_json END "
+                "ELSE package_scopes_json END, "
+                "package_sources_json=?, "
+                "package_observations_json=CASE WHEN ? THEN NULL "
+                "ELSE package_observations_json END "
                 "WHERE id = ?",
                 (
                     updated.name,
@@ -119,6 +143,10 @@ class HostRepository:
                         site.model_dump(mode="json") for site in updated.websites
                     ]),
                     *([provider_changed] * 6),
+                    json.dumps(updated.package_sources)
+                    if updated.package_sources is not None
+                    else None,
+                    provider_changed,
                     str(updated.id),
                 ),
             )
@@ -135,26 +163,33 @@ class HostRepository:
             current.port,
             current.username,
             current.package_provider,
+            current.package_sources,
         ) != (
             updated.address,
             updated.port,
             updated.username,
             updated.package_provider,
+            updated.package_sources,
         ):
             await self._database.async_execute(
                 "DELETE FROM task_checks WHERE host_id = ?", (str(host_id),)
             )
+        if provider_changed:
+            self._package_cache.pop(host_id, None)
         return updated
 
     async def async_delete(self, host_id: UUID) -> bool:
         """Delete one host and report whether it existed."""
         await self._policy.async_require(Permission.HOST_WRITE)
         try:
-            return bool(
+            deleted = bool(
                 await self._database.async_execute(
                     "DELETE FROM hosts WHERE id = ?", (str(host_id),)
                 )
             )
+            if deleted:
+                self._package_cache.pop(host_id, None)
+            return deleted
         except sqlite3.IntegrityError as err:
             if str(err) == "host_execution_busy":
                 raise HostBusyError(
@@ -183,14 +218,16 @@ class HostRepository:
         checked_at: datetime,
         packages: tuple[PackageInfo, ...],
         package_scopes: tuple[str, ...] | None = None,
+        package_observations: tuple[PackageSourceStatus, ...] = (),
     ) -> None:
         """Persist one normalized status snapshot."""
         await self._policy.async_require(Permission.HOST_STATUS)
         await self._database.async_execute(
             "UPDATE hosts SET distribution = ?, distribution_version = ?, "
             "kernel = ?, updates = ?, security_updates = ?, reboot_required = ?, "
-            "status = ?, checked_at = ?, updated_at = ?, packages_json = ?, "
-            "security_known = ?, reboot_known = ?, package_scopes_json = ? "
+            "status = ?, checked_at = ?, updated_at = ?, "
+            "security_known = ?, reboot_known = ?, package_scopes_json = ?, "
+            "package_observations_json = ? "
             "WHERE id = ?",
             (
                 distribution,
@@ -202,13 +239,16 @@ class HostRepository:
                 status,
                 checked_at.isoformat(),
                 datetime.now(UTC).isoformat(),
-                json.dumps([package.model_dump(mode="json") for package in packages]),
                 int(security_updates is not None),
                 int(reboot_required is not None),
                 json.dumps(package_scopes) if package_scopes is not None else None,
+                json.dumps([
+                    item.model_dump(mode="json") for item in package_observations
+                ]),
                 str(host_id),
             ),
         )
+        self._package_cache[host_id] = (checked_at, packages)
 
 
 def _values(host: Host) -> tuple[object, ...]:
@@ -225,6 +265,7 @@ def _values(host: Host) -> tuple[object, ...]:
         json.dumps([package.model_dump(mode="json") for package in host.packages]),
         int(host.security_updates is not None),
         int(host.reboot_required is not None),
+        json.dumps(host.package_sources) if host.package_sources is not None else None,
     )
 
 
@@ -236,6 +277,13 @@ def _host_from_row(row: sqlite3.Row) -> Host:
         port=row["port"],
         username=row["username"],
         package_provider=row["package_provider"],
+        package_sources=tuple(json.loads(row["package_sources_json"]))
+        if row["package_sources_json"] is not None
+        else None,
+        package_observations=tuple(
+            PackageSourceStatus.model_validate(item)
+            for item in json.loads(row["package_observations_json"] or "[]")
+        ),
         websites=tuple(
             HostWebsite.model_validate(site)
             for site in json.loads(row["websites_json"])
@@ -243,7 +291,9 @@ def _host_from_row(row: sqlite3.Row) -> Host:
         packages=tuple(
             PackageInfo.model_validate(package)
             for package in json.loads(row["packages_json"])
-        ),
+        )
+        if row["package_observations_json"] is None
+        else (),
         distribution=row["distribution"],
         distribution_version=row["distribution_version"],
         kernel=row["kernel"],

@@ -41,6 +41,10 @@ class RpmRunner:
         if module == "ansible.builtin.setup":
             assert not become
             return {"ansible_facts": self.facts}, "private fixture facts"
+        if module == "ansible.builtin.stat":
+            assert json.loads(arguments)["path"] == "/usr/bin/flatpak"
+            assert not become
+            return {"stat": {"exists": False}}, ""
         assert module == "ansible.builtin.command"
         assert become
         argv = json.loads(arguments)["argv"]

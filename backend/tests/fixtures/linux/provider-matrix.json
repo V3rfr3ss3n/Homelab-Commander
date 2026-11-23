@@ -69,14 +69,15 @@
       "targets": [
         "Arch Linux (snapshot required)"
       ],
-      "registered": false,
+      "registered": true,
       "scopes": {
-        "full": "unavailable",
+        "full": "supported",
         "single": "unsupported",
         "selected": "unsupported"
       },
       "security": "unknown",
-      "reboot": "unknown"
+      "reboot": "unknown",
+      "provider_key": "pacman"
     },
     {
       "id": "apk",

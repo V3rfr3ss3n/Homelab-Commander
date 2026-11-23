@@ -59,3 +59,5 @@ ADRs werden nicht rückwirkend umgeschrieben; eine neue ADR ersetzt die alte und
 verlinkt sie als `superseded`.
 
 - [ADR-0031: Automatic system manager selection](0031-automatic-system-manager-selection.md)
+
+- [ADR-0032: Native sources without a Commander catalog](0032-native-package-sources-without-catalog.md)

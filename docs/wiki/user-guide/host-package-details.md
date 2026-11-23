@@ -1,7 +1,7 @@
 ---
 title: Host package details
 status: active
-updated: 2026-11-18
+updated: 2026-11-23
 tags: [wiki, user-guide, hosts, packages]
 ---
 
@@ -83,6 +83,28 @@ failure. Existing explicit provider choices remain unchanged. Unsupported facts
 fail safely, and all provider restrictions still apply, including Tumbleweed's
 read-only inventory. Update controls become available after a successful check.
 
-This selects one system package manager. Independent package sources on the same
-host need separate package identities, observations and job targets; simultaneous
-source management is not claimed by this implementation.
+Auto-detect now combines the supported system manager with available Flatpak
+sources. See the native-sources follow-up below.
+
+## Native sources (review follow-up)
+
+Choose **Automatic / provider default** with Auto-detect to query the supported
+system manager plus available Flatpaks. **Choose sources** enables system packages,
+Flatpak system and/or Flatpak SSH user independently. Existing explicit manager
+choices keep system-only defaults unless sources are chosen. The SSH user's
+Flatpaks do not include other desktop users or named installations. Pamac adds no
+second copy of ALPM or Flatpak packages.
+
+The package dialog labels each source and offers single/selected updates where
+supported, a complete source update and a complete host update. Pacman on
+Arch/CachyOS permits full system upgrades only and requires preinstalled
+checkupdates; AUR is excluded. Native package managers resolve dependencies and
+retain their own exclusions, repositories, signatures and locks. No source is
+installed, removed or automatically rebooted by discovery.
+
+Commander keeps no new persistent package catalog. Package rows are a disposable
+view of native query results. After backend restart, saved counts remain and a
+new check repopulates details. Changes made outside Commander appear on the next
+check. If a later source fails, earlier work may have completed: inspect the job
+and refresh status before another explicit update. No automatic rollback/retry is
+attempted. Preview uses synthetic sources only.

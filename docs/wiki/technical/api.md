@@ -1,7 +1,7 @@
 ---
 title: Native API
 status: active
-updated: 2026-11-18
+updated: 2026-11-23
 tags: [wiki, technical]
 ---
 
@@ -167,3 +167,32 @@ For compatibility, `POST /hosts` requests omitting the field retain `debian_apt`
 Explicit values and all stored rows are preserved. The `auto` value denotes a
 selection policy, not an observed manager identifier. Checks expose observed
 `package_scopes`; unknown or unsupported detection does not grant update access.
+
+## Native package sources (review follow-up)
+
+`package_sources` is optional host configuration: null keeps automatic composition
+for `auto` or system-only behavior for explicit legacy providers. An explicit
+nonempty array selects `system`, `flatpak_system`, and/or `flatpak_user`; PATCH null
+resets this setting. Choices are unique/canonical. This config never owns packages.
+Package responses add `sources` with native counts/scopes; host responses add
+`package_observations`. Rows add source/display name/scopes. Existing field names,
+legacy API omission defaults and `/api/v1` remain.
+
+Composite row `name` references have the form `dnf::curl.x86_64` or
+`flatpak_user::app:org.example.Editor:x86_64:stable`. Send these exact references
+through the existing single/selected update request. `package_name: source::pacman`
+requests a full Pacman source upgrade; an empty-body update covers every enabled
+source. Sources/refs are validated against live native data, not a stored catalog.
+Pacman individual/selected updates are unsupported; Flatpak targets include their
+installation, kind, architecture and branch. Errors never trigger full-update
+fallback or automatic retries. Source config changes invalidate queued revisions.
+
+Package rows are transient, while totals and observation times persist. Following
+restart, a response may have a positive total and no rows until another check.
+Legacy cache bytes are preserved additively but are not routing authority. Missing
+native data marks status stale; it does not publish zero. This requires no new
+public endpoint, runtime dependency or integration identifier.
+
+Known per-source security counts remain visible as a known minimum even when
+another source's classification is unknown. The aggregate security total remains
+unknown; this must not hide a positive native security observation from UI alerts.

@@ -30,6 +30,7 @@ async def command(
     code: str,
     accepted: tuple[int, ...] | None = (0,),
     mutation: bool = False,
+    become: bool = True,
 ) -> tuple[str, int]:
     try:
         payload, _ = await runner.async_module(
@@ -46,7 +47,7 @@ async def command(
                     }),
                 ],
             }),
-            become=True,
+            become=become,
             failure_code=code,
         )
     except AutomationExecutionError as error:
@@ -112,7 +113,7 @@ async def facts(host: Host, runner: ModuleRunner) -> RpmFacts:
         raise _fail("package_detection_failed")
     if (
         len(str(distro)) > 100
-        or not re.fullmatch(r"[0-9][A-Za-z0-9._+-]{0,99}", str(version))
+        or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._+-]{0,99}", str(version))
         or len(str(manager)) > 30
     ):
         raise _fail("package_detection_failed")
