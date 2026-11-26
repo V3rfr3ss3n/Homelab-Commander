@@ -108,3 +108,9 @@ new check repopulates details. Changes made outside Commander appear on the next
 check. If a later source fails, earlier work may have completed: inspect the job
 and refresh status before another explicit update. No automatic rollback/retry is
 attempted. Preview uses synthetic sources only.
+
+
+Pacman confirmations describe a full system upgrade and remind you to review
+restart requirements. The displayed package counts come from the last check.
+Pacman resolves dependencies and replacements during execution, so the final
+transaction can differ from that inventory.

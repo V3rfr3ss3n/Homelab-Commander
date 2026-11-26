@@ -355,10 +355,24 @@ function showTimelinePoint(target){
 function knownSecurity(host){return host.security_updates??(host.package_observations||[]).reduce((sum,source)=>sum+(source.security_updates??0),0)}
 function securityLabel(host){const known=knownSecurity(host);return host.security_updates===null?(known?`${known} known security updates · other sources unknown`:"Security status unknown"):`${host.security_updates} security ${host.security_updates===1?"update":"updates"}`}
 function hostScopes(host){return host.package_scopes??(host.package_provider==="debian_apt"&&host.package_sources==null?["full","single","selected"]:[])}
+function includesPacmanUpgrade(host,names=[]){
+  const observations=host.package_observations||[];
+  const hasPacman=observations.length?observations.some(source=>source.source==="pacman"&&source.scopes.includes("full")):host.package_provider==="pacman"&&(host.package_sources==null||host.package_sources.includes("system"));
+  return hasPacman&&(!names.length||names.includes("source::pacman"));
+}
+function pacmanUpgradeNotice(){
+  return " Pacman runs a full system upgrade. It resolves dependencies and may replace packages during the transaction. Review restart requirements after completion.";
+}
+function updateTargetLabel(host){
+  const sources=(host.package_observations||[]).filter(source=>source.scopes.includes("full"));
+  const scope=sources.length?sources.map(source=>source.source==="pacman"?"Pacman full system upgrade":sourceLabel(source.source)).join(", "):includesPacmanUpgrade(host)?"Pacman full system upgrade":"System packages";
+  const restart=host.reboot_required?" · Restart already required":host.reboot_required===null?" · Restart status unknown":"";
+  return `${host.name} · ${host.updates} updates · ${scope}${restart}`;
+}
 async function updateShown(button){
   const targets=state.hosts.filter(h=>h.checked_at&&h.updates>0&&hostScopes(h).includes("full")&&!activeJobs().some(j=>j.host_id===h.id&&ACTIVE_JOB_STATES.has(j.state)&&MUTATING_JOB_ACTIONS.has(j.action)));
   if(!targets.length)return;
-  if(!await confirmAction(`Update all (${targets.length}) hosts?`,`Run regular system updates on these hosts during a suitable maintenance window? No host reboot is requested. Review restart requirements after completion.`,targets.map(host=>`${host.name} · ${host.updates} updates${host.reboot_required?" · Restart already required":host.reboot_required===null?" · Restart status unknown":""}`),"Queue updates",{acknowledgement:"I will review completed updates and restart requirements. Any host reboot must be confirmed separately."}))return;
+  if(!await confirmAction(`Update all (${targets.length}) hosts?`,`Update the enabled sources on these hosts during a maintenance window? Review restart requirements after completion.${targets.some(host=>includesPacmanUpgrade(host))?pacmanUpgradeNotice():""}`,targets.map(updateTargetLabel),"Queue updates",{acknowledgement:"I will review completed updates and restart requirements. Any host reboot must be confirmed separately."}))return;
   await run(button,async()=>{let count=0;const failed=[];for(const host of targets){try{await request(hostActionPath(host.id,"update"),{method:"POST"});count++}catch{failed.push(host.name)}}await refreshDashboard();if(failed.length)throw Error(`${count} updates queued. Could not queue: ${failed.join(", ")}. Review host status before retrying.`);return {notification:{href:"#/jobs?action=update",label:"Open jobs"}}},"Updates queued");
 }
 function hostSystem(host){
@@ -418,10 +432,10 @@ async function updatePackages(button,scope){
   const skipped=skippedPackages.get(hostId)||new Set(),names=scope==="selected"?(currentHostPackages?.packages||[]).filter(p=>!skipped.has(p.name)&&packageCan(p,"selected",host)).map(p=>p.name):scope==="all"?null:[scope];
   if(names&&!names.length)return;
   const title=names?.length===1?(names[0].startsWith("source::")?`Update ${packageLabel(names[0])}?`:`Update only ${packageLabel(names[0])}?`):names?`Update ${names.length} selected packages?`:`Update all ${currentHostPackages?.total||0} packages?`;
-  const description=`${host.name}: ${names?.some(name=>name.startsWith("source::"))?"Update every eligible package in the selected native source, including packages not shown or skipped":names?"Update these explicitly selected installed packages":"Run a full host upgrade, including packages not shown and skipped rows"}. Native managers may also update dependencies. Sources run sequentially; a later failure does not undo an earlier update. No reboot is requested; review restart requirements afterwards.`;
+  const description=`${host.name}: ${names?.some(name=>name.startsWith("source::"))?"Update every eligible package in the selected native source, including packages not shown or skipped":names?"Update these explicitly selected installed packages":"Run a full host upgrade, including packages not shown and skipped rows"}. Native managers may also update dependencies. Sources run sequentially; a later failure does not undo an earlier update. No reboot is requested; review restart requirements afterwards.${includesPacmanUpgrade(host,names||[])?pacmanUpgradeNotice():""}`;
   packageSubmission=true;
   try{
-    if(!await confirmAction(title,description,names?.map(packageLabel)||[],names?"Update packages":"Update all",{acknowledgement:"I have planned maintenance and will review completion and restart requirements."}))return;
+    if(!await confirmAction(title,description,names?.map(packageLabel)||[updateTargetLabel(host)],names?"Update packages":"Update all",{acknowledgement:"I have planned maintenance and will review completion and restart requirements."}))return;
     renderPackageDialog(host);
     const body=names?(names.length===1?{package_name:names[0]}:{package_names:names}):undefined;
     await mutate(button,hostActionPath(hostId,"update"),"POST",body,names?"Package update queued":"System update queued");
@@ -668,7 +682,10 @@ async function rerunJob(button){
   const host=state.hosts.find(item=>item.id===job.host_id),title=state.custom_tasks.find(item=>item.id===job.custom_task_id)?.name||actionName(job.action);
   const names=job.package_names?.length?job.package_names:job.package_name?[job.package_name]:[];
   const body=job.action==="update"?(job.package_names?.length?{package_names:job.package_names}:job.package_name?{package_name:job.package_name}:undefined):undefined;
-  if(!await confirmAction("Run this job again?",`Create a new ${title} job for ${host.name}? The original job and its log stay in history.${job.action==="custom_task"?" The current task definition and permissions apply.":""}`,names.length?names:[host.name],"Run again"))return;
+  const pacman=job.action==="update"&&includesPacmanUpgrade(host,names);
+  const scope=names.length?names.map(packageLabel):job.action==="update"?[updateTargetLabel(host)]:[host.name];
+  const description=`Create a new ${title} job for ${host.name}? The original job and its log stay in history.${job.action==="custom_task"?" The current task definition and permissions apply.":""}${pacman?pacmanUpgradeNotice():""}`;
+  if(!await confirmAction("Run this job again?",description,scope,"Run again",pacman?{acknowledgement:"I have planned maintenance and will review restart requirements."}:{}))return;
   await mutate(button,job.action==="custom_task"?customTaskPath(job.host_id,job.custom_task_id):hostActionPath(job.host_id,job.action),"POST",body,"New job queued");
   }finally{jobRerunPending=false;renderSelectedJob()}
 }
@@ -732,7 +749,33 @@ async function removeHost(button,hostId){
   },"Host removed");
   if(!success&&element("host-dialog").open)element("host-form-error").textContent=element("message-text").textContent;
 }
-async function hostClick(event){const button=event.target.closest("button");if(!button)return;const hostId=button.dataset.host;if(button.dataset.action&&hostId){const action=button.dataset.action;if(action==="update-package"){if(button.dataset.package)await updatePackages(button,button.dataset.package);return}if(["update","reboot"].includes(action)&&!await confirmAction(action==="reboot"?"Restart host?":"Run system update?",`${action==="reboot"?"Restart":"Run regular system updates on"} ${state.hosts.find(host=>host.id===hostId)?.name||"this host"}?`,[],action==="reboot"?"Restart":"Queue update"))return;await mutate(button,hostActionPath(hostId,action),"POST",undefined,`${action.replace("_"," ")} queued`);return}if(button.dataset.deleteHost){await removeHost(button,button.dataset.deleteHost);return}if(button.dataset.editHost)openHostDialog(state.hosts.find(value=>value.id===button.dataset.editHost))}
+async function hostClick(event){
+  const button=event.target.closest("button");
+  if(!button)return;
+  const hostId=button.dataset.host,action=button.dataset.action;
+  if(action&&hostId){
+    const host=state.hosts.find(item=>item.id===hostId);
+    if(action==="update-package"){
+      if(button.dataset.package)await updatePackages(button,button.dataset.package);
+      return;
+    }
+    if(action==="update"){
+      if(!host)return;
+      const pacman=includesPacmanUpgrade(host);
+      const description=`Update all enabled sources on ${host.name}?${pacman?pacmanUpgradeNotice():""}`;
+      const options=pacman?{acknowledgement:"I have planned maintenance and will review restart requirements."}:{};
+      if(!await confirmAction(pacman?"Run full Pacman upgrade?":"Run system update?",description,[updateTargetLabel(host)],"Queue update",options))return;
+    }
+    if(action==="reboot"&&!await confirmAction("Restart host?",`Restart ${host?.name||"this host"}?`,[],"Restart"))return;
+    await mutate(button,hostActionPath(hostId,action),"POST",undefined,`${action.replace("_"," ")} queued`);
+    return;
+  }
+  if(button.dataset.deleteHost){
+    await removeHost(button,button.dataset.deleteHost);
+    return;
+  }
+  if(button.dataset.editHost)openHostDialog(state.hosts.find(value=>value.id===button.dataset.editHost));
+}
 async function taskClick(event){const button=event.target.closest("button");if(!button)return;const host=button.dataset.host;if(button.dataset.task&&host){if(await confirmAction("Run custom task?",`Run ${state.custom_tasks.find(task=>task.id===button.dataset.task)?.name||"this task"} on ${state.hosts.find(item=>item.id===host)?.name||"this host"}? Prerequisites will be checked again.`,[],"Run task"))await mutate(button,customTaskPath(host,button.dataset.task),"POST",undefined,"Task queued");return}if(button.dataset.checkTask){await run(button,async()=>{await request(`hosts/${host}/tasks/${button.dataset.checkTask}/check`,{method:"POST"});await loadView();render()},"Compatibility checked");return}if(button.dataset.assignTask){const result=currentHostTasks.find(c=>c.task_id===button.dataset.assignTask);await mutate(button,`hosts/${host}/tasks/${button.dataset.assignTask}/assignment`,"PUT",{enabled:!result?.enabled},"Assignment updated");return}if(button.dataset.unassignTask){await mutate(button,`hosts/${host}/tasks/${button.dataset.unassignTask}/assignment`,"DELETE",undefined,"Task unassigned");return}if(button.dataset.toggleTask){const task=state.custom_tasks.find(t=>t.id===button.dataset.toggleTask);await mutate(button,`custom-tasks/${task.id}`,"PATCH",{enabled:!task.enabled},"Task updated");return}if(button.dataset.deleteTask){if(await confirmAction("Delete task?",`Delete ${state.custom_tasks.find(task=>task.id===button.dataset.deleteTask)?.name||"this task"}?`,[],"Delete task"))await mutate(button,`custom-tasks/${button.dataset.deleteTask}`,"DELETE",undefined,"Task deleted");return}if(button.dataset.editTask)openTaskDialog(state.custom_tasks.find(value=>value.id===button.dataset.editTask))}
 async function reviewJob(button){await run(button,async()=>{await request(`jobs/${button.dataset.reviewJob}/review`,{method:"POST"});await refreshDashboard();await loadJobRoute(true)},"Job marked as reviewed")}
 async function jobClick(event){const button=event.target.closest("button[data-job-log]");if(!button)return;const target=`#/jobs/${button.dataset.jobLog}`;if(location.hash===target)await run(button,()=>loadJobRoute(true),"Job loaded");else location.hash=target}

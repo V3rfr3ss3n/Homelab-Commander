@@ -12,14 +12,13 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## In Arbeit
 
-- [ ] #48: DNF-/Zypper-Adapter, nullfähige Beobachtungen, additive Schema-15-
-  Migration, UI-/HA-Darstellung und synthetische native Tests zur Review. Baut auf
-  dem noch offenen #47-MR auf; kein Merge oder Release. Owner-Nachlieferung:
-  native Mehrquellen-Unterstützung, Pacman-Vollupdates, Flatpak system/SSH-Benutzer,
-  flüchtige Paketdetails und additive Schema-16-Konfiguration im selben MR zur Review.
-- [ ] #47: Linux-Fähigkeits-/Versionsmatrix, qualifizierte Security-/Reboot-Evidenz
-  und wiederverwendbare synthetische Providerverträge zur Review. Keine neue
-  Provideraktivierung; DNF/Zypper folgen getrennt in #48.
+- [ ] #49: Vollständige Pacman-Upgrades in den Bestätigungen klar ausweisen.
+  Abhängigkeiten und Ersetzungen werden während der nativen Transaktion bestimmt.
+  Eine konkrete Vorschau der Transaktionsänderungen steht noch aus.
+- [x] #48: DNF, Zypper, Pacman-Vollupdates und Flatpak-Quellen in !45 gemergt.
+  Paketdetails werden flüchtig gehalten. Schema 16 ergänzt Quellenkonfiguration
+  und Statuszusammenfassungen. Das App-Upgrade steht vor dem nächsten Dev-Release zur Abnahme an.
+- [x] #47: Linux-Fähigkeitsmatrix und qualifizierte Beobachtungen in !44 gemergt.
   [Matrix](../02-architecture/linux-provider-matrix.md).
 - [x] #45: Linux-Paketmodul und synthetischer zweiter Provider vom Owner
   abgenommen und in !43 / PR #73 gemergt. APT bleibt der einzige Produktionsprovider.
