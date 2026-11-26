@@ -81,7 +81,11 @@ class HomelabSystemUpdateEntity(HomelabUpdatesEntity, UpdateEntity):
     def release_summary(self) -> str:
         """Return a compact update and security package summary."""
         status = self.host_status
-        return f"{status.updates} updates, {status.security_updates} security updates"
+        return f"{status.updates} updates, " + (
+            "security status unknown"
+            if status.security_updates is None
+            else f"{status.security_updates} security updates"
+        )
 
     @property
     def in_progress(self) -> bool:

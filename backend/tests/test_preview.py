@@ -166,6 +166,9 @@ async def test_preview_vim_update_and_package_toolbar_on_desktop_and_mobile(
         await _wait_for_connection(page)
         await page.locator("#hosts .host-name").first.click()
         await page.locator(".package-details-toggle").click()
+        await page.locator("#package-check").click()
+        await page.clock.run_for(1000)
+        await expect(page.locator("#package-dialog .package-row")).to_have_count(12)
         await expect(page.locator("#package-pending-count")).to_contain_text(
             "12 pending"
         )
@@ -235,3 +238,20 @@ async def test_preview_checks_never_resurrect_packages_from_stale_inventory() ->
     await executor.async_execute(JobAction.REBOOT, host)
     checked = await executor.async_execute(JobAction.CHECK_UPDATES, host)
     assert checked.reboot_required is False
+
+
+@pytest.mark.parametrize("provider", ["dnf", "zypper"])
+async def test_preview_rpm_scopes_remain_synthetic_and_keep_unknown_security(provider):
+    from backend.tests.test_automation import _host
+
+    host = _host().model_copy(update={"package_provider": provider, "packages": ()})
+    executor = PreviewExecutor()
+    checked = await executor.async_execute(JobAction.CHECK_UPDATES, host)
+    assert checked.snapshot.updates == 2
+    assert checked.snapshot.security_updates is None
+    assert checked.snapshot.package_scopes == ("full", "selected", "single")
+    updated = await executor.async_execute(JobAction.UPDATE, host, "curl.x86_64")
+    assert updated.snapshot.updates == 1
+    assert updated.snapshot.security_updates is None
+    repeated = await executor.async_execute(JobAction.CHECK_UPDATES, host)
+    assert repeated.snapshot.updates == 1

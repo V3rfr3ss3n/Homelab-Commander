@@ -1,7 +1,7 @@
 ---
 title: Abnahme
 status: accepted
-updated: 2026-11-11
+updated: 2026-11-23
 tags: [product, acceptance, release]
 ---
 
@@ -221,3 +221,20 @@ tags: [product, acceptance, release]
   safely and legacy two-field website JSON remains compatible.
 - No referrer, API/CSRF headers, backend fetch, external discovery service, HTTP
   downgrade or TLS/access-control bypass is introduced. Logout clears cached nodes.
+
+## Native multi-source acceptance
+
+- Automatic mode finds supported system packages plus available default-system and
+  SSH-account Flatpaks. Manual source selection is retained across reloads. Pamac
+  does not duplicate the ALPM inventory; other desktop accounts and named Flatpak
+  installations are not silently included.
+- Identical Flatpak app IDs in different installations, kinds or branches remain
+  distinct. One row/selection/source update affects only its exact native targets.
+  Full updates include all enabled sources and dependencies under native rules.
+- Pacman rows are read-only individually; full source/system upgrades use native
+  Pacman. Checks use checkupdates without partial system database synchronization.
+- Native changes outside Commander appear on the next check. There is no new
+  persistent package catalog or package-to-manager mapping; details disappear
+  from the transient cache after process restart while measured counts survive.
+- Malformed responses, native locks, missing tools and later source failures remain
+  visible. Earlier completed sources are not rolled back or replayed.

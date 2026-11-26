@@ -1,7 +1,7 @@
 ---
 title: Produktanforderungen
 status: accepted
-updated: 2026-11-14
+updated: 2026-11-23
 tags: [product, requirements]
 ---
 
@@ -279,16 +279,20 @@ wird beim Parser in Tests festgeschrieben.
 
 ## Package details
 
-- **REQ-PKG-001 MUST:** Each successful host update check stores at most 50
-  upgradable package details in stable parser order: name, old version, new
+- **REQ-PKG-001 MUST:** Each successful host update check exposes at most 50
+  upgradable package details in a bounded transient display snapshot: name, old version, new
   version and security flag. The real parsed count remains available as `total`.
-- **REQ-PKG-002 MUST:** Package details are persisted on the host record and are
-  exposed only through read-only per-host package endpoints. Host list responses
-  remain lean and contain no package rows.
+- **REQ-PKG-002 MUST:** Native package managers remain authoritative. New package
+  rows and their source labels are not persisted as a Commander catalog; they are
+  held transiently for authenticated per-host package endpoints. Existing legacy
+  cache data is preserved by additive migration, not used for routing, and is no
+  longer exposed after the first new observation. Counts, freshness, selected source
+  settings and immutable job references persist. Host lists contain no package rows.
+  After restart, a native check repopulates details without zeroing stored counts.
 - **REQ-PKG-003 MUST:** Host details show a Package details card with versions,
   security badges, name/security sorting, check count/time and the existing
   explicit check action. Unknown and zero-update states are clearly distinguished.
-- **REQ-PKG-004 MUST:** A package-row Update action confirms the exact package and
+- **REQ-PKG-004 MUST:** Where supported, a package-row Update confirms the exact target and
   queues an update scoped to that package. Global Update actions continue to queue
   a full host update.
 
@@ -313,3 +317,14 @@ wird beim Parser in Tests festgeschrieben.
 - **REQ-PKG-006 MUST:** Queueing does not zero measured status. A fresh post-update
   check commits rows and counts together; failures retain the last known snapshot.
   Scoped reruns retain names; display bounds and full-update effects are explicit.
+
+- **REQ-PKG-007 MUST:** Automatic mode detects a supported system manager and
+  optional system/SSH-user Flatpak sources. Operators can select sources per host.
+  Shared ALPM frontends (Pamac/Pacman) are counted once. Native reference, source,
+  Flatpak kind/architecture/branch and installation scope remain unambiguous.
+- **REQ-PKG-008 MUST:** Single, selected, source-wide and host-wide updates validate
+  current native eligibility, honor native scope restrictions and run serially
+  under the existing host lock. Arch/CachyOS permits full ALPM upgrades only;
+  AUR/build helpers are excluded. Failure preserves uncertainty and reports possible
+  earlier completion without rollback or automatic replay. Native queries do not
+  synchronize the installed Pacman database without a full system upgrade.

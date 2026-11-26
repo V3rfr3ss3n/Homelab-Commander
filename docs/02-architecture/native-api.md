@@ -1,7 +1,7 @@
 ---
 title: Native API v1
 status: accepted
-updated: 2026-11-17
+updated: 2026-11-23
 tags: [architecture, api, backend]
 ---
 
@@ -331,3 +331,62 @@ requests are domain contracts, not new HTTP/UI endpoints; only statically compos
 future protected operations can use the single-use service. Pending approvals do
 not contribute to queued-job counts. See
 [ADR-0027](adr/0027-central-policy-and-approval-contracts.md).
+
+
+## RPM package observations (schema 15, #48 review)
+
+Host `package_provider` accepts explicit `dnf` and `zypper` alongside `debian_apt`.
+DNF admits Fedora 45/dnf5 and RHEL-family 9/dnf4; Zypper admits Leap 16.0 package
+updates and Tumbleweed read-only inventory. Unsupported detection fails before
+privileged operations. Existing check/update paths and scoped request fields stay.
+RPM selectors include architecture, for example `curl.x86_64`. Only exact fresh
+eligible names are admitted; no glob, implicit install, retry or reboot.
+
+For new providers, `security_updates`, `reboot_required` and per-package
+`is_security` may be JSON null, meaning unknown, never zero/false. DNF security
+and restart are currently unknown; Zypper security is unknown and its native
+restart probe can return true/false/unknown. Optional `package_scopes` advertises
+observed full/single/selected strings; empty means read-only, null means unobserved
+or legacy. Permissions and fresh dispatch validation remain mandatory.
+
+APT valid values and Info strings stay unchanged. Update the integration and strict
+third-party consumers before enabling RPM providers. Older clients may reject new
+RPM nulls safely rather than report a healthy host. See
+[ADR-0030](adr/0030-dnf-zypper-and-nullable-observations.md) for schema/rollback
+limits, command semantics, synthetic evidence and missing real-platform acceptance.
+
+### Automatic system manager selection
+
+The new-host UI defaults `package_provider` to `auto` and sends it explicitly.
+API clients omitting the field retain the legacy `debian_apt` default. Existing stored explicit
+values and explicitly supplied values are unchanged. Detection reads validated
+distribution/manager facts only during explicit jobs, delegates to one supported
+provider and preserves its scope/profile restrictions. The persisted `auto`
+policy is not replaced with the last detected manager. Observed package scopes
+are still required by UI controls. Unsupported or contradictory facts fail; no
+mutation-based probing, fallback update or implicit package installation occurs.
+
+## Native package sources (review follow-up)
+
+`package_sources` is optional host configuration: null keeps automatic composition
+for `auto` or system-only behavior for explicit legacy providers. An explicit
+nonempty array selects `system`, `flatpak_system`, and/or `flatpak_user`; PATCH null
+resets this setting. Choices are unique/canonical. This config never owns packages.
+Package responses add `sources` with native counts/scopes; host responses add
+`package_observations`. Rows add source/display name/scopes. Existing field names,
+legacy API omission defaults and `/api/v1` remain.
+
+Composite row `name` references have the form `dnf::curl.x86_64` or
+`flatpak_user::app:org.example.Editor:x86_64:stable`. Send these exact references
+through the existing single/selected update request. `package_name: source::pacman`
+requests a full Pacman source upgrade; an empty-body update covers every enabled
+source. Sources/refs are validated against live native data, not a stored catalog.
+Pacman individual/selected updates are unsupported; Flatpak targets include their
+installation, kind, architecture and branch. Errors never trigger full-update
+fallback or automatic retries. Source config changes invalidate queued revisions.
+
+Package rows are transient, while totals and observation times persist. Following
+restart, a response may have a positive total and no rows until another check.
+Legacy cache bytes are preserved additively but are not routing authority. Missing
+native data marks status stale; it does not publish zero. This requires no new
+public endpoint, runtime dependency or integration identifier.

@@ -1,6 +1,6 @@
 """Versioned Linux bindings; assessment is descriptive, never authorization."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 
 from ..contracts.capabilities import (
@@ -9,6 +9,7 @@ from ..contracts.capabilities import (
     CapabilityDefinition,
     CapabilityKey,
     CapabilityState,
+    ContractVersion,
     ExecutionMode,
     RecoveryMode,
     RiskClass,
@@ -16,7 +17,8 @@ from ..contracts.capabilities import (
 )
 from ..contracts.resources import ResourceKind, ResourceRef
 from .domain import PackageSelection, PackageStatus
-from .ports import PackageProvider
+from .evidence import InventoryEvidence
+from .ports import InventoryProvider, ProviderDescriptor
 
 
 class PackageOperation(StrEnum):
@@ -44,7 +46,7 @@ class PackageRequest:
 @dataclass(frozen=True, slots=True)
 class PackageInputValidator:
     operation: PackageOperation
-    provider: PackageProvider
+    provider: ProviderDescriptor
 
     def validate(self, value: object) -> PackageRequest:
         if (
@@ -75,7 +77,7 @@ class PackageCapability:
     until a future discovery service supplies current host-specific evidence.
     """
 
-    provider: PackageProvider
+    provider: ProviderDescriptor
     operation: PackageOperation
 
     @property
@@ -119,3 +121,55 @@ class PackageCapability:
                 else "linux.target_unsupported",
             ),
         )
+
+
+class InventoryOutputValidator:
+    def validate(self, value: object) -> InventoryEvidence:
+        if not isinstance(value, InventoryEvidence):
+            raise ValueError("Invalid qualified package inventory")
+        return value
+
+
+@dataclass(frozen=True, slots=True)
+class InventoryCapability:
+    """V2 output carries qualified observations; legacy bindings remain v1."""
+
+    provider: InventoryProvider
+    operation: PackageOperation
+
+    @property
+    def provider_id(self) -> str:
+        return self.provider.provider_id
+
+    @property
+    def definition(self) -> CapabilityDefinition:
+        legacy = PackageCapability(self.provider, self.operation).definition
+        return replace(
+            legacy,
+            key=CapabilityKey(self.operation.value, ContractVersion(2)),
+            output_schema=SchemaRef("linux.inventory_evidence"),
+        )
+
+    @property
+    def input_validator(self) -> PackageInputValidator:
+        return PackageInputValidator(self.operation, self.provider)
+
+    @property
+    def output_validator(self) -> InventoryOutputValidator:
+        return InventoryOutputValidator()
+
+    async def async_assess(self, target: ResourceRef) -> CapabilityAssessment:
+        previous = await PackageCapability(self.provider, self.operation).async_assess(
+            target
+        )
+        return replace(previous, key=self.definition.key)
+
+
+def capability_binding(
+    provider: ProviderDescriptor, operation: PackageOperation
+) -> PackageCapability | InventoryCapability:
+    return (
+        InventoryCapability(provider, operation)
+        if isinstance(provider, InventoryProvider)
+        else PackageCapability(provider, operation)
+    )

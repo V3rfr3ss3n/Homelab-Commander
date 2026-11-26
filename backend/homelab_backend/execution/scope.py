@@ -46,11 +46,11 @@ class OperationScope(BaseModel):
     conflicts: tuple[ResourceRef, ...] = Field(min_length=1, max_length=2)
     recovery: RecoveryMode = RecoveryMode.NEVER_REPLAY
     package_name: str | None = Field(
-        default=None, max_length=255, pattern=r"^[a-z0-9][a-z0-9+.-]*(?::[a-z0-9]+)?$"
+        default=None, max_length=255, pattern=r"^[A-Za-z0-9][A-Za-z0-9+_.:-]*$"
     )
     package_names: tuple[
         Annotated[
-            str, Field(max_length=255, pattern=r"^[a-z0-9][a-z0-9+.-]*(?::[a-z0-9]+)?$")
+            str, Field(max_length=255, pattern=r"^[A-Za-z0-9][A-Za-z0-9+_.:-]*$")
         ],
         ...,
     ] = Field(default=(), max_length=50)

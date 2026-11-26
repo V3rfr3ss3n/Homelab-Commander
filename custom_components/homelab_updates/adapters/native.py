@@ -215,7 +215,11 @@ def _parse_host(payload: object) -> HostStatus:
         distribution_version=_optional_text(payload, "distribution_version"),
         kernel=_optional_text(payload, "kernel"),
         updates=_non_negative_int(payload, "updates"),
-        security_updates=_non_negative_int(payload, "security_updates"),
+        security_updates=(
+            None
+            if "security_updates" in payload and payload["security_updates"] is None
+            else _non_negative_int(payload, "security_updates")
+        ),
         reboot_required=_bool(payload, "reboot_required"),
         status=_optional_text(payload, "status"),
         checked_at=_optional_datetime(payload, "checked_at"),
@@ -347,7 +351,9 @@ def _non_negative_int(payload: dict[object, object], field: str) -> int:
     return value
 
 
-def _bool(payload: dict[object, object], field: str) -> bool:
+def _bool(payload: dict[object, object], field: str) -> bool | None:
+    if field in payload and payload[field] is None:
+        return None
     value = payload.get(field)
     if not isinstance(value, bool):
         raise InvalidStatusDataError(f"The native {field} value is invalid")

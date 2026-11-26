@@ -395,15 +395,20 @@ class JobManager:
         )
 
     async def _execute_builtin(self, job: Job, host: Host) -> ExecutionResult:
-        if job.package_names:
-            return await self._executor.async_execute(
-                job.action, host, package_names=job.package_names
-            )
-        if job.package_name is not None:
-            return await self._executor.async_execute(
-                job.action, host, job.package_name
-            )
-        return await self._executor.async_execute(job.action, host)
+        try:
+            if job.package_names:
+                return await self._executor.async_execute(
+                    job.action, host, package_names=job.package_names
+                )
+            if job.package_name is not None:
+                return await self._executor.async_execute(
+                    job.action, host, job.package_name
+                )
+            return await self._executor.async_execute(job.action, host)
+        except AutomationExecutionError:
+            if job.action in {JobAction.UPDATE, JobAction.CHECK_UPDATES}:
+                await self._hosts.async_mark_stale(host.id)
+            raise
 
     async def _finish_success(
         self, job: Job, host: Host, result: ExecutionResult
@@ -421,6 +426,8 @@ class JobManager:
                 status=snapshot.status,
                 checked_at=snapshot.checked_at,
                 packages=snapshot.packages,
+                package_scopes=snapshot.package_scopes,
+                package_observations=snapshot.package_observations,
             )
         output, truncated = _safe_output(result.output, host)
         await self._repository.async_finish(

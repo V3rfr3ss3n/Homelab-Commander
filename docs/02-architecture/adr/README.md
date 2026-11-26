@@ -52,6 +52,12 @@ tags: [architecture, adr, index]
 
 | [[0029-linux-evidence-and-compatibility-matrix]] | proposed | Qualified package observations and explicit Linux compatibility/test evidence |
 
+| [[0030-dnf-zypper-and-nullable-observations]] | proposed | Native RPM maintenance, qualified observations, schema 15 and safe compatibility rollout |
+
 Neue ADRs verwenden [[../../templates/adr-template|die ADR-Vorlage]]. Akzeptierte
 ADRs werden nicht rückwirkend umgeschrieben; eine neue ADR ersetzt die alte und
 verlinkt sie als `superseded`.
+
+- [ADR-0031: Automatic system manager selection](0031-automatic-system-manager-selection.md)
+
+- [ADR-0032: Native sources without a Commander catalog](0032-native-package-sources-without-catalog.md)

@@ -47,6 +47,8 @@ class RebootRequiredRepairFlow(RepairsFlow):
 
         entry = cast("HomelabUpdatesConfigEntry", raw_entry)
         status = entry.runtime_data.coordinator.data.get(self._host_id)
+        if status is not None and status.reboot_required is None:
+            return self.async_abort(reason="status_unknown")
         if status is None or not status.reboot_required:
             return self.async_abort(reason="no_longer_required")
 

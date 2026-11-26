@@ -37,7 +37,8 @@ und eine Privacy-Prüfung.
 - [ ] für `0.3` Server-Sent Events oder WebSockets als Ersatz für aktives
   Management-UI-Jobpolling bewerten
 - [ ] native TLS-Terminierung bewerten; bis dahin HTTPS über einen Reverse Proxy
-- [ ] weitere Package Provider für DNF, Pacman und APK implementieren
+- [ ] Native Provider/Mehrquellen: DNF, Zypper, Pacman-Vollupdates und Flatpak in
+  #48 zur Review; APK und weitere Profile folgen separat.
 
 ## Homelab extensions
 

@@ -1,7 +1,7 @@
 ---
 title: Architecture and contracts
 status: active
-updated: 2026-11-17
+updated: 2026-11-23
 tags: [wiki, technical]
 ---
 
@@ -112,3 +112,15 @@ unprobed readiness. Production registers APT only; an independent test-only
 provider proves extension through the existing API and worker. Real distribution
 expansion remains later work. See
 [ADR-0028](../../02-architecture/adr/0028-linux-package-provider-boundary.md).
+
+## Native sources in the #48 review branch
+
+The review branch extends the Linux adapter boundary with DNF/Zypper, full-only
+Pacman maintenance and Flatpak system/SSH-user sources. Auto composes native
+sources; entities still perform no I/O or provider parsing. No Commander package
+catalog is introduced: current native refs drive updates, display rows are
+transient, and only source settings/count summaries and immutable job references
+persist. Existing legacy cache bytes are retained additively. Sources run serially
+under the existing host lock and expose partial failure without automatic replay.
+See [ADR-0032](../../02-architecture/adr/0032-native-package-sources-without-catalog.md).
+This is proposed review scope, not a claim of release/platform certification.

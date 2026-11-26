@@ -19,6 +19,22 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ### Added
 
+- Native multi-source host updates: detected system manager plus system/SSH-user
+  Flatpaks, source selection and source-scoped jobs, without a new persistent
+  package catalog. Arch/CachyOS ALPM maintenance uses full Pacman upgrades only;
+  checks use preinstalled checkupdates. Native source failures stay visible,
+  transactions run serially, and partial completion is never automatically replayed.
+
+- Default the new-host UI to automatic system package-manager detection.
+  Explicit existing providers stay unchanged; unsupported or contradictory facts
+  fail safely, and detected providers retain their own update restrictions.
+
+- Native DNF and Zypper package maintenance with strict target admission,
+  architecture-qualified selections, Tumbleweed read-only scopes, unknown signal
+  handling through schema 15/API/HA/UI, and synthetic provider/preview coverage.
+  Update the integration before enabling these providers; no advisory-completeness
+  or real-platform certification claim, automatic retry, rollback or reboot.
+
 - Linux distro/operation compatibility matrix, reusable synthetic provider contracts
   and internal evidence models distinguishing known, unknown, unavailable and
   unsupported security/reboot data without changing legacy API behavior.

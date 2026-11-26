@@ -2,14 +2,29 @@
 
 import re
 
-from .ports import PackageProvider
+from .ports import ProviderDescriptor
 from .providers.apt import DebianAptProvider
+from .providers.auto import AutoProvider
+from .providers.flatpak import FlatpakProvider
+from .providers.pacman import PacmanProvider
+from .providers.rpm import DnfProvider, ZypperProvider
 
 
 class PackageProviders:
-    def __init__(self, providers: tuple[PackageProvider, ...] | None = None) -> None:
-        registered = providers if providers is not None else (DebianAptProvider(),)
-        self._providers: dict[str, PackageProvider] = {}
+    def __init__(self, providers: tuple[ProviderDescriptor, ...] | None = None) -> None:
+        registered = (
+            providers
+            if providers is not None
+            else (
+                DebianAptProvider(),
+                DnfProvider(),
+                ZypperProvider(),
+                PacmanProvider(),
+                FlatpakProvider("system"),
+                FlatpakProvider("user"),
+            )
+        )
+        self._providers: dict[str, ProviderDescriptor] = {}
         ids: set[str] = set()
         for provider in registered:
             if (
@@ -23,13 +38,15 @@ class PackageProviders:
                 raise ValueError("Invalid or duplicate package provider registration")
             self._providers[provider.legacy_key] = provider
             ids.add(provider.provider_id)
+        if providers is None:
+            self._providers["auto"] = AutoProvider(self)
 
-    def resolve(self, name: str) -> PackageProvider:
+    def resolve(self, name: str) -> ProviderDescriptor:
         provider = self._providers.get(name)
         if provider is None:
             raise ValueError("The configured package provider is unsupported")
         return provider
 
 
-def package_provider(name: str) -> PackageProvider:
+def package_provider(name: str) -> ProviderDescriptor:
     return PackageProviders().resolve(name)

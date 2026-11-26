@@ -1,5 +1,6 @@
 """Explicit loopback-only UI preview with disposable data and synthetic execution."""
 
+import json
 from argparse import ArgumentParser
 from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
@@ -20,6 +21,7 @@ from .custom_tasks import CustomTaskRepository
 from .database import Database
 from .hosts import HostRepository
 from .jobs import JobRepository
+from .linux.domain import PackageSelection
 from .models import (
     CustomTask,
     CustomTaskCreate,
@@ -31,6 +33,7 @@ from .models import (
     ProbeFacts,
     TaskRequirements,
 )
+from .preview_sources import simulate_sources
 from .task_compatibility import TaskCompatibilityService
 
 
@@ -74,7 +77,9 @@ class PreviewExecutor:
 
     def __init__(self) -> None:
         self._packages: dict[UUID, tuple[PackageInfo, ...]] = {}
+        self._source_packages: dict[UUID, tuple[PackageInfo, ...]] = {}
         self._restart_required: dict[UUID, bool] = {}
+        self._providers: dict[UUID, str] = {}
 
     async def async_execute(
         self,
@@ -85,23 +90,64 @@ class PreviewExecutor:
         package_names: tuple[str, ...] = (),
     ) -> ExecutionResult:
         scope = package_names or ((package_name,) if package_name else ())
-        remaining = self._packages.setdefault(host.id, host.packages)
+        rpm = host.package_provider in {"dnf", "zypper"}
+        configuration = json.dumps([host.package_provider, host.package_sources])
+        if self._providers.get(host.id, configuration) != configuration:
+            self._packages.pop(host.id, None)
+        self._providers[host.id] = configuration
+        if host.package_provider == "auto" or host.package_sources is not None:
+            result, remaining_sources = simulate_sources(
+                host,
+                action,
+                self._source_packages.get(host.id),
+                PackageSelection.from_legacy(package_name, package_names),
+            )
+            assert result.snapshot is not None
+            self._source_packages[host.id] = remaining_sources
+            return result
+        initial = host.packages
+        if not initial and not rpm:
+            initial = demo_packages(host.updates, host.security_updates or 0)
+        if rpm and not initial:
+            initial = tuple(
+                PackageInfo(
+                    name=name + ".x86_64",
+                    old_version="0:1-1",
+                    new_version="0:2-1",
+                    is_security=None,
+                )
+                for name in ("curl", "git")
+            )
+        remaining = self._packages.setdefault(host.id, initial)
         if action is JobAction.UPDATE:
             remaining = (
                 tuple(p for p in remaining if p.name not in scope) if scope else ()
             )
         self._packages[host.id] = remaining
-        restart = self._restart_required.setdefault(host.id, host.reboot_required)
+        restart = self._restart_required.setdefault(
+            host.id, host.reboot_required is True
+        )
         if action is JobAction.REBOOT:
             restart = False
         self._restart_required[host.id] = restart
         snapshot = HostSnapshot(
-            distribution=host.distribution or "Debian",
-            distribution_version=host.distribution_version or "12",
+            distribution=(
+                "Fedora" if host.package_provider == "dnf" else "openSUSE Leap"
+            )
+            if rpm
+            else host.distribution or "Debian",
+            distribution_version=("45" if host.package_provider == "dnf" else "16.0")
+            if rpm
+            else host.distribution_version or "12",
             kernel="6.8.0-demo",
             updates=len(remaining),
-            security_updates=sum(p.is_security for p in remaining),
-            reboot_required=restart,
+            security_updates=None
+            if rpm
+            else sum(p.is_security is True for p in remaining),
+            reboot_required=None if host.package_provider == "dnf" else restart,
+            package_scopes=("full", "selected", "single")
+            if rpm or host.package_provider == "auto"
+            else None,
             status="ok",
             checked_at=datetime.now(UTC),
             packages=remaining,

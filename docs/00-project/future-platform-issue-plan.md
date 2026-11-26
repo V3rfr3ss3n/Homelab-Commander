@@ -17,7 +17,8 @@ The Development Roadmap project tracks status and label-derived priority; #41 an
 #42/#61 and #62/#63 are Done. #43 was owner-approved and merged on 2026-11-17;
 #44 was owner-approved and merged in !41 / PR #71; #46 in !42 / PR #72.
 #45 was owner-accepted and merged in !43 / PR #73 on 2026-11-18.
-#47 is the current matrix/evidence-contract review block; #48 follows separately.
+#47 remains in review (!44 / PR #74). #48 is implemented on a stacked feature
+branch for separate review; no merge or release is implied.
 These planning states do not claim that M1 is complete.
 
 | Order | GitHub milestone title | Purpose | Issues |
@@ -161,3 +162,15 @@ covers actual APT and synthetic provider scopes; family scenarios do not certify
 future native parsers. [ADR-0029](../02-architecture/adr/0029-linux-evidence-and-compatibility-matrix.md)
 records the compatibility boundary. #48 implements DNF/Zypper with separate review;
 no release or new provider is activated by this block.
+
+
+## DNF/Zypper review (#48)
+
+The next stacked branch implements explicit admitted DNF/Leap maintenance,
+Tumbleweed read-only inventory, null-preserving observations through schema 15/API/
+HA, provider/scope UI and synthetic native/error/browser tests. Existing APT and
+policy/job behavior remain. Security classification stays unknown for these initial
+adapters, DNF restart stays unknown, and no remote rollback/retry/reboot occurs.
+[ADR-0030](../02-architecture/adr/0030-dnf-zypper-and-nullable-observations.md)
+records limits and the required client/migration rollout. Review #47 before its
+dependent MR; neither is auto-merged.

@@ -1,7 +1,7 @@
 ---
 title: Host package details
 status: active
-updated: 2026-11-15
+updated: 2026-11-23
 tags: [wiki, user-guide, hosts, packages]
 ---
 
@@ -51,3 +51,60 @@ Before the first check the dialog asks you to run one. A verified empty list sho
 package details after the next successful check following the backend upgrade.
 See the [API contract](../../02-architecture/native-api.md) and
 [dev.5 acceptance](../../05-reviews/2026-11-14-dev5-acceptance.md).
+
+
+## RPM providers (next development version, #48 review)
+
+Choose the package provider in the Host connection dialog after preparing SSH,
+Python 3 and non-interactive sudo manually. Onboarding scripts currently cover
+Debian/Ubuntu only. DNF admits Fedora 45 and the RHEL-9 family; Zypper permits
+regular package maintenance on Leap 16.0 and read-only inventory on Tumbleweed.
+A fresh check populates eligible scopes; disabled buttons are not permissions.
+
+RPM rows use architecture-qualified names such as `curl.x86_64`. Single/selected
+updates apply only to freshly eligible installed packages; dependencies are still
+resolved by the native manager. Full updates use the regular native package
+workflow, not an OS migration or vendor switch. Security classification is currently
+unknown and shown explicitly; DNF restart status is also unknown. Review services
+and downtime manually, and confirm any reboot separately.
+
+A failed operation can have partial effects. Old counts are marked stale until a
+fresh check succeeds; no retry, package rollback or reboot occurs automatically.
+Zypper may require another manually reviewed invocation after updating itself.
+Update the HA integration before enabling these providers. These profiles have
+synthetic contract tests, not a blanket real-platform certification.
+
+## Automatic detection
+
+New hosts default to **Auto-detect system package manager**. The setting is stored
+as `auto`; an explicit check or update reads distribution and package-manager
+facts and delegates to APT, DNF or Zypper. It does not try another manager after a
+failure. Existing explicit provider choices remain unchanged. Unsupported facts
+fail safely, and all provider restrictions still apply, including Tumbleweed's
+read-only inventory. Update controls become available after a successful check.
+
+Auto-detect now combines the supported system manager with available Flatpak
+sources. See the native-sources follow-up below.
+
+## Native sources (review follow-up)
+
+Choose **Automatic / provider default** with Auto-detect to query the supported
+system manager plus available Flatpaks. **Choose sources** enables system packages,
+Flatpak system and/or Flatpak SSH user independently. Existing explicit manager
+choices keep system-only defaults unless sources are chosen. The SSH user's
+Flatpaks do not include other desktop users or named installations. Pamac adds no
+second copy of ALPM or Flatpak packages.
+
+The package dialog labels each source and offers single/selected updates where
+supported, a complete source update and a complete host update. Pacman on
+Arch/CachyOS permits full system upgrades only and requires preinstalled
+checkupdates; AUR is excluded. Native package managers resolve dependencies and
+retain their own exclusions, repositories, signatures and locks. No source is
+installed, removed or automatically rebooted by discovery.
+
+Commander keeps no new persistent package catalog. Package rows are a disposable
+view of native query results. After backend restart, saved counts remain and a
+new check repopulates details. Changes made outside Commander appear on the next
+check. If a later source fails, earlier work may have completed: inspect the job
+and refresh status before another explicit update. No automatic rollback/retry is
+attempted. Preview uses synthetic sources only.

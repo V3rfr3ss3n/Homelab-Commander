@@ -19,7 +19,7 @@ CHECK_LIFETIME = timedelta(hours=24)
 
 
 def _fingerprint(task: CustomTask, host: Host) -> str:
-    values = (
+    values: tuple[object, ...] = (
         host.address,
         host.port,
         host.username,
@@ -29,6 +29,8 @@ def _fingerprint(task: CustomTask, host: Host) -> str:
         task.shell_command,
         task.requirements.model_dump(),
     )
+    if host.package_sources is not None:
+        values += (host.package_sources,)
     return hashlib.sha256(json.dumps(values, sort_keys=True).encode()).hexdigest()
 
 

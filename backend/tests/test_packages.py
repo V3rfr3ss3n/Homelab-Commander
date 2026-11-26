@@ -58,7 +58,7 @@ def test_package_response_model_shape() -> None:
     }
 
 
-async def test_packages_persist_and_round_trip(tmp_path: Path) -> None:
+async def test_package_counts_persist_and_rows_are_disposable(tmp_path: Path) -> None:
     database = Database(tmp_path / "packages.db")
     await database.async_migrate()
     hosts = HostRepository(database)
@@ -88,6 +88,9 @@ async def test_packages_persist_and_round_trip(tmp_path: Path) -> None:
     assert loaded is not None
     assert loaded.packages == (package,)
     assert loaded.checked_at == checked
+    reopened = await HostRepository(database).async_get(host.id)
+    assert reopened.packages == ()
+    assert reopened.updates == 1
     empty = await hosts.async_create(
         HostCreate(
             name="Node 02", address="node-02.example.invalid", username="automation"

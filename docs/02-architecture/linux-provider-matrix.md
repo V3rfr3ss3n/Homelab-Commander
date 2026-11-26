@@ -1,17 +1,20 @@
 ---
 title: Linux provider capability and compatibility matrix
 status: proposed
-updated: 2026-11-18
+updated: 2026-11-23
 tags: [linux, providers, capabilities, testing, compatibility]
 ---
 
 # Linux provider matrix (#47)
 
-This is the reviewed-contract baseline for M2, not a claim of newly working distro
-support. **APT is the only registered production package provider.** Only APT and
-the independent synthetic provider have executable adapter contract cases. The
-other rows specify future compatibility targets and missing evidence. No automatic
-provider detection, updates, reboot or plugin installation is introduced.
+This is the contract and synthetic-adapter baseline for M2, not real-platform
+certification. **APT, DNF, Zypper, Pacman and Flatpak adapters are registered in the #48 review branch.**
+DNF supports the declared Fedora/RHEL-family baseline; Zypper mutations target
+Leap 16.0. Tumbleweed inventory is read-only with empty observed update scopes.
+Native cases use manufactured outputs; no real OS certification is claimed. The apk/Portage rows specify future compatibility targets and missing evidence. The `auto` configuration detects the supported system manager from validated
+Ansible facts when an explicit check or update runs. It never tries updates to
+discover a manager. No automatic updates, reboot or plugin installation is
+introduced. Configured RPM providers validate detected target facts before dispatch.
 
 ## Version targets and evidence levels
 
@@ -32,7 +35,7 @@ recorded separately before advertising either.
 ## Operation and signal matrix
 
 `scopes` describes current Commander capability readiness: supported = implemented
-legacy operation; unavailable = intended operation without an installed adapter;
+operation for the admitted profile; unavailable = intended operation without an installed adapter;
 unknown = safety/implementation evidence unresolved; unsupported = deliberately
 excluded for this workflow. No non-supported state authorizes an action. An
 implemented operation still needs host readiness, permissions and job checks.
@@ -47,10 +50,10 @@ claims about whether their package managers provide security/reboot facilities.
 | Profile | Candidate versions / required pins | Full | Single | Selected | Security case | Reboot case |
 | --- | --- | --- | --- | --- | --- | --- |
 | apt | Debian 12; Ubuntu 24.04 | supported | supported | supported | known | known |
-| dnf4 | RHEL 9; Rocky Linux 9; AlmaLinux 9 | unavailable | unknown | unknown | unavailable | unknown |
-| dnf5 | Fedora 45 | unavailable | unknown | unknown | unknown | unknown |
-| zypper | openSUSE Leap 16.0; openSUSE Tumbleweed (snapshot required) | unavailable | unknown | unknown | unavailable | unknown |
-| pacman | Arch Linux (snapshot required) | unavailable | unsupported | unsupported | unknown | unknown |
+| dnf4 | RHEL 9; Rocky Linux 9; AlmaLinux 9 | supported | supported | supported | unknown | unknown |
+| dnf5 | Fedora 45 | supported | supported | supported | unknown | unknown |
+| zypper | openSUSE Leap 16.0 | supported | supported | supported | unknown | known |
+| pacman | Arch Linux (snapshot required) | supported | unsupported | unsupported | unknown | unknown |
 | apk | Alpine 3.23 | unavailable | unknown | unknown | unknown | unknown |
 | portage | Gentoo (profile and repository commit required) | unknown | unknown | unknown | unknown | unsupported |
 
@@ -109,9 +112,9 @@ No raw provider text, exception, address or command is a reason code.
 
 A failed list collection raises; it must not manufacture a successful empty list.
 Keep any previous snapshot stale until authoritative replacement succeeds. The
-new models perform no I/O and are not wired into persistence, HTTP or HA. They have
-no new public schema-version claim; existing versioned capability payloads stay v1.
-A future adapter/API rollout must preserve missing-evidence states end to end.
+evidence models perform no I/O. The #48 adapters project nullable observations
+through guarded persistence, API and HA; their internal capability output uses v2,
+while APT and Info strings remain compatible. Missing evidence stays explicit.
 
 `from_legacy` preserves existing reported APT signal values and does not upgrade
 heuristic provenance. `to_legacy` refuses conversion if security/reboot or any shown
@@ -172,3 +175,23 @@ compatibility. They are read-only references, never fetched by tests or the app.
   [Alpine security database](https://secdb.alpinelinux.org/).
 - [Gentoo security and GLSA](https://security.gentoo.org/subscribe),
   [Portage emerge manual](https://github.com/gentoo/portage/blob/master/man/emerge.1).
+
+
+## #48 native adapter implementation
+
+See [ADR-0030](adr/0030-dnf-zypper-and-nullable-observations.md) for exact version/
+manager admission, immutable native argv execution, unknown security data, Zypper
+reboot signals, schema 15, API/HA compatibility and synthetic validation limits.
+All other checklist requirements still apply. Full support is not inferred for
+versions or architectures without separate evidence.
+
+## Native sources follow-up
+
+Auto now composes the detected system manager with available `flatpak_system`
+and `flatpak_user` adapters. Explicit legacy providers retain system-only defaults;
+manual source choices can add Flatpak independently. Full/single/selected Flatpak
+updates preserve full native refs and installation scope. Named installations,
+other desktop users, AUR, software installation/removal and unsupported distro/
+manager combinations are excluded. Pacman admits manufactured Archlinux/CachyOS
+profiles, requires preinstalled checkupdates, and supports full upgrades only.
+No real OS/repository certification or new runtime dependency is claimed.

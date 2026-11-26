@@ -1,7 +1,7 @@
 ---
 title: Persistence and job recovery
 status: active
-updated: 2026-11-17
+updated: 2026-11-23
 tags: [wiki, technical]
 ---
 
@@ -111,3 +111,30 @@ by application policy; approval decisions/consumption are atomic with audit. An
 approval's immutable expiry always applies even before any stored expired-state
 sweep. This adds no background worker or approval execution route. See
 [ADR-0027](../../02-architecture/adr/0027-central-policy-and-approval-contracts.md).
+
+
+## Package evidence flags (schema 15, #48 review)
+
+Add known-security and known-reboot flags plus observed package-scope JSON to
+Hosts, without replacing IDs, previous values, SSH files or configuration.
+Legacy rows default to their existing known values. The repository returns null
+for unknown signals; SQL grouping respects known flags so internal storage
+placeholders never become public zero/false claims. Migration DDL/version markers
+are atomic and have a rollback regression.
+
+Back up `/data` before deployment. Do not downgrade RPM-enabled data to code that
+cannot interpret these flags; restore a pre-upgrade backup instead. Existing APT
+values remain compatible. See
+[ADR-0030](../../02-architecture/adr/0030-dnf-zypper-and-nullable-observations.md).
+
+## Native-source cache boundary (schema 16 review)
+
+Schema 16 additively stores optional source choices and source count/scope summaries;
+no package catalog table is added. Existing package cache bytes are preserved by
+migration. New native reads retain bounded package details in memory only. Once a
+fresh source-observation marker exists, persisted legacy rows are not exposed as
+current details. Counts/freshness survive restart; rows require a new native check.
+Existing job parameters freeze exact source-qualified references, not ownership
+maps. Null source settings preserve legacy connection revisions; explicit changes
+invalidate queued work and are blocked during execution. Back up `/data` before
+upgrade; downgrade requires a suitable pre-upgrade backup.

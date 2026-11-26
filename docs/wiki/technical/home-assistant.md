@@ -1,7 +1,7 @@
 ---
 title: Home Assistant integration
 status: active
-updated: 2026-11-11
+updated: 2026-11-18
 tags: [wiki, technical]
 ---
 
@@ -73,3 +73,15 @@ host. Existing entities remain stable and become unavailable when assignment is
 removed or disabled. Older native backends omitting this additive field retain
 legacy behavior; the new backend independently enforces suitability and assignment
 on every execution request.
+
+
+## Unknown RPM observations (#48 review)
+
+Update the integration before enabling new RPM providers. Explicit native null
+security/reboot values stay unknown in sensor/binary-sensor states and update
+summaries. Missing or malformed fields still fail validation. Unknown does not
+clear an existing reboot repair, and its confirmation flow blocks until status is
+known again. No automatic reboot is introduced. Existing APT values, entity IDs,
+Config Entries and coordinator lifecycle remain unchanged. Older integrations may
+reject new RPM observations safely; they do not gain new provider support merely
+by updating the backend.

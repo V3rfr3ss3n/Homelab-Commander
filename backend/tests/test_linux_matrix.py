@@ -64,12 +64,15 @@ def test_every_manager_has_explicit_scope_and_observation_contract(
         "unavailable",
         "unsupported",
     }
-    if profile["id"] == "apt":
-        assert profile["registered"] is True
-        assert set(profile["scopes"].values()) == {"supported"}
-        assert PackageProviders().resolve("debian_apt").provider_id == "linux.apt"
+    if profile["registered"]:
+        key = profile.get("provider_key", "debian_apt")
+        assert PackageProviders().resolve(key).provider_id == (
+            "linux.apt" if key == "debian_apt" else "linux." + key
+        )
+        assert {scope.value for scope in PackageProviders().resolve(key).scopes} == {
+            name for name, state in profile["scopes"].items() if state == "supported"
+        }
     else:
-        assert profile["registered"] is False
         assert "supported" not in profile["scopes"].values()
         with pytest.raises(ValueError, match="unsupported"):
             PackageProviders().resolve(profile["id"])
@@ -88,11 +91,10 @@ def test_every_manager_has_explicit_scope_and_observation_contract(
     result = InventoryEvidence(2, security, reboot, (_row(security=True),))
     assert result.total == 2
     assert not result.details_complete
-    if profile["registered"]:
+    if security_state is EvidenceState.KNOWN and reboot_state is EvidenceState.KNOWN:
         assert result.to_legacy().updates == 2
     else:
-        assert result.security.value is None
-        assert result.reboot.value is None
+        assert result.security.value is None or result.reboot.value is None
         with pytest.raises(ValueError, match="missing evidence"):
             result.to_legacy()
     if profile["id"] == "pacman":

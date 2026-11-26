@@ -15,8 +15,8 @@ class HostStatus:
     distribution_version: str | None
     kernel: str | None
     updates: int
-    security_updates: int
-    reboot_required: bool
+    security_updates: int | None
+    reboot_required: bool | None
     status: str | None
     checked_at: datetime | None
 
