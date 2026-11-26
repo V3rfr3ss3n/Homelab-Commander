@@ -50,6 +50,8 @@ tags: [architecture, adr, index]
 
 | [[0028-linux-package-provider-boundary]] | proposed | Feature-owned Linux package workflows, preserved APT and synthetic provider contract proof |
 
+| [[0029-linux-evidence-and-compatibility-matrix]] | proposed | Qualified package observations and explicit Linux compatibility/test evidence |
+
 Neue ADRs verwenden [[../../templates/adr-template|die ADR-Vorlage]]. Akzeptierte
 ADRs werden nicht rückwirkend umgeschrieben; eine neue ADR ersetzt die alte und
 verlinkt sie als `superseded`.

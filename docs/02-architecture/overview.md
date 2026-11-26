@@ -249,3 +249,13 @@ composition registers only APT. Versioned capability bindings remain descriptive
 no readiness or execution grant is inferred from provider registration. A second,
 independent synthetic provider proves the seam in tests, not distribution support.
 See [ADR-0028](adr/0028-linux-package-provider-boundary.md).
+
+
+## Qualified Linux observations (#47)
+
+The [provider matrix](linux-provider-matrix.md) and
+[ADR-0029](adr/0029-linux-evidence-and-compatibility-matrix.md) separate future
+capability readiness from data evidence. Internal immutable observations retain
+unknown/unavailable/unsupported security and reboot signals without changing the
+existing API or persistence model. A lossless-only legacy bridge prevents false
+zero/false results. No non-APT provider is registered by these design/test contracts.

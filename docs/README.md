@@ -36,6 +36,7 @@ for the GitLab Wiki. Detailed normative records and the original vault remain he
 | Understand scope or choose work | [Vision](00-project/vision-and-scope.md), [TODO](00-project/todo.md), [backlog](00-project/backlog.md), [roadmap](00-project/roadmap.md) |
 | Change behavior | [Requirements](01-product/requirements.md), [acceptance](01-product/acceptance.md) |
 | Change a component or contract | [Architecture](02-architecture/overview.md), [native API](02-architecture/native-api.md), [resource/capability contracts](02-architecture/resource-capability-contracts.md), [ADR index](02-architecture/adr/README.md) |
+| Extend Linux package providers | [Capability/version matrix](02-architecture/linux-provider-matrix.md), [evidence decision](02-architecture/adr/0029-linux-evidence-and-compatibility-matrix.md) |
 | Change authorization or approval contracts | [Policy decision](02-architecture/adr/0027-central-policy-and-approval-contracts.md), [security model](04-operations/security-and-privacy.md) |
 | Implement or reproduce a bug | [Contributing](../CONTRIBUTING.md), [workflow](03-development/workflow.md), [code rules](03-development/code-rules.md) |
 | Run checks | [Quality gates](03-development/quality-gates.md), [technical foundation](03-development/technical-foundation.md) |

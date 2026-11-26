@@ -55,3 +55,20 @@ No remote permissions or SSH/sudo policy are changed.
 SSH execution explicitly disables TTY allocation, matching the guided setup's
 non-interactive, no-PTY key restrictions. Maintenance still requires deliberately
 provisioned non-interactive sudo; no credential prompt is used.
+
+
+## Linux distribution and signal evidence
+
+APT remains the only production package provider. The
+[Linux matrix](../../02-architecture/linux-provider-matrix.md) lists candidate
+versions and supported/unsupported/unknown operation cases separately from actual
+platform evidence. DNF/Zypper/pacman/apk/Portage fixtures exercise missing-evidence
+semantics; they do not claim native parsing or execution support. Pacman partial
+upgrades and AUR execution are not exposed.
+
+Internal immutable evidence models preserve unknown, unavailable and unsupported
+security/reboot signals as null with a safe reason. Known zero/false needs actual
+collector evidence. The legacy bridge rejects missing data instead of silently
+reporting a clean host. Existing APT signal heuristics and `/api/v1` remain unchanged;
+future providers must add compatible API/UI/HA handling before activation. See
+[ADR-0029](../../02-architecture/adr/0029-linux-evidence-and-compatibility-matrix.md).

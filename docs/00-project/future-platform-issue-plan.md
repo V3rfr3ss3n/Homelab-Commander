@@ -16,7 +16,8 @@ The existing area/type/priority labels are also configured (verified 2026-11-15)
 The Development Roadmap project tracks status and label-derived priority; #41 and
 #42/#61 and #62/#63 are Done. #43 was owner-approved and merged on 2026-11-17;
 #44 was owner-approved and merged in !41 / PR #71; #46 in !42 / PR #72.
-#45 is the current review block: APT extraction and synthetic provider proof.
+#45 was owner-accepted and merged in !43 / PR #73 on 2026-11-18.
+#47 is the current matrix/evidence-contract review block; #48 follows separately.
 These planning states do not claim that M1 is complete.
 
 | Order | GitHub milestone title | Purpose | Issues |
@@ -148,3 +149,15 @@ provider. No second production package manager is advertised. M2 still needs rea
 provider implementations and platform-specific evidence; M1's eventual second-real-
 manager acceptance remains open. See
 [ADR-0028](../02-architecture/adr/0028-linux-package-provider-boundary.md).
+
+
+## Linux capability matrix (#47)
+
+The [matrix](../02-architecture/linux-provider-matrix.md) distinguishes registered
+APT behavior, candidate versions, absent real adapters and synthetic evidence.
+Qualified security/reboot observations preserve unknown/unavailable/unsupported
+as null, with a lossless-only legacy bridge. A reusable injected-runner harness
+covers actual APT and synthetic provider scopes; family scenarios do not certify
+future native parsers. [ADR-0029](../02-architecture/adr/0029-linux-evidence-and-compatibility-matrix.md)
+records the compatibility boundary. #48 implements DNF/Zypper with separate review;
+no release or new provider is activated by this block.
