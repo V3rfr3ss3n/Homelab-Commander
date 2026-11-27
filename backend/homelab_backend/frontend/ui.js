@@ -400,10 +400,29 @@ function hostOverview(host){
   const field=(label,text)=>`<dt>${label}</dt><dd>${value(text)}</dd>`;
   return `<div class="host-identity">${systemIcon(host)}<div><h2 id="host-title">${escapeHtml(host.name)}</h2><p>${escapeHtml(system.label)} · ${escapeHtml(host.status||(!host.checked_at?"Not checked":"Stored status"))}</p></div></div><div class="host-detail-actions actions">${hostActions(host,true)}<button data-edit-host="${host.id}">${buttonIcon("edit")}Edit host</button></div>${host.reboot_required?`<div class="restart-alert" role="status">${buttonIcon("warning")}<div><strong>Restart required</strong><p>Plan downtime before restarting. Review running services and confirm the reboot separately.</p></div></div>`:host.checked_at&&host.reboot_required===null?'<div class="notice restart-notice" role="status">Restart status unknown. Review running services on the host before planning a restart.</div>':""}<div class="host-overview-metrics"><div class="host-metric ${host.checked_at&&host.updates>0?"pending-updates":""}"><a class="host-metric-link" href="#/jobs?host_id=${host.id}&action=check_updates"><small>Available updates</small><strong>${host.checked_at?host.updates:"Unknown"}</strong><span>${host.checked_at?securityLabel(host):"Run a check to populate status"}</span></a><button type="button" class="package-details-toggle" data-host="${host.id}">Package details (${host.checked_at?host.updates:0})</button></div><a class="host-metric" href="#/tasks?host_id=${host.id}"><small>Task assignments</small><strong>${enabled.length} enabled</strong><span>${assigned.length} assigned · ${unready.length} need a compatibility check</span></a><div class="host-metric"><small>Last checked</small><strong id="host-last-checked">${host.checked_at?timeLabel(host.checked_at):"Never"}</strong><span class="${staleHost(host)?"status-stale":""}">${staleHost(host)?"Status missing or older than 24 hours":"Stored status is recent"}</span></div></div><div class="host-detail-grid"><section class="host-info-card"><h3>${buttonIcon("linux")}System</h3><dl>${field("Distribution",host.distribution)}${field("Version",host.distribution_version)}${field("Kernel",host.kernel)}${field("Package provider",host.package_provider==="debian_apt"?"APT (Debian / Ubuntu)":host.package_provider==="auto"?"Auto-detect system package manager":host.package_provider)}<dt>Last status time</dt><dd>${host.checked_at?jobTimeLabel(host.checked_at):"No successful check recorded"}</dd></dl></section><section class="host-info-card"><h3>${buttonIcon("connection")}Connection</h3><dl>${field("SSH address",host.address)}${field("SSH port",host.port)}${field("Automation user",host.username)}</dl><div class="actions"><button data-host="${host.id}" data-action="test_connection">${buttonIcon("connection")}Test connection</button><button data-copy-address="${host.id}" data-icon="copy">Copy address</button></div><div class="host-websites">${websiteLinks(host)}</div></section><section class="host-info-card host-recent"><div class="section-heading"><h3>${buttonIcon("jobs")}Recent jobs</h3><a href="#/jobs?host_id=${host.id}">All host jobs →</a></div>${currentHostJobs.map(job=>jobRow(job,true)).join("")||'<p class="empty">No recorded jobs for this host.</p>'}</section></div><details class="technical-details"><summary>Inventory details</summary><dl class="host-inventory">${field("Host ID",host.id)}<dt>Registered</dt><dd>${jobTimeLabel(host.created_at)}</dd><dt>Last configuration change</dt><dd>${jobTimeLabel(host.updated_at)}</dd></dl></details><div class="host-retire"><span class="sub">Remove only this inventory entry and its task assignments.</span><button class="danger" data-delete-host="${host.id}">${buttonIcon("trash")}Remove host</button></div>`;
 }
-function sourceLabel(source){return {apt:"APT",dnf:"DNF",zypper:"Zypper",pacman:"Pacman / ALPM",flatpak_system:"Flatpak · system",flatpak_user:"Flatpak · SSH user"}[source]||source}
+function sourceLabel(source){return {apt:"APT",dnf:"DNF",zypper:"Zypper",apk:"APK",pacman:"Pacman / ALPM",flatpak_system:"Flatpak · system",flatpak_user:"Flatpak · SSH user"}[source]||source}
 function packageLabel(name){if(name.startsWith("source::"))return `All ${sourceLabel(name.slice(8))} packages`;return name.includes("::")?`${sourceLabel(name.split("::")[0])}: ${name.split("::")[1]}`:name}
 function packageNameOrder(a,b){return (a.display_name||a.name).localeCompare(b.display_name||b.name)||(a.source||"").localeCompare(b.source||"")}
 function packageCan(pkg,scope,host){return (pkg.scopes??hostScopes(host)).includes(scope)}
+function nativeVersionList(items){
+  return items.map(item=>`<li>${escapeHtml(item.name)} <span class="sub">${escapeHtml(item.version)}</span></li>`).join("");
+}
+function renderPacmanReview(dialog,info,host){
+  const region=dialog.querySelector(".pacman-review");
+  const review=info?.pacman_review;
+  const pacman=includesPacmanUpgrade(host);
+  region.hidden=!pacman;
+  if(!pacman){region.replaceChildren();return}
+  if(!review){
+    region.textContent="Run a check to preview Pacman candidates and inspect foreign packages.";
+    return;
+  }
+  const open=Array.from(region.querySelectorAll("details"),details=>details.open);
+  const observed=new Set((info.packages||[]).filter(pkg=>pkg.source==="pacman"||info.provider==="pacman").map(pkg=>pkg.display_name||pkg.name));
+  const candidates=review.candidates.map(item=>({...item,name:observed.has(item.name)?item.name:`${item.name} · resolved candidate`}));
+  region.innerHTML=`<details><summary>Pacman upgrade preview (${review.candidate_count})</summary><p class="sub">Candidates from Pacman’s solver at the last check. The upgrade resolves again against current repositories. Removal and restart requirements are determined separately.</p><ul aria-label="Pacman upgrade candidates">${nativeVersionList(candidates)}</ul>${review.candidate_count>candidates.length?`<p class="sub">Showing ${candidates.length} of ${review.candidate_count} candidates.</p>`:""}</details><details><summary>Foreign packages (${review.foreign_count})</summary><p class="sub">These installed packages are absent from the configured sync repositories. Their origin is unverified. Review package provenance and build sources before managing them separately.</p><ul aria-label="Foreign packages">${nativeVersionList(review.foreign)}</ul>${review.foreign_count>review.foreign.length?`<p class="sub">Showing ${review.foreign.length} of ${review.foreign_count} foreign packages.</p>`:""}</details>`;
+  region.querySelectorAll("details").forEach((details,index)=>{details.open=open[index]??false});
+}
 function renderPackageDialog(host){
   const dialog=element("package-dialog"),info=currentHostPackages,packages=[...(info?.packages||[])];
   const skipped=skippedPackages.get(host.id)||new Set(),busy=packageSubmission||activeJobs().some(j=>j.host_id===host.id&&MUTATING_JOB_ACTIONS.has(j.action));
@@ -417,9 +436,10 @@ function renderPackageDialog(host){
   element("package-update-selected").textContent=`Update selected (${selected})`;
   element("package-update-all").disabled=busy||!total||!hostScopes(host).includes("full");
   element("package-update-all").textContent=`Update all (${total})`;
-  let sourceSummary=dialog.querySelector(".package-sources-summary");if(!sourceSummary){sourceSummary=document.createElement("div");sourceSummary.className="package-sources-summary";dialog.querySelector(".package-list").before(sourceSummary)}
+  const sourceSummary=dialog.querySelector(".package-sources-summary");
   sourceSummary.innerHTML=(info?.sources||[]).map(source=>`<div class="package-source-summary"><span><strong>${escapeHtml(sourceLabel(source.source))}</strong> · ${source.updates} pending${source.security_updates==null?" · Security unknown":` · ${source.security_updates} security`}</span><button type="button" class="package-update-source" data-host="${host.id}" data-action="update-package" data-package="source::${source.source}" ${busy||!source.updates||!source.scopes.includes("full")?"disabled":""}>${buttonIcon("update")}Update source</button></div>`).join("");
-  const list=dialog.querySelector(".package-list");
+  renderPacmanReview(dialog,info,host);
+  const list=dialog.querySelector(".package-rows");
   if(!info||info.checked_at===null)list.innerHTML='<p class="empty">Run a check to see package details.</p>';
   else if(!rows.length&&total)list.innerHTML='<p class="empty">Package names are not recorded yet. Run a check to populate them.</p>';
   else if(!rows.length)list.innerHTML='<p class="empty">No packages need updates.</p>';

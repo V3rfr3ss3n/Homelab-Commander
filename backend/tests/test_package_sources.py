@@ -13,6 +13,7 @@ from backend.homelab_backend.linux.providers.flatpak import (
     available,
     records,
 )
+from backend.homelab_backend.linux.providers.pacman_review import REVIEW_SCRIPT
 from backend.homelab_backend.linux.registry import PackageProviders
 from backend.homelab_backend.linux.sources import selections
 from backend.homelab_backend.models import HostCreate, JobAction
@@ -135,7 +136,22 @@ class SourcesRunner(RpmRunner):
                 return {
                     "stdout": json.dumps({"rc": 0, "stdout": output + "\n"})
                 }, "private callback"
-            if native[0] == "/usr/bin/checkupdates" or native[0] == "/usr/bin/pacman":
+            if native[0] == "/usr/bin/python3":
+                assert not become
+                assert native[2] == REVIEW_SCRIPT
+                self.native_calls.append(native)
+                pending = "".join(name + " 1 -> 2\n" for name in self.pending)
+                plan = "".join(name + " 2\n" for name in self.pending)
+                if self.pending:
+                    plan += "demo-runtime 1.2\n"
+                output = (
+                    pending
+                    + "HLC_ALPM_PLAN\n"
+                    + plan
+                    + "HLC_ALPM_FOREIGN\ndemo-local 1.0\n"
+                )
+                return {"stdout": json.dumps({"rc": 0, "stdout": output})}, ""
+            if native[0] == "/usr/bin/pacman":
                 self.native_calls.append(native)
                 if "-Syu" in native:
                     assert become
@@ -145,11 +161,7 @@ class SourcesRunner(RpmRunner):
                 else:
                     assert not become
                     output = "\n".join(name + " 1 -> 2" for name in self.pending)
-                    rc = (
-                        0
-                        if output
-                        else (2 if native[0].endswith("checkupdates") else 1)
-                    )
+                    rc = 0 if output else 1
                     if self.bad_output is not None:
                         output = self.bad_output
                 return {"stdout": json.dumps({"rc": rc, "stdout": output})}, ""

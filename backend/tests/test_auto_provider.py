@@ -44,7 +44,7 @@ async def test_auto_discovers_checks_and_updates_one_package(
     ("distro", "version", "manager", "code"),
     [
         ("Other", "1", "apt", "package_provider_unsupported"),
-        ("Alpine", "3.23", "apk", "package_provider_unsupported"),
+        ("Alpine", "3.22", "apk", "package_provider_mismatch"),
         ("Fedora", "44", "dnf5", "package_provider_mismatch"),
         ("Debian", "12", "zypper", "package_provider_mismatch"),
     ],

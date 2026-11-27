@@ -5,6 +5,8 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.3.0-dev.6] — development candidate
+
 ### Fixed
 
 - Stop blindly replaying interrupted updates, reboots and custom tasks; preserve
@@ -18,6 +20,13 @@ format is based on Keep a Changelog and the project uses Semantic Versioning.
   distinguish unavailable history from empty results and mark cached results stale.
 
 ### Added
+
+- Alpine 3.23 native inventory and full APK upgrades. Pacman check results
+  include a read-only solver preview and foreign package inventory. This data
+  is transient and disappears after a backend restart until the next check.
+- Native maintenance confirmations show source scope and Pacman dependency,
+  replacement and restart considerations. AUR package execution and Gentoo
+  Portage maintenance remain separate feasibility and review work.
 
 - Native multi-source host updates: detected system manager plus system/SSH-user
   Flatpaks, source selection and source-scoped jobs, without a new persistent

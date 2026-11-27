@@ -34,7 +34,7 @@ PackageName = Annotated[
 MAX_PACKAGE_DETAILS = 50
 PackageSourceChoice = Literal["system", "flatpak_system", "flatpak_user"]
 PackageSourceId = Literal[
-    "apt", "dnf", "zypper", "pacman", "flatpak_system", "flatpak_user"
+    "apt", "dnf", "zypper", "apk", "pacman", "flatpak_system", "flatpak_user"
 ]
 
 
@@ -82,6 +82,22 @@ class PackageInfo(BaseModel):
     )
 
 
+class NativePackageVersion(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    name: str
+    version: str
+
+
+class PacmanReview(BaseModel):
+    """Volatile package-solver candidates and unverified provenance observations."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    candidates: tuple[NativePackageVersion, ...]
+    candidate_count: int = Field(ge=0)
+    foreign: tuple[NativePackageVersion, ...]
+    foreign_count: int = Field(ge=0)
+
+
 class PackagesResponse(BaseModel):
     """Bounded package detail response with the unbounded parser count."""
 
@@ -94,6 +110,9 @@ class PackagesResponse(BaseModel):
     security_updates: int | None = 0
     checked_at: datetime | None
     provider: str | None
+    pacman_review: PacmanReview | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
 
 
 class PackageUpdateRequest(BaseModel):

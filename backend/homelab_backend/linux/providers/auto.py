@@ -59,7 +59,7 @@ class AutoProvider:
                     key = "debian_apt"
                 elif detected.manager in {"dnf", "dnf4", "dnf5"}:
                     key = "dnf"
-                elif detected.manager in {"zypper", "pacman"}:
+                elif detected.manager in {"zypper", "pacman", "apk"}:
                     key = detected.manager
                 else:
                     raise AutomationExecutionError("package_provider_unsupported", "")
@@ -75,6 +75,8 @@ class AutoProvider:
                 source = "dnf"
             elif key == "zypper":
                 source = "zypper"
+            elif key == "apk":
+                source = "apk"
             elif key == "pacman":
                 source = "pacman"
             else:
@@ -191,6 +193,7 @@ class AutoProvider:
             packages=rows,
             package_scopes=aggregate_scopes,
             package_observations=tuple(statuses),
+            pacman_review=system.pacman_review if system else None,
             checked_at=datetime.now(UTC),
         )
         return ExecutionResult(

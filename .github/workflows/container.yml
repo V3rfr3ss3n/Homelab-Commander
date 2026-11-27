@@ -10,7 +10,7 @@ on:
       version:
         description: Image version; must match the app version when publishing
         required: true
-        default: 0.3.0-dev.5
+        default: 0.3.0-dev.6
         type: string
       publish:
         description: Publish the versioned image to GHCR

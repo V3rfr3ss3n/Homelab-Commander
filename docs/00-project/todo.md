@@ -12,9 +12,10 @@ Dies ist die priorisierte Arbeitsliste. Es soll höchstens ein größeres Paket 
 
 ## In Arbeit
 
-- [ ] #49: Vollständige Pacman-Upgrades in den Bestätigungen klar ausweisen.
-  Abhängigkeiten und Ersetzungen werden während der nativen Transaktion bestimmt.
-  Eine konkrete Vorschau der Transaktionsänderungen steht noch aus.
+- [ ] #49–#51 und Dev.6-Kandidat in !46 zur gemeinsamen Abnahme:
+  Pacman-Kandidaten und Fremdpakete, AUR-Review-Grenzen, Alpine 3.23 APK,
+  Portage-Machbarkeitsentscheidung und Dev.5-Schema-Test.
+  [Abnahmeliste](../05-reviews/2026-11-27-dev6-acceptance.md).
 - [x] #48: DNF, Zypper, Pacman-Vollupdates und Flatpak-Quellen in !45 gemergt.
   Paketdetails werden flüchtig gehalten. Schema 16 ergänzt Quellenkonfiguration
   und Statuszusammenfassungen. Das App-Upgrade steht vor dem nächsten Dev-Release zur Abnahme an.

@@ -285,3 +285,8 @@ button[data-action=check_updates]:hover{border-color:var(--line);color:var(--tex
 @media(prefers-reduced-motion:reduce) {*,*::before,*::after {scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
 
 .package-sources-summary{display:grid;gap:.5rem;margin:.75rem 0}.package-source-summary{display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.5rem;border:1px solid var(--line);border-radius:.5rem;flex-wrap:wrap}.package-source-badge{color:var(--muted);font-size:.8rem}#host-source-choices label{margin:.5rem 0}
+
+.pacman-review{margin-block:.5rem;font-size:.875rem}
+.pacman-review details{padding:.5rem;border-top:1px solid var(--line)}
+.pacman-review summary{cursor:pointer}
+.pacman-review ul{max-height:10rem;overflow:auto}

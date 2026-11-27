@@ -84,14 +84,15 @@
       "targets": [
         "Alpine 3.23"
       ],
-      "registered": false,
+      "registered": true,
       "scopes": {
-        "full": "unavailable",
-        "single": "unknown",
-        "selected": "unknown"
+        "full": "supported",
+        "single": "unsupported",
+        "selected": "unsupported"
       },
       "security": "unknown",
-      "reboot": "unknown"
+      "reboot": "unknown",
+      "provider_key": "apk"
     },
     {
       "id": "portage",

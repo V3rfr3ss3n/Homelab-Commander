@@ -3,6 +3,7 @@
 import re
 
 from .ports import ProviderDescriptor
+from .providers.apk import ApkProvider
 from .providers.apt import DebianAptProvider
 from .providers.auto import AutoProvider
 from .providers.flatpak import FlatpakProvider
@@ -20,6 +21,7 @@ class PackageProviders:
                 DnfProvider(),
                 ZypperProvider(),
                 PacmanProvider(),
+                ApkProvider(),
                 FlatpakProvider("system"),
                 FlatpakProvider("user"),
             )

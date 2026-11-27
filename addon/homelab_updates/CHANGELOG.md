@@ -1,6 +1,16 @@
 # Changelog
 
-## 0.3.0-dev.5 (unpublished candidate)
+## 0.3.0-dev.6 (development candidate)
+
+- Adds native DNF, Zypper, Pacman and Alpine APK support alongside APT, with
+  independently selectable system and Flatpak sources.
+- Shows Pacman upgrade candidates and foreign packages with unverified origin.
+  The preview requires checkupdates and runs with a temporary native sync database.
+- Keeps package rows in memory and retains configuration, host IDs, jobs and
+  SSH identity across the additive SQLite migration to schema 16. Back up data
+  and review the upgrade checklist before installing.
+
+## 0.3.0-dev.5
 
 - Adds package details with name/security sorting, single updates, selected updates
   in one job, Skip all/Select all and a separate full Update all action.

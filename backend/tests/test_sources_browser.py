@@ -77,6 +77,14 @@ async def test_sources_list_selection_source_update_and_config(
                 "Flatpak · SSH user"
             )
             if pacman:
+                await page.get_by_text("Pacman upgrade preview (3)").click()
+                await expect(
+                    page.get_by_role("list", name="Pacman upgrade candidates")
+                ).to_contain_text("demo-runtime")
+                await page.get_by_text("Foreign packages (1)").click()
+                await expect(
+                    page.get_by_role("list", name="Foreign packages")
+                ).to_contain_text("demo-local")
                 system_row = rows.filter(has_text="curl.x86_64")
                 await expect(system_row.locator(".package-update-btn")).to_be_disabled()
                 await expect(system_row).to_contain_text("Full source upgrade only")

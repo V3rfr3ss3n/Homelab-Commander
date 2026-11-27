@@ -196,3 +196,9 @@ public endpoint, runtime dependency or integration identifier.
 Known per-source security counts remain visible as a known minimum even when
 another source's classification is unknown. The aggregate security total remains
 unknown; this must not hide a positive native security observation from UI alerts.
+
+The authenticated host package response can include a Pacman review after a
+successful check. It contains bounded solver candidates and foreign packages
+with independent counts. Rows contain only names and versions. Foreign
+status does not prove AUR origin. Review details are transient. They do not
+change job targeting or authorization.

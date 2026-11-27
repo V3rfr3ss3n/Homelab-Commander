@@ -100,3 +100,9 @@ A later failure uses `package_sources_partial_failure` and retains stale measure
 state until native recheck. Aggregate refresh failure cannot imply whole-host
 success. Pacman permits full upgrades only; Flatpak retains installation scope.
 See [ADR-0032](../../02-architecture/adr/0032-native-package-sources-without-catalog.md).
+
+Pacman checks use checkupdates with a disposable sync database. A read-only
+solver candidate list and the foreign-package query reuse it without elevated
+privileges. Authorized full upgrades remain the only Pacman writes.
+Alpine 3.23 supports native APK inventory and complete upgrades. See
+[ADR-0033](../../02-architecture/adr/0033-linux-maintenance-review.md).

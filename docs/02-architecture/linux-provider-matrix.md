@@ -8,10 +8,10 @@ tags: [linux, providers, capabilities, testing, compatibility]
 # Linux provider matrix (#47)
 
 This is the contract and synthetic-adapter baseline for M2, not real-platform
-certification. **APT, DNF, Zypper, Pacman and Flatpak adapters are registered in the #48 review branch.**
+certification. **APT, DNF, Zypper, Pacman, APK and Flatpak adapters are registered in the dev.6 candidate.**
 DNF supports the declared Fedora/RHEL-family baseline; Zypper mutations target
 Leap 16.0. Tumbleweed inventory is read-only with empty observed update scopes.
-Native cases use manufactured outputs; no real OS certification is claimed. The apk/Portage rows specify future compatibility targets and missing evidence. The `auto` configuration detects the supported system manager from validated
+Native cases use manufactured outputs; no real OS certification is claimed. The Portage row specifies feasibility gaps. The `auto` configuration detects the supported system manager from validated
 Ansible facts when an explicit check or update runs. It never tries updates to
 discover a manager. No automatic updates, reboot or plugin installation is
 introduced. Configured RPM providers validate detected target facts before dispatch.
@@ -54,7 +54,7 @@ claims about whether their package managers provide security/reboot facilities.
 | dnf5 | Fedora 45 | supported | supported | supported | unknown | unknown |
 | zypper | openSUSE Leap 16.0 | supported | supported | supported | unknown | known |
 | pacman | Arch Linux (snapshot required) | supported | unsupported | unsupported | unknown | unknown |
-| apk | Alpine 3.23 | unavailable | unknown | unknown | unknown | unknown |
+| apk | Alpine 3.23 | supported | unsupported | unsupported | unknown | unknown |
 | portage | Gentoo (profile and repository commit required) | unknown | unknown | unknown | unknown | unsupported |
 
 The machine-readable companion is
@@ -133,8 +133,8 @@ no second cache refresh, no implicit reboot and unsupported-scope failure before
 runner I/O. No process, SSH or managed-host action is executed.
 
 `test_linux_matrix.py` additionally runs all family signal scenarios through the
-neutral observation contract. Those fixtures **do not test native DNF/Zypper/pacman/
-apk/Portage parsing or execution**; those adapters do not exist yet. It tests null
+neutral observation contract. Native provider tests separately exercise manufactured DNF, Zypper, Pacman and
+APK output. The neutral contract tests null
 preservation, known zero/false, invalid/contradictory/oversized inputs, truncated
 rows, strict types, immutability and refusal of lossy v1 conversion.
 

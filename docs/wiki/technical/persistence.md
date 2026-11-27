@@ -138,3 +138,7 @@ Existing job parameters freeze exact source-qualified references, not ownership
 maps. Null source settings preserve legacy connection revisions; explicit changes
 invalidate queued work and are blocked during execution. Back up `/data` before
 upgrade; downgrade requires a suitable pre-upgrade backup.
+
+Dev.6 uses schema 16. Pacman solver candidates and foreign packages are
+transient and tied to the same successful check as the package inventory.
+They add no SQLite provenance records.
