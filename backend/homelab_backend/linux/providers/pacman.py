@@ -7,6 +7,7 @@ from ...execution.results import AutomationExecutionError, ExecutionResult, Host
 from ...models import MAX_PACKAGE_DETAILS, Host, PackageInfo
 from ..domain import PackageSelection, UpdateScope
 from ..ports import ModuleRunner
+from .pacman_review import REVIEW_SCRIPT, split_review
 from .rpm import command, facts, root
 
 
@@ -35,7 +36,7 @@ class PacmanProvider:
         distro, version, kernel = await self._facts(host, runner)
         # checkupdates owns a temporary native sync DB; never run pacman -Sy alone.
         argv = (
-            ("/usr/bin/checkupdates", "--nocolor")
+            ("/usr/bin/python3", "-c", REVIEW_SCRIPT)
             if refresh_cache
             else ("/usr/bin/pacman", "-Qu", "--color", "never")
         )
@@ -44,11 +45,12 @@ class PacmanProvider:
             host,
             argv,
             code="package_inventory_failed",
-            accepted=(0, 2) if refresh_cache else (0, 1),
+            accepted=(0,) if refresh_cache else (0, 1),
             become=False,
         )
         if rc and output.strip():
             raise AutomationExecutionError("invalid_package_output", "")
+        output, review = split_review(output) if refresh_cache else (output, None)
         rows = []
         seen: set[str] = set()
         for line in output.splitlines():
@@ -84,6 +86,7 @@ class PacmanProvider:
                     sorted(rows, key=lambda p: p.name)[:MAX_PACKAGE_DETAILS]
                 ),
                 package_scopes=("full",),
+                pacman_review=review,
             ),
         )
 

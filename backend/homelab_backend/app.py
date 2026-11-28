@@ -406,6 +406,7 @@ def create_app(
         return PackagesResponse(
             packages=host.packages,
             sources=host.package_observations,
+            pacman_review=hosts.pacman_review(host),
             total=host.updates,
             security_updates=host.security_updates,
             checked_at=host.checked_at,
@@ -858,6 +859,7 @@ def create_app(
         return PackagesResponse(
             packages=host.packages,
             sources=host.package_observations,
+            pacman_review=hosts.pacman_review(host),
             total=host.updates,
             security_updates=host.security_updates,
             checked_at=host.checked_at,

@@ -108,3 +108,21 @@ new check repopulates details. Changes made outside Commander appear on the next
 check. If a later source fails, earlier work may have completed: inspect the job
 and refresh status before another explicit update. No automatic rollback/retry is
 attempted. Preview uses synthetic sources only.
+
+
+Pacman confirmations describe a full system upgrade and remind you to review
+restart requirements. The displayed package counts come from the last check.
+Pacman resolves dependencies and replacements during execution, so the final
+transaction can differ from that inventory.
+
+In dev.6, a fresh Pacman check shows **Pacman upgrade preview** and **Foreign
+packages**. The first lists candidates from that check. The second shows
+installed packages absent from the configured repositories. Their origin is
+unverified. Review provenance separately. A later upgrade resolves again
+against current repositories. A new check restores review details after
+restart or update.
+
+On Alpine 3.23, choose APK or use Auto-detect. APK checks available versions
+and supports a full package upgrade. Security classification and restart
+status are unknown. The host's existing repository and signing rules apply.
+Gentoo Portage is currently unavailable.

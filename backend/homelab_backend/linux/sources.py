@@ -11,6 +11,7 @@ SOURCE_IDS: frozenset[PackageSourceId] = frozenset({
     "dnf",
     "zypper",
     "pacman",
+    "apk",
     "flatpak_system",
     "flatpak_user",
 })

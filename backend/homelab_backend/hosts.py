@@ -13,6 +13,7 @@ from .models import (
     HostWebsite,
     PackageInfo,
     PackageSourceStatus,
+    PacmanReview,
 )
 from .policy.application import PolicyGuard
 from .policy.domain import Permission
@@ -44,6 +45,7 @@ class HostRepository:
         self._database = database
         self._policy = policy or policy_for(database)
         # New package rows are disposable observations, not a persisted catalog.
+        self._pacman_reviews: dict[UUID, tuple[datetime, PacmanReview]] = {}
         self._package_cache: dict[UUID, tuple[datetime, tuple[PackageInfo, ...]]] = {}
 
     async def async_create(self, data: HostCreate) -> Host:
@@ -90,6 +92,12 @@ class HostRepository:
         if cached is not None and cached[0] == host.checked_at:
             return host.model_copy(update={"packages": cached[1]})
         return host
+
+    def pacman_review(self, host: Host) -> PacmanReview | None:
+        cached = self._pacman_reviews.get(host.id)
+        if cached is not None and cached[0] == host.checked_at and host.status == "ok":
+            return cached[1]
+        return None
 
     async def async_patch(self, host_id: UUID, patch: HostPatch) -> Host | None:
         """Update mutable fields while preserving the UUID."""
@@ -171,6 +179,7 @@ class HostRepository:
             updated.package_provider,
             updated.package_sources,
         ):
+            self._pacman_reviews.pop(host_id, None)
             await self._database.async_execute(
                 "DELETE FROM task_checks WHERE host_id = ?", (str(host_id),)
             )
@@ -188,6 +197,7 @@ class HostRepository:
                 )
             )
             if deleted:
+                self._pacman_reviews.pop(host_id, None)
                 self._package_cache.pop(host_id, None)
             return deleted
         except sqlite3.IntegrityError as err:
@@ -219,6 +229,7 @@ class HostRepository:
         packages: tuple[PackageInfo, ...],
         package_scopes: tuple[str, ...] | None = None,
         package_observations: tuple[PackageSourceStatus, ...] = (),
+        pacman_review: PacmanReview | None = None,
     ) -> None:
         """Persist one normalized status snapshot."""
         await self._policy.async_require(Permission.HOST_STATUS)
@@ -249,6 +260,10 @@ class HostRepository:
             ),
         )
         self._package_cache[host_id] = (checked_at, packages)
+        if pacman_review is not None:
+            self._pacman_reviews[host_id] = (checked_at, pacman_review)
+        else:
+            self._pacman_reviews.pop(host_id, None)
 
 
 def _values(host: Host) -> tuple[object, ...]:

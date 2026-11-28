@@ -428,6 +428,7 @@ class JobManager:
                 packages=snapshot.packages,
                 package_scopes=snapshot.package_scopes,
                 package_observations=snapshot.package_observations,
+                pacman_review=snapshot.pacman_review,
             )
         output, truncated = _safe_output(result.output, host)
         await self._repository.async_finish(

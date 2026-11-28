@@ -95,7 +95,10 @@ class PreviewExecutor:
         if self._providers.get(host.id, configuration) != configuration:
             self._packages.pop(host.id, None)
         self._providers[host.id] = configuration
-        if host.package_provider == "auto" or host.package_sources is not None:
+        if (
+            host.package_provider in {"auto", "apk", "pacman"}
+            or host.package_sources is not None
+        ):
             result, remaining_sources = simulate_sources(
                 host,
                 action,

@@ -77,9 +77,32 @@ async def test_sources_list_selection_source_update_and_config(
                 "Flatpak · SSH user"
             )
             if pacman:
+                await page.get_by_text("Pacman upgrade preview (3)").click()
+                await expect(
+                    page.get_by_role("list", name="Pacman upgrade candidates")
+                ).to_contain_text("demo-runtime")
+                await page.get_by_text("Foreign packages (1)").click()
+                await expect(
+                    page.get_by_role("list", name="Foreign packages")
+                ).to_contain_text("demo-local")
                 system_row = rows.filter(has_text="curl.x86_64")
                 await expect(system_row.locator(".package-update-btn")).to_be_disabled()
                 await expect(system_row).to_contain_text("Full source upgrade only")
+                await page.locator("#package-dialog [data-close-dialog]").click()
+                await page.locator('#host-info [data-action="update"]').click()
+                await expect(page.locator("#confirm-title")).to_have_text(
+                    "Run full Pacman upgrade?"
+                )
+                await expect(page.locator("#confirm-targets")).to_contain_text(
+                    "Pacman full system upgrade, Flatpak · system, Flatpak · SSH user"
+                )
+                await expect(page.locator("#confirm-targets")).to_contain_text(
+                    "Restart status unknown"
+                )
+                await expect(page.locator("#confirm-accept")).to_be_disabled()
+                await page.locator("#confirm-cancel").click()
+                assert runner.writes == 0
+                await page.locator(".package-details-toggle").click()
             await page.locator("#package-skip-all").click()
             user_row = rows.filter(has_text="org.example.Editor").filter(
                 has_text="Flatpak · SSH user"
@@ -112,6 +135,14 @@ async def test_sources_list_selection_source_update_and_config(
             await expect(page.locator("#confirm-description")).to_contain_text(
                 "every eligible package"
             )
+            if pacman:
+                await expect(page.locator("#confirm-description")).to_contain_text(
+                    "Pacman runs a full system upgrade"
+                )
+                await expect(page.locator("#confirm-description")).to_contain_text(
+                    "may replace packages"
+                )
+                await expect(page.locator("#confirm-accept")).to_be_disabled()
             await page.locator("#confirm-ack").check()
             await page.locator("#confirm-accept").click()
             await expect(rows).to_have_count(3)

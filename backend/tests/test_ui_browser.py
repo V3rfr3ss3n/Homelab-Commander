@@ -762,13 +762,12 @@ async def test_job_polling_tracks_terminal_states_and_refreshes_hosts(
             "#job-highlights .job-preview.state-success"
         ).first.wait_for()
 
+        # The Dashboard retains the selected host, so Resources opens its details.
         await page.locator('nav a[data-tab="hosts"]').click()
-        await expect(page.locator("#host-section")).to_be_visible()
-        await expect(page.locator("#hosts")).to_contain_text("Node 01")
-        await page.locator('#hosts a[href^="#/hosts/"]').first.evaluate(
-            "anchor => anchor.click()"
+        await expect(page.locator("#host-info #host-title:visible")).to_have_text(
+            "Node 01"
         )
-        await page.locator('[data-action="test_connection"]').click()
+        await page.locator('#host-info [data-action="test_connection"]').click()
         await _wait_for_message(page, "test connection queued")
         await page.locator('nav a[data-tab="dashboard"]').click()
         await (

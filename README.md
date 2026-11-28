@@ -5,7 +5,7 @@ remote operations. Software updates are the first mature capability; the
 architecture is designed to grow beyond update management.
 
 > [!WARNING]
-> Version `0.3.0-dev.5` is an unpublished development candidate under review.
+> Version `0.3.0-dev.6` is an unpublished development candidate under review.
 > Keep backups of the backend `/data` volume and follow the release acceptance checks.
 
 ## Two components, one Native setup

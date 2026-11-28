@@ -355,10 +355,24 @@ function showTimelinePoint(target){
 function knownSecurity(host){return host.security_updates??(host.package_observations||[]).reduce((sum,source)=>sum+(source.security_updates??0),0)}
 function securityLabel(host){const known=knownSecurity(host);return host.security_updates===null?(known?`${known} known security updates · other sources unknown`:"Security status unknown"):`${host.security_updates} security ${host.security_updates===1?"update":"updates"}`}
 function hostScopes(host){return host.package_scopes??(host.package_provider==="debian_apt"&&host.package_sources==null?["full","single","selected"]:[])}
+function includesPacmanUpgrade(host,names=[]){
+  const observations=host.package_observations||[];
+  const hasPacman=observations.length?observations.some(source=>source.source==="pacman"&&source.scopes.includes("full")):host.package_provider==="pacman"&&(host.package_sources==null||host.package_sources.includes("system"));
+  return hasPacman&&(!names.length||names.includes("source::pacman"));
+}
+function pacmanUpgradeNotice(){
+  return " Pacman runs a full system upgrade. It resolves dependencies and may replace packages during the transaction. Review restart requirements after completion.";
+}
+function updateTargetLabel(host){
+  const sources=(host.package_observations||[]).filter(source=>source.scopes.includes("full"));
+  const scope=sources.length?sources.map(source=>source.source==="pacman"?"Pacman full system upgrade":sourceLabel(source.source)).join(", "):includesPacmanUpgrade(host)?"Pacman full system upgrade":"System packages";
+  const restart=host.reboot_required?" · Restart already required":host.reboot_required===null?" · Restart status unknown":"";
+  return `${host.name} · ${host.updates} updates · ${scope}${restart}`;
+}
 async function updateShown(button){
   const targets=state.hosts.filter(h=>h.checked_at&&h.updates>0&&hostScopes(h).includes("full")&&!activeJobs().some(j=>j.host_id===h.id&&ACTIVE_JOB_STATES.has(j.state)&&MUTATING_JOB_ACTIONS.has(j.action)));
   if(!targets.length)return;
-  if(!await confirmAction(`Update all (${targets.length}) hosts?`,`Run regular system updates on these hosts during a suitable maintenance window? No host reboot is requested. Review restart requirements after completion.`,targets.map(host=>`${host.name} · ${host.updates} updates${host.reboot_required?" · Restart already required":host.reboot_required===null?" · Restart status unknown":""}`),"Queue updates",{acknowledgement:"I will review completed updates and restart requirements. Any host reboot must be confirmed separately."}))return;
+  if(!await confirmAction(`Update all (${targets.length}) hosts?`,`Update the enabled sources on these hosts during a maintenance window? Review restart requirements after completion.${targets.some(host=>includesPacmanUpgrade(host))?pacmanUpgradeNotice():""}`,targets.map(updateTargetLabel),"Queue updates",{acknowledgement:"I will review completed updates and restart requirements. Any host reboot must be confirmed separately."}))return;
   await run(button,async()=>{let count=0;const failed=[];for(const host of targets){try{await request(hostActionPath(host.id,"update"),{method:"POST"});count++}catch{failed.push(host.name)}}await refreshDashboard();if(failed.length)throw Error(`${count} updates queued. Could not queue: ${failed.join(", ")}. Review host status before retrying.`);return {notification:{href:"#/jobs?action=update",label:"Open jobs"}}},"Updates queued");
 }
 function hostSystem(host){
@@ -386,10 +400,29 @@ function hostOverview(host){
   const field=(label,text)=>`<dt>${label}</dt><dd>${value(text)}</dd>`;
   return `<div class="host-identity">${systemIcon(host)}<div><h2 id="host-title">${escapeHtml(host.name)}</h2><p>${escapeHtml(system.label)} · ${escapeHtml(host.status||(!host.checked_at?"Not checked":"Stored status"))}</p></div></div><div class="host-detail-actions actions">${hostActions(host,true)}<button data-edit-host="${host.id}">${buttonIcon("edit")}Edit host</button></div>${host.reboot_required?`<div class="restart-alert" role="status">${buttonIcon("warning")}<div><strong>Restart required</strong><p>Plan downtime before restarting. Review running services and confirm the reboot separately.</p></div></div>`:host.checked_at&&host.reboot_required===null?'<div class="notice restart-notice" role="status">Restart status unknown. Review running services on the host before planning a restart.</div>':""}<div class="host-overview-metrics"><div class="host-metric ${host.checked_at&&host.updates>0?"pending-updates":""}"><a class="host-metric-link" href="#/jobs?host_id=${host.id}&action=check_updates"><small>Available updates</small><strong>${host.checked_at?host.updates:"Unknown"}</strong><span>${host.checked_at?securityLabel(host):"Run a check to populate status"}</span></a><button type="button" class="package-details-toggle" data-host="${host.id}">Package details (${host.checked_at?host.updates:0})</button></div><a class="host-metric" href="#/tasks?host_id=${host.id}"><small>Task assignments</small><strong>${enabled.length} enabled</strong><span>${assigned.length} assigned · ${unready.length} need a compatibility check</span></a><div class="host-metric"><small>Last checked</small><strong id="host-last-checked">${host.checked_at?timeLabel(host.checked_at):"Never"}</strong><span class="${staleHost(host)?"status-stale":""}">${staleHost(host)?"Status missing or older than 24 hours":"Stored status is recent"}</span></div></div><div class="host-detail-grid"><section class="host-info-card"><h3>${buttonIcon("linux")}System</h3><dl>${field("Distribution",host.distribution)}${field("Version",host.distribution_version)}${field("Kernel",host.kernel)}${field("Package provider",host.package_provider==="debian_apt"?"APT (Debian / Ubuntu)":host.package_provider==="auto"?"Auto-detect system package manager":host.package_provider)}<dt>Last status time</dt><dd>${host.checked_at?jobTimeLabel(host.checked_at):"No successful check recorded"}</dd></dl></section><section class="host-info-card"><h3>${buttonIcon("connection")}Connection</h3><dl>${field("SSH address",host.address)}${field("SSH port",host.port)}${field("Automation user",host.username)}</dl><div class="actions"><button data-host="${host.id}" data-action="test_connection">${buttonIcon("connection")}Test connection</button><button data-copy-address="${host.id}" data-icon="copy">Copy address</button></div><div class="host-websites">${websiteLinks(host)}</div></section><section class="host-info-card host-recent"><div class="section-heading"><h3>${buttonIcon("jobs")}Recent jobs</h3><a href="#/jobs?host_id=${host.id}">All host jobs →</a></div>${currentHostJobs.map(job=>jobRow(job,true)).join("")||'<p class="empty">No recorded jobs for this host.</p>'}</section></div><details class="technical-details"><summary>Inventory details</summary><dl class="host-inventory">${field("Host ID",host.id)}<dt>Registered</dt><dd>${jobTimeLabel(host.created_at)}</dd><dt>Last configuration change</dt><dd>${jobTimeLabel(host.updated_at)}</dd></dl></details><div class="host-retire"><span class="sub">Remove only this inventory entry and its task assignments.</span><button class="danger" data-delete-host="${host.id}">${buttonIcon("trash")}Remove host</button></div>`;
 }
-function sourceLabel(source){return {apt:"APT",dnf:"DNF",zypper:"Zypper",pacman:"Pacman / ALPM",flatpak_system:"Flatpak · system",flatpak_user:"Flatpak · SSH user"}[source]||source}
+function sourceLabel(source){return {apt:"APT",dnf:"DNF",zypper:"Zypper",apk:"APK",pacman:"Pacman / ALPM",flatpak_system:"Flatpak · system",flatpak_user:"Flatpak · SSH user"}[source]||source}
 function packageLabel(name){if(name.startsWith("source::"))return `All ${sourceLabel(name.slice(8))} packages`;return name.includes("::")?`${sourceLabel(name.split("::")[0])}: ${name.split("::")[1]}`:name}
 function packageNameOrder(a,b){return (a.display_name||a.name).localeCompare(b.display_name||b.name)||(a.source||"").localeCompare(b.source||"")}
 function packageCan(pkg,scope,host){return (pkg.scopes??hostScopes(host)).includes(scope)}
+function nativeVersionList(items){
+  return items.map(item=>`<li>${escapeHtml(item.name)} <span class="sub">${escapeHtml(item.version)}</span></li>`).join("");
+}
+function renderPacmanReview(dialog,info,host){
+  const region=dialog.querySelector(".pacman-review");
+  const review=info?.pacman_review;
+  const pacman=includesPacmanUpgrade(host);
+  region.hidden=!pacman;
+  if(!pacman){region.replaceChildren();return}
+  if(!review){
+    region.textContent="Run a check to preview Pacman candidates and inspect foreign packages.";
+    return;
+  }
+  const open=Array.from(region.querySelectorAll("details"),details=>details.open);
+  const observed=new Set((info.packages||[]).filter(pkg=>pkg.source==="pacman"||info.provider==="pacman").map(pkg=>pkg.display_name||pkg.name));
+  const candidates=review.candidates.map(item=>({...item,name:observed.has(item.name)?item.name:`${item.name} · resolved candidate`}));
+  region.innerHTML=`<details><summary>Pacman upgrade preview (${review.candidate_count})</summary><p class="sub">Candidates from Pacman’s solver at the last check. The upgrade resolves again against current repositories. Removal and restart requirements are determined separately.</p><ul aria-label="Pacman upgrade candidates">${nativeVersionList(candidates)}</ul>${review.candidate_count>candidates.length?`<p class="sub">Showing ${candidates.length} of ${review.candidate_count} candidates.</p>`:""}</details><details><summary>Foreign packages (${review.foreign_count})</summary><p class="sub">These installed packages are absent from the configured sync repositories. Their origin is unverified. Review package provenance and build sources before managing them separately.</p><ul aria-label="Foreign packages">${nativeVersionList(review.foreign)}</ul>${review.foreign_count>review.foreign.length?`<p class="sub">Showing ${review.foreign.length} of ${review.foreign_count} foreign packages.</p>`:""}</details>`;
+  region.querySelectorAll("details").forEach((details,index)=>{details.open=open[index]??false});
+}
 function renderPackageDialog(host){
   const dialog=element("package-dialog"),info=currentHostPackages,packages=[...(info?.packages||[])];
   const skipped=skippedPackages.get(host.id)||new Set(),busy=packageSubmission||activeJobs().some(j=>j.host_id===host.id&&MUTATING_JOB_ACTIONS.has(j.action));
@@ -403,9 +436,10 @@ function renderPackageDialog(host){
   element("package-update-selected").textContent=`Update selected (${selected})`;
   element("package-update-all").disabled=busy||!total||!hostScopes(host).includes("full");
   element("package-update-all").textContent=`Update all (${total})`;
-  let sourceSummary=dialog.querySelector(".package-sources-summary");if(!sourceSummary){sourceSummary=document.createElement("div");sourceSummary.className="package-sources-summary";dialog.querySelector(".package-list").before(sourceSummary)}
+  const sourceSummary=dialog.querySelector(".package-sources-summary");
   sourceSummary.innerHTML=(info?.sources||[]).map(source=>`<div class="package-source-summary"><span><strong>${escapeHtml(sourceLabel(source.source))}</strong> · ${source.updates} pending${source.security_updates==null?" · Security unknown":` · ${source.security_updates} security`}</span><button type="button" class="package-update-source" data-host="${host.id}" data-action="update-package" data-package="source::${source.source}" ${busy||!source.updates||!source.scopes.includes("full")?"disabled":""}>${buttonIcon("update")}Update source</button></div>`).join("");
-  const list=dialog.querySelector(".package-list");
+  renderPacmanReview(dialog,info,host);
+  const list=dialog.querySelector(".package-rows");
   if(!info||info.checked_at===null)list.innerHTML='<p class="empty">Run a check to see package details.</p>';
   else if(!rows.length&&total)list.innerHTML='<p class="empty">Package names are not recorded yet. Run a check to populate them.</p>';
   else if(!rows.length)list.innerHTML='<p class="empty">No packages need updates.</p>';
@@ -418,10 +452,10 @@ async function updatePackages(button,scope){
   const skipped=skippedPackages.get(hostId)||new Set(),names=scope==="selected"?(currentHostPackages?.packages||[]).filter(p=>!skipped.has(p.name)&&packageCan(p,"selected",host)).map(p=>p.name):scope==="all"?null:[scope];
   if(names&&!names.length)return;
   const title=names?.length===1?(names[0].startsWith("source::")?`Update ${packageLabel(names[0])}?`:`Update only ${packageLabel(names[0])}?`):names?`Update ${names.length} selected packages?`:`Update all ${currentHostPackages?.total||0} packages?`;
-  const description=`${host.name}: ${names?.some(name=>name.startsWith("source::"))?"Update every eligible package in the selected native source, including packages not shown or skipped":names?"Update these explicitly selected installed packages":"Run a full host upgrade, including packages not shown and skipped rows"}. Native managers may also update dependencies. Sources run sequentially; a later failure does not undo an earlier update. No reboot is requested; review restart requirements afterwards.`;
+  const description=`${host.name}: ${names?.some(name=>name.startsWith("source::"))?"Update every eligible package in the selected native source, including packages not shown or skipped":names?"Update these explicitly selected installed packages":"Run a full host upgrade, including packages not shown and skipped rows"}. Native managers may also update dependencies. Sources run sequentially; a later failure does not undo an earlier update. No reboot is requested; review restart requirements afterwards.${includesPacmanUpgrade(host,names||[])?pacmanUpgradeNotice():""}`;
   packageSubmission=true;
   try{
-    if(!await confirmAction(title,description,names?.map(packageLabel)||[],names?"Update packages":"Update all",{acknowledgement:"I have planned maintenance and will review completion and restart requirements."}))return;
+    if(!await confirmAction(title,description,names?.map(packageLabel)||[updateTargetLabel(host)],names?"Update packages":"Update all",{acknowledgement:"I have planned maintenance and will review completion and restart requirements."}))return;
     renderPackageDialog(host);
     const body=names?(names.length===1?{package_name:names[0]}:{package_names:names}):undefined;
     await mutate(button,hostActionPath(hostId,"update"),"POST",body,names?"Package update queued":"System update queued");
@@ -668,7 +702,10 @@ async function rerunJob(button){
   const host=state.hosts.find(item=>item.id===job.host_id),title=state.custom_tasks.find(item=>item.id===job.custom_task_id)?.name||actionName(job.action);
   const names=job.package_names?.length?job.package_names:job.package_name?[job.package_name]:[];
   const body=job.action==="update"?(job.package_names?.length?{package_names:job.package_names}:job.package_name?{package_name:job.package_name}:undefined):undefined;
-  if(!await confirmAction("Run this job again?",`Create a new ${title} job for ${host.name}? The original job and its log stay in history.${job.action==="custom_task"?" The current task definition and permissions apply.":""}`,names.length?names:[host.name],"Run again"))return;
+  const pacman=job.action==="update"&&includesPacmanUpgrade(host,names);
+  const scope=names.length?names.map(packageLabel):job.action==="update"?[updateTargetLabel(host)]:[host.name];
+  const description=`Create a new ${title} job for ${host.name}? The original job and its log stay in history.${job.action==="custom_task"?" The current task definition and permissions apply.":""}${pacman?pacmanUpgradeNotice():""}`;
+  if(!await confirmAction("Run this job again?",description,scope,"Run again",pacman?{acknowledgement:"I have planned maintenance and will review restart requirements."}:{}))return;
   await mutate(button,job.action==="custom_task"?customTaskPath(job.host_id,job.custom_task_id):hostActionPath(job.host_id,job.action),"POST",body,"New job queued");
   }finally{jobRerunPending=false;renderSelectedJob()}
 }
@@ -732,7 +769,33 @@ async function removeHost(button,hostId){
   },"Host removed");
   if(!success&&element("host-dialog").open)element("host-form-error").textContent=element("message-text").textContent;
 }
-async function hostClick(event){const button=event.target.closest("button");if(!button)return;const hostId=button.dataset.host;if(button.dataset.action&&hostId){const action=button.dataset.action;if(action==="update-package"){if(button.dataset.package)await updatePackages(button,button.dataset.package);return}if(["update","reboot"].includes(action)&&!await confirmAction(action==="reboot"?"Restart host?":"Run system update?",`${action==="reboot"?"Restart":"Run regular system updates on"} ${state.hosts.find(host=>host.id===hostId)?.name||"this host"}?`,[],action==="reboot"?"Restart":"Queue update"))return;await mutate(button,hostActionPath(hostId,action),"POST",undefined,`${action.replace("_"," ")} queued`);return}if(button.dataset.deleteHost){await removeHost(button,button.dataset.deleteHost);return}if(button.dataset.editHost)openHostDialog(state.hosts.find(value=>value.id===button.dataset.editHost))}
+async function hostClick(event){
+  const button=event.target.closest("button");
+  if(!button)return;
+  const hostId=button.dataset.host,action=button.dataset.action;
+  if(action&&hostId){
+    const host=state.hosts.find(item=>item.id===hostId);
+    if(action==="update-package"){
+      if(button.dataset.package)await updatePackages(button,button.dataset.package);
+      return;
+    }
+    if(action==="update"){
+      if(!host)return;
+      const pacman=includesPacmanUpgrade(host);
+      const description=`Update all enabled sources on ${host.name}?${pacman?pacmanUpgradeNotice():""}`;
+      const options=pacman?{acknowledgement:"I have planned maintenance and will review restart requirements."}:{};
+      if(!await confirmAction(pacman?"Run full Pacman upgrade?":"Run system update?",description,[updateTargetLabel(host)],"Queue update",options))return;
+    }
+    if(action==="reboot"&&!await confirmAction("Restart host?",`Restart ${host?.name||"this host"}?`,[],"Restart"))return;
+    await mutate(button,hostActionPath(hostId,action),"POST",undefined,`${action.replace("_"," ")} queued`);
+    return;
+  }
+  if(button.dataset.deleteHost){
+    await removeHost(button,button.dataset.deleteHost);
+    return;
+  }
+  if(button.dataset.editHost)openHostDialog(state.hosts.find(value=>value.id===button.dataset.editHost));
+}
 async function taskClick(event){const button=event.target.closest("button");if(!button)return;const host=button.dataset.host;if(button.dataset.task&&host){if(await confirmAction("Run custom task?",`Run ${state.custom_tasks.find(task=>task.id===button.dataset.task)?.name||"this task"} on ${state.hosts.find(item=>item.id===host)?.name||"this host"}? Prerequisites will be checked again.`,[],"Run task"))await mutate(button,customTaskPath(host,button.dataset.task),"POST",undefined,"Task queued");return}if(button.dataset.checkTask){await run(button,async()=>{await request(`hosts/${host}/tasks/${button.dataset.checkTask}/check`,{method:"POST"});await loadView();render()},"Compatibility checked");return}if(button.dataset.assignTask){const result=currentHostTasks.find(c=>c.task_id===button.dataset.assignTask);await mutate(button,`hosts/${host}/tasks/${button.dataset.assignTask}/assignment`,"PUT",{enabled:!result?.enabled},"Assignment updated");return}if(button.dataset.unassignTask){await mutate(button,`hosts/${host}/tasks/${button.dataset.unassignTask}/assignment`,"DELETE",undefined,"Task unassigned");return}if(button.dataset.toggleTask){const task=state.custom_tasks.find(t=>t.id===button.dataset.toggleTask);await mutate(button,`custom-tasks/${task.id}`,"PATCH",{enabled:!task.enabled},"Task updated");return}if(button.dataset.deleteTask){if(await confirmAction("Delete task?",`Delete ${state.custom_tasks.find(task=>task.id===button.dataset.deleteTask)?.name||"this task"}?`,[],"Delete task"))await mutate(button,`custom-tasks/${button.dataset.deleteTask}`,"DELETE",undefined,"Task deleted");return}if(button.dataset.editTask)openTaskDialog(state.custom_tasks.find(value=>value.id===button.dataset.editTask))}
 async function reviewJob(button){await run(button,async()=>{await request(`jobs/${button.dataset.reviewJob}/review`,{method:"POST"});await refreshDashboard();await loadJobRoute(true)},"Job marked as reviewed")}
 async function jobClick(event){const button=event.target.closest("button[data-job-log]");if(!button)return;const target=`#/jobs/${button.dataset.jobLog}`;if(location.hash===target)await run(button,()=>loadJobRoute(true),"Job loaded");else location.hash=target}
